@@ -36,10 +36,21 @@ Open `http://localhost:3000`.
 
 ## Auth Notes
 
-- First registered user becomes the initial admin.
+- Public registration always creates a normal user account.
 - Login accepts email or mobile number when a user has `phone` saved.
 - Forgot password sends a 6 digit OTP to the user's email.
 - OTPs are hashed before storing in MongoDB, expire after 10 minutes, and allow 5 attempts.
+
+## Render Deploy
+
+Use these settings if you create the service manually on Render:
+
+```bash
+Build Command: npm ci && npm run build
+Start Command: npm run start
+```
+
+Add all variables from `.env.example` in Render Environment. Do not upload `.env.local`.
 
 ## Useful Commands
 
