@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 
 type PaymentDetails = {
@@ -77,13 +77,10 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
         {hasPaymentDetails ? (
           <>
             {payment.qrImageUrl && (
-              <Image
+              <img
                 src={payment.qrImageUrl}
                 alt="Payment QR"
-                width={208}
-                height={208}
                 className="h-52 w-52 rounded-md border border-neutral-200 bg-white object-contain p-2"
-                unoptimized
               />
             )}
             <div className="grid gap-2">

@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
 
     const ext = allowedTypes.get(file.type);
     const fileName = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "payment-qr");
+    const uploadDir = path.join(process.cwd(), "uploads", "payment-qr");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
 
-    return ok({ url: `/uploads/payment-qr/${fileName}` });
+    return ok({ url: `/api/uploads/file/payment-qr/${fileName}` });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to upload QR image");
   }

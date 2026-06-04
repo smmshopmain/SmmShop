@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -656,13 +656,10 @@ export function SettingsForm({
         {payment.qrImageUrl && (
           <div className="grid gap-2 text-sm">
             <span className="font-medium">Current QR</span>
-            <Image
+            <img
               src={payment.qrImageUrl}
               alt="Payment QR"
-              width={176}
-              height={176}
               className="h-44 w-44 rounded-md border border-neutral-200 bg-white object-contain p-2"
-              unoptimized
             />
           </div>
         )}

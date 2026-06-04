@@ -22,11 +22,11 @@ export async function POST(request: NextRequest) {
 
     const ext = allowedTypes.get(file.type);
     const fileName = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads", "deposit-proofs");
+    const uploadDir = path.join(process.cwd(), "uploads", "deposit-proofs");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
 
-    return ok({ url: `/uploads/deposit-proofs/${fileName}` });
+    return ok({ url: `/api/uploads/file/deposit-proofs/${fileName}` });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to upload proof");
   }
