@@ -3,18 +3,19 @@ import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
 
 export default async function ProfilePage() {
-  let profile = { name: "", email: "", phone: "", referralCode: "" };
+  let profile = { name: "", email: "", phone: "", referralCode: "", role: "user" as "user" | "admin" };
 
   try {
-    const { dbUser } = await requireUser();
+    const { auth, dbUser } = await requireUser();
     profile = {
       name: dbUser.name,
       email: dbUser.email,
       phone: dbUser.phone ?? "",
       referralCode: dbUser.referralCode ?? "",
+      role: auth.role,
     };
   } catch {
-    profile = { name: "", email: "", phone: "", referralCode: "" };
+    profile = { name: "", email: "", phone: "", referralCode: "", role: "user" };
   }
 
   return (

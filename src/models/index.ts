@@ -25,6 +25,10 @@ const UserSchema = new Schema(
     passwordResetTokenHash: String,
     passwordResetExpiresAt: Date,
     passwordResetAttempts: { type: Number, default: 0 },
+    emailChangeNewEmail: { type: String, lowercase: true, trim: true },
+    emailChangeTokenHash: String,
+    emailChangeExpiresAt: Date,
+    emailChangeAttempts: { type: Number, default: 0 },
   },
   { timestamps: true },
 );

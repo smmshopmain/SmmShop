@@ -54,3 +54,24 @@ export function buildPasswordOtpEmail(otp: string) {
 
   return { subject, text, html };
 }
+
+export function buildEmailChangeOtpEmail(otp: string) {
+  const subject = "SMM Panel email change OTP";
+  const text = [
+    "Your SMM Panel email change OTP is:",
+    otp,
+    "",
+    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
+  ].join("\n");
+  const html = `
+    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
+      <h2 style="margin:0 0 12px">Email change OTP</h2>
+      <p>Your SMM Panel email change OTP is:</p>
+      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
+      <p>This OTP expires in 10 minutes.</p>
+      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
+    </div>
+  `;
+
+  return { subject, text, html };
+}
