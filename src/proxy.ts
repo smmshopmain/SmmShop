@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAllowedOrigin } from "@/lib/request-origin";
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get("smm_token")?.value;
@@ -7,7 +8,7 @@ export function proxy(request: NextRequest) {
 
   if (path.startsWith("/api") && mutatingMethod && path !== "/api/deposits/webhook") {
     const origin = request.headers.get("origin");
-    if (origin && origin !== request.nextUrl.origin) {
+    if (!isAllowedOrigin(request, origin)) {
       return NextResponse.json({ ok: false, message: "Invalid request origin" }, { status: 403 });
     }
   }
