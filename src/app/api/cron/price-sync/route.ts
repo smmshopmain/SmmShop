@@ -3,6 +3,7 @@ import { fail, ok } from "@/lib/api";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { calculateSellingRate } from "@/lib/pricing";
 import { dbConnect } from "@/lib/db";
+import { logProviderEvent } from "@/lib/provider";
 import { getSettings, Service } from "@/models";
 
 export async function GET(request: NextRequest) {
@@ -37,8 +38,21 @@ export async function GET(request: NextRequest) {
       updated += 1;
     }
 
+    await logProviderEvent({
+      scope: "price_sync",
+      action: "recalculate",
+      message: `Recalculated ${updated} service prices`,
+      details: { updated },
+    });
+
     return ok({ updated });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "price_sync",
+      action: "recalculate",
+      message: error instanceof Error ? error.message : "Price sync failed",
+    });
     return fail(error instanceof Error ? error.message : "Price sync failed");
   }
 }

@@ -1,4 +1,5 @@
-import { Provider } from "@/models";
+import { ORDER_STATUSES, REFILL_STATUSES } from "@/lib/constants";
+import { Provider, ProviderLog } from "@/models";
 
 type ProviderRecord = {
   _id: unknown;
@@ -10,6 +11,37 @@ type ProviderRecord = {
 
 type ProviderPayload = Record<string, string | number | boolean | undefined>;
 
+type ProviderErrorResult = { error?: string };
+
+export async function logProviderEvent({
+  provider,
+  level = "info",
+  scope,
+  action,
+  message,
+  details,
+}: {
+  provider?: { _id?: unknown } | null;
+  level?: "info" | "warning" | "error";
+  scope: string;
+  action: string;
+  message: string;
+  details?: unknown;
+}) {
+  try {
+    await ProviderLog.create({
+      provider: provider?._id,
+      level,
+      scope,
+      action,
+      message,
+      details,
+    });
+  } catch (error) {
+    console.error("Provider log failed", error);
+  }
+}
+
 export async function providerRequest<T>(
   provider: ProviderRecord,
   payload: ProviderPayload,
@@ -20,22 +52,39 @@ export async function providerRequest<T>(
     if (value !== undefined) body.set(key, String(value));
   }
 
-  const response = await fetch(provider.apiUrl, {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body,
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    throw new Error(`${provider.name} responded with ${response.status}`);
-  }
-
-  const text = await response.text();
   try {
-    return JSON.parse(text) as T;
-  } catch {
-    throw new Error(`${provider.name} returned invalid JSON`);
+    const response = await fetch(provider.apiUrl, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body,
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      throw new Error(`${provider.name} responded with ${response.status}`);
+    }
+
+    const text = await response.text();
+    let parsed: T & ProviderErrorResult;
+    try {
+      parsed = JSON.parse(text) as T & ProviderErrorResult;
+    } catch {
+      throw new Error(`${provider.name} returned invalid JSON`);
+    }
+    if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
+      throw new Error(String(parsed.error));
+    }
+    return parsed as T;
+  } catch (error) {
+    await logProviderEvent({
+      provider,
+      level: "error",
+      scope: "provider_api",
+      action: String(payload.action ?? "request"),
+      message: error instanceof Error ? error.message : "Provider request failed",
+      details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined } },
+    });
+    throw error;
   }
 }
 
@@ -78,6 +127,14 @@ export async function addProviderOrder(
     } catch (error) {
       errors.push(`${provider.name}: ${error instanceof Error ? error.message : "unknown error"}`);
       await Provider.findByIdAndUpdate(provider._id, { lastError: errors.at(-1) });
+      await logProviderEvent({
+        provider,
+        level: "error",
+        scope: "order",
+        action: "add",
+        message: errors.at(-1) ?? "Provider order failed",
+        details: payload,
+      });
     }
   }
   throw new Error(`All providers failed. ${errors.join("; ")}`);
@@ -115,4 +172,44 @@ export async function cancelProviderOrder(provider: ProviderRecord, orderId: str
     action: "cancel",
     order: orderId,
   });
+}
+
+export async function requestProviderRefill(provider: ProviderRecord, orderId: string) {
+  return providerRequest<{ refill?: string | number; error?: string }>(provider, {
+    action: "refill",
+    order: orderId,
+  });
+}
+
+export async function getProviderRefillStatus(provider: ProviderRecord, refillId: string) {
+  return providerRequest<{ status?: string; error?: string }>(provider, {
+    action: "refill_status",
+    refill: refillId,
+  });
+}
+
+export async function getProviderBalance(provider: ProviderRecord) {
+  return providerRequest<{ balance?: string | number; currency?: string; error?: string }>(provider, {
+    action: "balance",
+  });
+}
+
+export function parseProviderBoolean(value: unknown) {
+  if (value === true || value === 1) return true;
+  if (typeof value === "string") {
+    return ["1", "true", "yes", "y", "on"].includes(value.trim().toLowerCase());
+  }
+  return false;
+}
+
+export function normalizeProviderOrderStatus(value: unknown) {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  const match = ORDER_STATUSES.find((status) => status.toLowerCase() === normalized);
+  return match;
+}
+
+export function normalizeProviderRefillStatus(value: unknown) {
+  const normalized = String(value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  const match = REFILL_STATUSES.find((status) => status.toLowerCase() === normalized);
+  return match;
 }

@@ -78,12 +78,26 @@ const ProviderSchema = new Schema(
   },
   { timestamps: true },
 );
+ProviderSchema.index({ apiUrl: 1, apiKey: 1 }, { unique: true });
+
+const CategorySchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true, unique: true, index: true },
+    providers: [{ type: Schema.Types.ObjectId, ref: "Provider" }],
+    active: { type: Boolean, default: true, index: true },
+    serviceCount: { type: Number, default: 0, min: 0 },
+    lastSyncedAt: Date,
+    providerData: Schema.Types.Mixed,
+  },
+  { timestamps: true },
+);
 
 const ServiceSchema = new Schema(
   {
     provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true, index: true },
     providerServiceId: { type: String, required: true, index: true },
     name: { type: String, required: true, trim: true, index: "text" },
+    categoryRef: { type: Schema.Types.ObjectId, ref: "Category", index: true },
     category: { type: String, required: true, index: true },
     type: String,
     providerRate: { type: Number, required: true },
@@ -94,6 +108,8 @@ const ServiceSchema = new Schema(
     cancel: { type: Boolean, default: false },
     active: { type: Boolean, default: true, index: true },
     marginPercent: Number,
+    lastSyncedAt: Date,
+    providerData: Schema.Types.Mixed,
   },
   { timestamps: true },
 );
@@ -199,6 +215,18 @@ const AuditLogSchema = new Schema(
   { timestamps: true },
 );
 
+const ProviderLogSchema = new Schema(
+  {
+    provider: { type: Schema.Types.ObjectId, ref: "Provider", index: true },
+    level: { type: String, enum: ["info", "warning", "error"], default: "info", index: true },
+    scope: { type: String, required: true, index: true },
+    action: { type: String, required: true, index: true },
+    message: { type: String, required: true },
+    details: Schema.Types.Mixed,
+  },
+  { timestamps: true },
+);
+
 const NotificationSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User" },
@@ -227,12 +255,14 @@ export const Deposit = models.Deposit || model("Deposit", DepositSchema);
 export const Order = models.Order || model("Order", OrderSchema);
 export const Refill = models.Refill || model("Refill", RefillSchema);
 export const Service = models.Service || model("Service", ServiceSchema);
+export const Category = models.Category || model("Category", CategorySchema);
 export const Provider = models.Provider || model("Provider", ProviderSchema);
 export const Ticket = models.Ticket || model("Ticket", TicketSchema);
 export const PromoCode = models.PromoCode || model("PromoCode", PromoCodeSchema);
 export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
+export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);

@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
-import { providerRequest } from "@/lib/provider";
+import { logProviderEvent, requestProviderRefill } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
 import { Order, Refill } from "@/models";
 
@@ -29,12 +29,9 @@ export async function POST(request: NextRequest) {
       .populate("service");
     if (!order) return fail("Order not found", 404);
     if (!order.service.refill) return fail("This service does not support refill");
+    if (!order.providerOrderId) return fail("Provider order id is missing");
 
-    const result = await providerRequest<{ refill?: string | number; error?: string }>(order.provider, {
-      action: "refill",
-      order: order.providerOrderId,
-    });
-    if (result.error) return fail(result.error);
+    const result = await requestProviderRefill(order.provider, order.providerOrderId);
 
     const refill = await Refill.create({
       user: auth.id,
@@ -46,6 +43,12 @@ export async function POST(request: NextRequest) {
     await notifyTelegram("Refill Request", [`User: ${auth.email}`, `Order: ${order._id}`]);
     return ok({ refill });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "api",
+      action: "refills.post",
+      message: error instanceof Error ? error.message : "Unable to request refill",
+    });
     return fail(error instanceof Error ? error.message : "Unable to request refill");
   }
 }

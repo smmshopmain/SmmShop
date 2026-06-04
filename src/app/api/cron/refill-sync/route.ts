@@ -2,7 +2,11 @@ import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
-import { providerRequest } from "@/lib/provider";
+import {
+  getProviderRefillStatus,
+  logProviderEvent,
+  normalizeProviderRefillStatus,
+} from "@/lib/provider";
 import { Refill } from "@/models";
 
 export async function GET(request: NextRequest) {
@@ -20,18 +24,41 @@ export async function GET(request: NextRequest) {
 
     let refillsSynced = 0;
     for (const refill of activeRefills) {
-      const result = await providerRequest<{ status?: string }>(refill.provider, {
-        action: "refill_status",
-        refill: refill.providerRefillId,
-      });
-      if (result.status) refill.status = result.status;
-      refill.lastStatusSyncAt = new Date();
-      await refill.save();
-      refillsSynced += 1;
+      try {
+        const result = await getProviderRefillStatus(refill.provider, String(refill.providerRefillId));
+        const normalizedStatus = normalizeProviderRefillStatus(result.status);
+        if (normalizedStatus) refill.status = normalizedStatus;
+        refill.lastStatusSyncAt = new Date();
+        refill.providerResponse = { ...(refill.providerResponse ?? {}), lastStatus: result };
+        await refill.save();
+        refillsSynced += 1;
+      } catch (error) {
+        await logProviderEvent({
+          provider: refill.provider,
+          level: "error",
+          scope: "refill_sync",
+          action: "refill_status",
+          message: error instanceof Error ? error.message : "Refill sync failed",
+          details: { refill: refill.providerRefillId },
+        });
+      }
     }
+
+    await logProviderEvent({
+      scope: "refill_sync",
+      action: "refill_status",
+      message: `Synced ${refillsSynced} refills`,
+      details: { refillsSynced },
+    });
 
     return ok({ refillsSynced });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "refill_sync",
+      action: "refill_status",
+      message: error instanceof Error ? error.message : "Refill sync failed",
+    });
     return fail(error instanceof Error ? error.message : "Refill sync failed");
   }
 }

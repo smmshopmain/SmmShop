@@ -30,7 +30,8 @@ export default async function ProvidersPage() {
       <h1 className="mb-6 text-2xl font-semibold">Provider management</h1>
       <div className="mb-4 flex flex-wrap gap-2">
         <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
-        <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />
+        <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Provider balance" endpoint="/api/cron/provider-balance" method="GET" />
       </div>
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <ProviderForm />

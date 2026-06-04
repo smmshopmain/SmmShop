@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { calculateSellingRate } from "@/lib/pricing";
-import { AuditLog, getSettings, Service } from "@/models";
+import { AuditLog, Category, getSettings, Service } from "@/models";
 
 const patchSchema = z.object({
   id: z.string().min(1),
@@ -22,9 +22,9 @@ export async function GET(request: NextRequest) {
 
     const [services, categories] = await Promise.all([
       Service.find(filter).populate("provider", "name").sort({ category: 1, name: 1 }).limit(300).lean(),
-      Service.distinct("category"),
+      Category.find().sort({ name: 1 }).select("name active serviceCount").lean(),
     ]);
-    return ok({ services, categories });
+    return ok({ services, categories: [...new Set(categories.map((categoryItem) => categoryItem.name))] });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load services", 403);
   }

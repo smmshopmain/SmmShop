@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
 import { calculateOrderPrice } from "@/lib/pricing";
-import { addProviderOrder, cancelProviderOrder, getEnabledProviders } from "@/lib/provider";
+import { addProviderOrder, cancelProviderOrder, logProviderEvent } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
 import { Order, PromoCode, Referral, Service, User, WalletTransaction, getSettings } from "@/models";
 import { roundMoney } from "@/lib/pricing";
@@ -69,15 +69,11 @@ export async function POST(request: NextRequest) {
     dbUser.walletBalance -= sellingPrice;
     await dbUser.save();
 
-    const providers = await getEnabledProviders();
-    const orderedProviders = [
-      service.provider,
-      ...providers.filter((provider) => String(provider._id) !== String(service.provider._id)),
-    ];
+    if (!service.provider?.enabled) return fail("Provider is disabled for this service", 503);
 
     let providerResult;
     try {
-      providerResult = await addProviderOrder(orderedProviders, {
+      providerResult = await addProviderOrder([service.provider], {
         service: service.providerServiceId,
         link: input.link,
         quantity: input.quantity,
@@ -85,6 +81,14 @@ export async function POST(request: NextRequest) {
     } catch (error) {
       dbUser.walletBalance = balanceBefore;
       await dbUser.save();
+      await logProviderEvent({
+        provider: service.provider,
+        level: "error",
+        scope: "order",
+        action: "add",
+        message: error instanceof Error ? error.message : "Unable to place provider order",
+        details: { service: service.providerServiceId, quantity: input.quantity },
+      });
       throw error;
     }
 
@@ -175,6 +179,12 @@ export async function POST(request: NextRequest) {
 
     return ok({ order });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "api",
+      action: "orders.post",
+      message: error instanceof Error ? error.message : "Unable to place order",
+    });
     return fail(error instanceof Error ? error.message : "Unable to place order");
   }
 }
@@ -194,7 +204,6 @@ export async function PATCH(request: NextRequest) {
     if (!order.providerOrderId) return fail("Provider order id is missing");
 
     const result = await cancelProviderOrder(order.provider, order.providerOrderId);
-    if (result.error) return fail(result.error);
 
     order.status = "Canceled";
     order.providerResponse = { ...(order.providerResponse ?? {}), cancel: result };
@@ -230,6 +239,12 @@ export async function PATCH(request: NextRequest) {
 
     return ok({ order });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "api",
+      action: "orders.patch",
+      message: error instanceof Error ? error.message : "Unable to cancel order",
+    });
     return fail(error instanceof Error ? error.message : "Unable to cancel order");
   }
 }

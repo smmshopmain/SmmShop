@@ -2,7 +2,13 @@ import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
-import { getProviderStatuses, providerRequest } from "@/lib/provider";
+import {
+  getProviderRefillStatus,
+  getProviderStatuses,
+  logProviderEvent,
+  normalizeProviderOrderStatus,
+  normalizeProviderRefillStatus,
+} from "@/lib/provider";
 import { Order, Refill } from "@/models";
 
 type StatusResponse = {
@@ -33,19 +39,32 @@ export async function GET(request: NextRequest) {
     let ordersSynced = 0;
     for (const orders of ordersByProvider.values()) {
       const provider = orders[0].provider;
-      const statuses = await getProviderStatuses(
-        provider,
-        orders.map((order) => String(order.providerOrderId)),
-      );
-      for (const order of orders) {
-        const status = statuses[String(order.providerOrderId)] as StatusResponse | undefined;
-        if (!status) continue;
-        if (status.status) order.status = status.status;
-        if (status.start_count !== undefined) order.startCount = Number(status.start_count);
-        if (status.remains !== undefined) order.remains = Number(status.remains);
-        order.lastStatusSyncAt = new Date();
-        await order.save();
-        ordersSynced += 1;
+      try {
+        const statuses = await getProviderStatuses(
+          provider,
+          orders.map((order) => String(order.providerOrderId)),
+        );
+        for (const order of orders) {
+          const status = statuses[String(order.providerOrderId)] as StatusResponse | undefined;
+          if (!status) continue;
+          const normalizedStatus = normalizeProviderOrderStatus(status.status);
+          if (normalizedStatus) order.status = normalizedStatus;
+          if (status.start_count !== undefined) order.startCount = Number(status.start_count);
+          if (status.remains !== undefined) order.remains = Number(status.remains);
+          order.lastStatusSyncAt = new Date();
+          order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
+          await order.save();
+          ordersSynced += 1;
+        }
+      } catch (error) {
+        await logProviderEvent({
+          provider,
+          level: "error",
+          scope: "status_sync",
+          action: "status",
+          message: error instanceof Error ? error.message : "Order status sync failed",
+          details: { orderCount: orders.length },
+        });
       }
     }
 
@@ -58,18 +77,41 @@ export async function GET(request: NextRequest) {
 
     let refillsSynced = 0;
     for (const refill of activeRefills) {
-      const result = await providerRequest<{ status?: string }>(refill.provider, {
-        action: "refill_status",
-        refill: refill.providerRefillId,
-      });
-      if (result.status) refill.status = result.status;
-      refill.lastStatusSyncAt = new Date();
-      await refill.save();
-      refillsSynced += 1;
+      try {
+        const result = await getProviderRefillStatus(refill.provider, String(refill.providerRefillId));
+        const normalizedStatus = normalizeProviderRefillStatus(result.status);
+        if (normalizedStatus) refill.status = normalizedStatus;
+        refill.lastStatusSyncAt = new Date();
+        refill.providerResponse = { ...(refill.providerResponse ?? {}), lastStatus: result };
+        await refill.save();
+        refillsSynced += 1;
+      } catch (error) {
+        await logProviderEvent({
+          provider: refill.provider,
+          level: "error",
+          scope: "refill_sync",
+          action: "refill_status",
+          message: error instanceof Error ? error.message : "Refill status sync failed",
+          details: { refill: refill.providerRefillId },
+        });
+      }
     }
+
+    await logProviderEvent({
+      scope: "status_sync",
+      action: "status",
+      message: `Synced ${ordersSynced} orders and ${refillsSynced} refills`,
+      details: { ordersSynced, refillsSynced },
+    });
 
     return ok({ ordersSynced, refillsSynced });
   } catch (error) {
+    await logProviderEvent({
+      level: "error",
+      scope: "status_sync",
+      action: "status",
+      message: error instanceof Error ? error.message : "Status sync failed",
+    });
     return fail(error instanceof Error ? error.message : "Status sync failed");
   }
 }

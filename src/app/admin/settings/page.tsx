@@ -1,7 +1,7 @@
 import { SettingsForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
-import { getSettings, Service, type PlatformSettings } from "@/models";
+import { Category, getSettings, Service, type PlatformSettings } from "@/models";
 
 export default async function SettingsPage() {
   let settings: PlatformSettings = {
@@ -18,7 +18,13 @@ export default async function SettingsPage() {
 
   try {
     await requireAdmin();
-    [settings, categories] = await Promise.all([getSettings(), Service.distinct("category")]);
+    const [nextSettings, syncedCategories] = await Promise.all([
+      getSettings(),
+      Category.find({ active: true }).sort({ name: 1 }).select("name").lean(),
+    ]);
+    settings = nextSettings;
+    categories = [...new Set(syncedCategories.map((category) => category.name))];
+    if (categories.length === 0) categories = await Service.distinct("category");
   } catch {
     settings = { ...settings };
   }

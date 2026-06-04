@@ -65,7 +65,7 @@ services:
   - type: cron
     name: smm-service-price-sync
     runtime: node
-    schedule: "15 */12 * * *"
+    schedule: "0 */6 * * *"
     buildCommand: npm ci
     startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/service-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
     envVars:
@@ -76,7 +76,7 @@ services:
   - type: cron
     name: smm-price-sync
     runtime: node
-    schedule: "30 */12 * * *"
+    schedule: "15 */6 * * *"
     buildCommand: npm ci
     startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/price-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
     envVars:

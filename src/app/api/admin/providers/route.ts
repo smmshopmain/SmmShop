@@ -27,8 +27,20 @@ export async function POST(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
     const input = await parseBody(request, schema);
-    const provider = await Provider.create(input);
-    await AuditLog.create({ actor: auth.id, action: "provider.create", entity: "Provider", entityId: provider._id });
+    const before = await Provider.findOne({ apiUrl: input.apiUrl, apiKey: input.apiKey }).lean();
+    const provider = await Provider.findOneAndUpdate(
+      { apiUrl: input.apiUrl, apiKey: input.apiKey },
+      input,
+      { upsert: true, new: true },
+    );
+    await AuditLog.create({
+      actor: auth.id,
+      action: before ? "provider.update" : "provider.create",
+      entity: "Provider",
+      entityId: provider._id,
+      before,
+      after: provider,
+    });
     return ok({ provider });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to save provider");

@@ -37,6 +37,7 @@ export default async function AdminServicesPage() {
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
         <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
         <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
       </div>
       <section className="rounded-md border border-neutral-200 bg-white">
