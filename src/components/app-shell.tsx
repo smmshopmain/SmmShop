@@ -38,6 +38,7 @@ const adminLinks = [
   { href: "/admin/orders", label: "Orders", icon: History },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/deposits", label: "Deposits", icon: CircleHelp },
+  { href: "/admin/settings#payment-details", label: "Payment Settings", icon: Wallet },
   { href: "/admin/promo-codes", label: "Promo Codes", icon: Tags },
   { href: "/admin/tickets", label: "Support", icon: Ticket },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
@@ -52,7 +53,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-neutral-200 bg-white px-4 py-5 lg:block">
+      <aside className="fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r border-neutral-200 bg-white px-4 py-5 lg:block">
         <Link href="/dashboard" className="flex items-center gap-3 px-2">
           <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">
             SP
@@ -62,7 +63,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
             <span className="block text-xs text-neutral-500">Reseller platform</span>
           </span>
         </Link>
-        <nav className="mt-8 space-y-1">
+        <nav className="mt-8 space-y-1 pb-6">
           {links.map((item) => (
             <Link
               key={item.href}

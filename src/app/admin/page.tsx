@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { BadgeIndianRupee, Banknote, ShoppingBag, Users } from "lucide-react";
 import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
@@ -55,6 +56,9 @@ export default async function AdminPage() {
         <p className="mt-1 text-sm text-neutral-600">Users, orders, revenue, deposits, profit, and provider health.</p>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
+        <Link href="/admin/settings#payment-details" className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800">
+          Payment setup
+        </Link>
         <ActionButton label="Sync order status" endpoint="/api/cron/status-sync" method="GET" />
         <ActionButton label="Sync refill status" endpoint="/api/cron/refill-sync" method="GET" />
         <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />

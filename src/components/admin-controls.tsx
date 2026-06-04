@@ -617,7 +617,7 @@ export function SettingsForm({
         Verification end
         <input name="verificationEndTime" type="time" defaultValue={endTime} className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
-      <div className="grid gap-3 rounded-md bg-neutral-50 p-4 md:col-span-2">
+      <div id="payment-details" className="scroll-mt-24 grid gap-3 rounded-md bg-neutral-50 p-4 md:col-span-2">
         <h2 className="text-sm font-semibold">Payment details shown to users</h2>
         <div className="grid gap-3 md:grid-cols-2">
           <label className="grid gap-2 text-sm font-medium">
