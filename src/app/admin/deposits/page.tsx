@@ -1,4 +1,4 @@
-import { ActionButton } from "@/components/admin-controls";
+import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
@@ -42,9 +42,9 @@ export default async function AdminDepositsPage() {
             <span>{deposit.verificationStartTime} - {deposit.verificationEndTime}</span>
             <StatusBadge status={deposit.status} />
             {deposit.status === "Pending" && (
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2">
                 <ActionButton label="Approve" endpoint="/api/admin/deposits" body={{ id: String(deposit._id), action: "approve" }} />
-                <ActionButton label="Reject" endpoint="/api/admin/deposits" body={{ id: String(deposit._id), action: "reject" }} danger />
+                <DepositRejectForm depositId={String(deposit._id)} />
               </div>
             )}
           </div>

@@ -10,6 +10,15 @@ export default async function SettingsPage() {
       verificationMode: "manual",
       verificationStartTime: "10:00",
       verificationEndTime: "22:00",
+      payment: {
+        qrImageUrl: "",
+        upiId: "",
+        accountNumber: "",
+        ifsc: "",
+        accountName: "",
+        bankName: "",
+        instructions: "",
+      },
     },
     provider: { lowBalanceThreshold: 100 },
     referrals: { commissionPercent: 2 },
@@ -42,6 +51,7 @@ export default async function SettingsPage() {
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}
+        payment={settings.deposits.payment}
         lowBalanceThreshold={settings.provider.lowBalanceThreshold}
         referralCommissionPercent={settings.referrals.commissionPercent}
       />

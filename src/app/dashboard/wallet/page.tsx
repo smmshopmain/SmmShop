@@ -2,20 +2,33 @@ import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireUser } from "@/lib/auth";
-import { Deposit, WalletTransaction } from "@/models";
+import { Deposit, getSettings, WalletTransaction, type PlatformSettings } from "@/models";
 
 export default async function WalletPage() {
   let balance = 0;
   let transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }> = [];
   let deposits: Array<{ _id: string; amount: number; utr: string; status: string; createdAt: Date }> = [];
+  let payment: PlatformSettings["deposits"]["payment"] = {
+    qrImageUrl: "",
+    upiId: "",
+    accountNumber: "",
+    ifsc: "",
+    accountName: "",
+    bankName: "",
+    instructions: "",
+  };
 
   try {
     const { auth, dbUser } = await requireUser();
     balance = dbUser.walletBalance;
-    [transactions, deposits] = (await Promise.all([
+    const [nextTransactions, nextDeposits, settings] = await Promise.all([
       WalletTransaction.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
       Deposit.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
-    ])) as [typeof transactions, typeof deposits];
+      getSettings(),
+    ]);
+    transactions = nextTransactions as typeof transactions;
+    deposits = nextDeposits as typeof deposits;
+    payment = settings.deposits.payment;
   } catch {
     transactions = [];
   }
@@ -27,7 +40,7 @@ export default async function WalletPage() {
         <p className="mt-1 text-sm text-neutral-600">Balance: Rs.{balance}</p>
       </div>
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-        <DepositForm />
+        <DepositForm payment={payment} />
         <section className="rounded-md border border-neutral-200 bg-white">
           <div className="border-b border-neutral-200 p-4">
             <h2 className="font-semibold">Deposit requests</h2>

@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
 
@@ -50,6 +51,46 @@ export function ActionButton({
       </button>
       {message && <span className="text-xs text-neutral-500">{message}</span>}
     </span>
+  );
+}
+
+export function DepositRejectForm({ depositId }: { depositId: string }) {
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    if (!window.confirm("Reject this deposit?")) return;
+    setLoading(true);
+    setMessage("");
+    const response = await fetch("/api/admin/deposits", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        id: depositId,
+        action: "reject",
+        rejectionReason: form.get("rejectionReason"),
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? "Rejected" : result.message ?? "Unable to reject");
+    if (response.ok) window.location.reload();
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-2">
+      <input
+        name="rejectionReason"
+        placeholder="Reject reason"
+        className="w-full rounded-md border border-neutral-300 px-2 py-2 text-xs"
+      />
+      <button disabled={loading} className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">
+        {loading ? "Rejecting..." : "Reject"}
+      </button>
+      {message && <span className="text-xs text-neutral-500">{message}</span>}
+    </form>
   );
 }
 
@@ -423,6 +464,7 @@ export function SettingsForm({
   startTime,
   endTime,
   mode,
+  payment,
   lowBalanceThreshold,
   referralCommissionPercent,
 }: {
@@ -432,14 +474,45 @@ export function SettingsForm({
   startTime: string;
   endTime: string;
   mode: string;
+  payment: {
+    qrImageUrl: string;
+    upiId: string;
+    accountNumber: string;
+    ifsc: string;
+    accountName: string;
+    bankName: string;
+    instructions: string;
+  };
   lowBalanceThreshold: number;
   referralCommissionPercent: number;
 }) {
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    setLoading(true);
+    setMessage("");
+
+    let qrImageUrl = String(form.get("qrImageUrl") ?? "").trim();
+    const qrFile = form.get("qrFile");
+    if (qrFile instanceof File && qrFile.size > 0) {
+      const uploadForm = new FormData();
+      uploadForm.set("file", qrFile);
+      const uploadResponse = await fetch("/api/admin/payment-qr", {
+        method: "POST",
+        body: uploadForm,
+      });
+      const uploadResult = await uploadResponse.json().catch(() => ({}));
+      if (!uploadResponse.ok) {
+        setLoading(false);
+        setMessage(uploadResult.message ?? "QR upload failed.");
+        return;
+      }
+      qrImageUrl = uploadResult.data.url;
+    }
+
     const nextCategoryMargins: Record<string, number> = {};
     for (const category of categories) {
       const value = form.get(`categoryMargin:${category}`);
@@ -468,6 +541,15 @@ export function SettingsForm({
             verificationMode: form.get("verificationMode"),
             verificationStartTime: form.get("verificationStartTime"),
             verificationEndTime: form.get("verificationEndTime"),
+            payment: {
+              qrImageUrl,
+              upiId: String(form.get("upiId") ?? "").trim(),
+              accountNumber: String(form.get("accountNumber") ?? "").trim(),
+              ifsc: String(form.get("ifsc") ?? "").trim().toUpperCase(),
+              accountName: String(form.get("accountName") ?? "").trim(),
+              bankName: String(form.get("bankName") ?? "").trim(),
+              instructions: String(form.get("instructions") ?? "").trim(),
+            },
           },
         }),
       }),
@@ -489,6 +571,7 @@ export function SettingsForm({
       }),
     ];
     const responses = await Promise.all(requests);
+    setLoading(false);
     setMessage(responses.every((response) => response.ok) ? "Settings saved." : "Unable to save all settings.");
   }
 
@@ -534,6 +617,56 @@ export function SettingsForm({
         Verification end
         <input name="verificationEndTime" type="time" defaultValue={endTime} className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
+      <div className="grid gap-3 rounded-md bg-neutral-50 p-4 md:col-span-2">
+        <h2 className="text-sm font-semibold">Payment details shown to users</h2>
+        <div className="grid gap-3 md:grid-cols-2">
+          <label className="grid gap-2 text-sm font-medium">
+            QR image
+            <input name="qrFile" type="file" accept="image/png,image/jpeg,image/webp" className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            QR image URL
+            <input name="qrImageUrl" type="text" defaultValue={payment.qrImageUrl} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            UPI ID
+            <input name="upiId" defaultValue={payment.upiId} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Bank name
+            <input name="bankName" defaultValue={payment.bankName} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Account holder name
+            <input name="accountName" defaultValue={payment.accountName} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            Account number
+            <input name="accountNumber" defaultValue={payment.accountNumber} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium">
+            IFSC
+            <input name="ifsc" defaultValue={payment.ifsc} className="rounded-md border border-neutral-300 px-3 py-2 uppercase" />
+          </label>
+          <label className="grid gap-2 text-sm font-medium md:col-span-2">
+            Payment instructions
+            <textarea name="instructions" rows={3} defaultValue={payment.instructions} className="rounded-md border border-neutral-300 px-3 py-2" />
+          </label>
+        </div>
+        {payment.qrImageUrl && (
+          <div className="grid gap-2 text-sm">
+            <span className="font-medium">Current QR</span>
+            <Image
+              src={payment.qrImageUrl}
+              alt="Payment QR"
+              width={176}
+              height={176}
+              className="h-44 w-44 rounded-md border border-neutral-200 bg-white object-contain p-2"
+              unoptimized
+            />
+          </div>
+        )}
+      </div>
       <label className="grid gap-2 text-sm font-medium">
         Low provider balance alert
         <input name="lowBalanceThreshold" type="number" min={0} step="0.01" defaultValue={lowBalanceThreshold} className="rounded-md border border-neutral-300 px-3 py-2" />
@@ -543,7 +676,9 @@ export function SettingsForm({
         <input name="referralCommissionPercent" type="number" min={0} max={100} step="0.01" defaultValue={referralCommissionPercent} className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
       <div className="flex items-end gap-3">
-        <button className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white">Save settings</button>
+        <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+          {loading ? "Saving..." : "Save settings"}
+        </button>
         {message && <p className="text-sm text-neutral-600">{message}</p>}
       </div>
     </form>

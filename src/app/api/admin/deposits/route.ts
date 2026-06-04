@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest) {
         status: action === "approve" ? "Approved" : "Rejected",
         message: body.rejectionReason,
       },
-      source: "deposit_approved",
+      source: action === "approve" ? "deposit_approved" : "deposit_rejected",
       reviewedBy: auth.id,
     });
 

@@ -281,6 +281,15 @@ export type PlatformSettings = {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
     verificationEndTime: string;
+    payment: {
+      qrImageUrl: string;
+      upiId: string;
+      accountNumber: string;
+      ifsc: string;
+      accountName: string;
+      bankName: string;
+      instructions: string;
+    };
   };
   provider: { lowBalanceThreshold: number };
   referrals: { commissionPercent: number };
@@ -293,6 +302,15 @@ export async function getSettings() {
     deposits: {
       verificationMode: "manual",
       ...DEFAULT_VERIFICATION_SCHEDULE,
+      payment: {
+        qrImageUrl: "",
+        upiId: "",
+        accountNumber: "",
+        ifsc: "",
+        accountName: "",
+        bankName: "",
+        instructions: "",
+      },
     },
     provider: { lowBalanceThreshold: 100 },
     referrals: { commissionPercent: 2 },
