@@ -1,6 +1,11 @@
 import { notifyInApp } from "@/lib/notifications";
 import { Deposit, User, WalletTransaction } from "@/models";
-import { notifyTelegram, sendTelegramAttachment, sendTelegramMessage } from "@/lib/telegram";
+import {
+  ensureTelegramWebhook,
+  notifyTelegram,
+  sendTelegramAttachment,
+  sendTelegramMessage,
+} from "@/lib/telegram";
 
 export const TELEGRAM_REJECT_REASONS: Record<string, string> = {
   invalid_utr: "Invalid UTR",
@@ -182,6 +187,8 @@ export async function notifyTelegramDepositRequest({
   user: { _id: unknown; name?: string; email?: string };
   origin?: string;
 }) {
+  await ensureTelegramWebhook(origin);
+
   const createdAt = deposit.createdAt ? new Date(deposit.createdAt) : new Date();
   const message = [
     "💰 New Deposit Request",

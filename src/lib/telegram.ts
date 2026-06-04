@@ -16,6 +16,18 @@ export async function notifyTelegram(title: string, lines: string[] = []) {
   }).catch(() => undefined);
 }
 
+export async function ensureTelegramWebhook(origin?: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const baseUrl = process.env.APP_BASE_URL || origin;
+  if (!token || !baseUrl) return null;
+
+  const webhookUrl = new URL("/api/telegram/deposits", baseUrl).toString();
+  return telegramRequest("setWebhook", {
+    url: webhookUrl,
+    allowed_updates: ["callback_query"],
+  });
+}
+
 export async function sendTelegramMessage({
   chatId = process.env.TELEGRAM_CHAT_ID,
   text,

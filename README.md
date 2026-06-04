@@ -95,10 +95,11 @@ npm run start
 ## Telegram Deposit Verification
 
 Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_ADMIN_ID`, and `APP_BASE_URL`.
-Configure the Telegram bot webhook to:
+The app auto-configures the Telegram webhook when a new deposit request is submitted. You can also configure it manually to:
 
 ```text
 https://your-service-name.onrender.com/api/telegram/deposits
 ```
 
 Only `TELEGRAM_ADMIN_ID` can use the approve/reject buttons.
+If `TELEGRAM_ADMIN_ID` is missing, the app only accepts callbacks from the same private chat ID configured in `TELEGRAM_CHAT_ID`; setting `TELEGRAM_ADMIN_ID` is recommended.
