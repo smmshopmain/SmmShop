@@ -1,15 +1,19 @@
 import Link from "next/link";
 import {
   BadgeIndianRupee,
+  ClipboardList,
   CircleHelp,
   Gauge,
   History,
   Layers3,
   LineChart,
+  Bell,
+  RefreshCcw,
   Settings,
   Shield,
   Tags,
   Ticket,
+  UserRound,
   Users,
   Wallet,
 } from "lucide-react";
@@ -19,20 +23,26 @@ const userLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/dashboard/services", label: "Services", icon: Layers3 },
   { href: "/dashboard/orders", label: "Orders", icon: History },
+  { href: "/dashboard/refills", label: "Refills", icon: RefreshCcw },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
   { href: "/dashboard/referrals", label: "Referrals", icon: BadgeIndianRupee },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
+  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
+  { href: "/dashboard/profile", label: "Profile", icon: UserRound },
 ];
 
 const adminLinks = [
   { href: "/admin", label: "Admin", icon: Shield },
   { href: "/admin/providers", label: "Providers", icon: Layers3 },
   { href: "/admin/services", label: "Service Admin", icon: Layers3 },
+  { href: "/admin/orders", label: "Orders", icon: History },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/deposits", label: "Deposits", icon: CircleHelp },
   { href: "/admin/promo-codes", label: "Promo Codes", icon: Tags },
   { href: "/admin/tickets", label: "Support", icon: Ticket },
+  { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
+  { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

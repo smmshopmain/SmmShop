@@ -1,9 +1,14 @@
+import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
+import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
 import { providerRequest } from "@/lib/provider";
 import { Refill } from "@/models";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await requireCronOrAdmin(request);
+  if (authError) return authError;
+
   try {
     await dbConnect();
     const activeRefills = await Refill.find({

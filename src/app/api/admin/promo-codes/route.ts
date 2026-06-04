@@ -10,7 +10,7 @@ const schema = z.object({
   maxUses: z.number().int().positive().optional(),
   minOrderAmount: z.number().min(0).default(0),
   active: z.boolean().default(true),
-  expiresAt: z.string().datetime().optional(),
+  expiresAt: z.union([z.string().min(1), z.null()]).optional(),
 });
 
 export async function GET() {
@@ -57,7 +57,7 @@ export async function PATCH(request: NextRequest) {
       {
         ...input,
         code: input.code ? input.code.toUpperCase() : undefined,
-        expiresAt: input.expiresAt ? new Date(input.expiresAt) : undefined,
+        expiresAt: input.expiresAt === null ? null : input.expiresAt ? new Date(input.expiresAt) : undefined,
       },
       { new: true },
     );

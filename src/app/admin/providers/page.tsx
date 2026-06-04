@@ -1,5 +1,5 @@
 import { ActionButton } from "@/components/admin-controls";
-import { ProviderForm } from "@/components/provider-form";
+import { ProviderEditForm, ProviderForm } from "@/components/provider-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
@@ -28,6 +28,10 @@ export default async function ProvidersPage() {
   return (
     <AppShell>
       <h1 className="mb-6 text-2xl font-semibold">Provider management</h1>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />
+      </div>
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <ProviderForm />
         <section className="rounded-md border border-neutral-200 bg-white">
@@ -55,6 +59,15 @@ export default async function ProvidersPage() {
                   danger
                 />
               </div>
+              <ProviderEditForm
+                provider={{
+                  _id: String(provider._id),
+                  name: provider.name,
+                  apiUrl: provider.apiUrl,
+                  priority: provider.priority,
+                  enabled: provider.enabled,
+                }}
+              />
             </div>
           ))}
           {providers.length === 0 && <p className="p-4 text-sm text-neutral-500">No providers configured.</p>}

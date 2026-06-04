@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { applyDepositDecision } from "@/lib/deposits";
 import { notifyTelegram } from "@/lib/telegram";
-import { Deposit, User, WalletTransaction } from "@/models";
+import { Deposit } from "@/models";
 
 const schema = z.object({
   utr: z.string().min(4),
@@ -14,7 +15,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const secret = request.headers.get("x-webhook-secret");
-  if (process.env.JWT_SECRET && secret !== process.env.JWT_SECRET) {
+  if (process.env.PAYMENT_WEBHOOK_SECRET && secret !== process.env.PAYMENT_WEBHOOK_SECRET) {
     return fail("Invalid webhook secret", 401);
   }
 
@@ -24,26 +25,14 @@ export async function POST(request: NextRequest) {
     const deposit = await Deposit.findOne({ utr: input.utr, amount: input.amount, status: "Pending" });
     if (!deposit) return fail("Pending deposit not found", 404);
 
-    deposit.status = input.status;
-    deposit.reviewedAt = new Date();
-    await deposit.save();
-
-    if (input.status === "Approved") {
-      const user = await User.findById(deposit.user);
-      if (!user) return fail("Deposit user not found", 404);
-      const balanceBefore = user.walletBalance;
-      user.walletBalance += deposit.amount;
-      await user.save();
-      await WalletTransaction.create({
-        user: user._id,
-        type: "deposit",
-        amount: deposit.amount,
-        balanceBefore,
-        balanceAfter: user.walletBalance,
-        source: "deposit_webhook",
-        reference: input.reference ?? String(deposit._id),
-      });
-    }
+    await applyDepositDecision({
+      deposit,
+      decision: {
+        status: input.status,
+        reference: input.reference,
+      },
+      source: "deposit_webhook",
+    });
 
     await notifyTelegram(`Deposit ${input.status}`, [`UTR: ${input.utr}`, `Amount: ${input.amount}`]);
     return ok({ deposit });

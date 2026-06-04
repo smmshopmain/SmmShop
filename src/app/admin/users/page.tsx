@@ -1,10 +1,16 @@
-import { ActionButton, WalletAdjustForm } from "@/components/admin-controls";
+import { ActionButton, AdminResetPasswordForm, WalletAdjustForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
 import { User } from "@/models";
 
-export default async function UsersPage() {
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+export default async function UsersPage({ searchParams }: { searchParams?: Promise<{ q?: string }> }) {
+  const params = await searchParams;
+  const q = params?.q?.trim() ?? "";
   let users: Array<{
     _id: string;
     name: string;
@@ -17,14 +23,37 @@ export default async function UsersPage() {
 
   try {
     await requireAdmin();
-    users = (await User.find().select("-passwordHash").sort({ createdAt: -1 }).limit(100).lean()) as typeof users;
+    const filter = q
+      ? {
+          $or: [
+            { email: new RegExp(escapeRegExp(q), "i") },
+            { name: new RegExp(escapeRegExp(q), "i") },
+            { phone: new RegExp(escapeRegExp(q), "i") },
+          ],
+        }
+      : {};
+    users = (await User.find(filter).select("-passwordHash").sort({ createdAt: -1 }).limit(100).lean()) as typeof users;
   } catch {
     users = [];
   }
 
   return (
     <AppShell>
-      <h1 className="mb-6 text-2xl font-semibold">User management</h1>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">User management</h1>
+          <p className="mt-1 text-sm text-neutral-600">Search users, control access, wallet state, and password resets.</p>
+        </div>
+        <form className="flex gap-2" action="/admin/users">
+          <input
+            name="q"
+            defaultValue={q}
+            placeholder="Search users"
+            className="w-56 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+          />
+          <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">Search</button>
+        </form>
+      </div>
       <section className="rounded-md border border-neutral-200 bg-white">
         {users.map((user) => (
           <div key={String(user._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm">
@@ -51,6 +80,7 @@ export default async function UsersPage() {
                 danger={!user.walletFrozen}
               />
             </div>
+            <AdminResetPasswordForm userId={String(user._id)} />
             <WalletAdjustForm userId={String(user._id)} />
           </div>
         ))}

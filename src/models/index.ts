@@ -210,6 +210,16 @@ const NotificationSchema = new Schema(
   { timestamps: true },
 );
 
+const RateLimitSchema = new Schema(
+  {
+    key: { type: String, required: true, unique: true, index: true },
+    count: { type: Number, default: 0 },
+    resetAt: { type: Date, required: true, index: true },
+  },
+  { timestamps: true },
+);
+RateLimitSchema.index({ resetAt: 1 }, { expireAfterSeconds: 0 });
+
 export const User = models.User || model("User", UserSchema);
 export const WalletTransaction =
   models.WalletTransaction || model("WalletTransaction", WalletTransactionSchema);
@@ -225,22 +235,40 @@ export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
+export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
+
+export type PlatformSettings = {
+  pricing: {
+    globalMarginPercent: number;
+    categoryMargins: Record<string, number>;
+    serviceMargins: Record<string, number>;
+  };
+  deposits: {
+    verificationMode: "manual" | "automatic";
+    verificationStartTime: string;
+    verificationEndTime: string;
+  };
+  provider: { lowBalanceThreshold: number };
+  referrals: { commissionPercent: number };
+};
 
 export async function getSettings() {
   const records = await Setting.find().lean();
-  const settings = {
+  const settings: PlatformSettings = {
     pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
     deposits: {
       verificationMode: "manual",
       ...DEFAULT_VERIFICATION_SCHEDULE,
     },
     provider: { lowBalanceThreshold: 100 },
+    referrals: { commissionPercent: 2 },
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
-    if (record.key === "pricing") settings.pricing = { ...settings.pricing, ...(record.value as object) };
-    if (record.key === "deposits") settings.deposits = { ...settings.deposits, ...(record.value as object) };
-    if (record.key === "provider") settings.provider = { ...settings.provider, ...(record.value as object) };
+    if (record.key === "pricing") settings.pricing = { ...settings.pricing, ...(record.value as Partial<PlatformSettings["pricing"]>) };
+    if (record.key === "deposits") settings.deposits = { ...settings.deposits, ...(record.value as Partial<PlatformSettings["deposits"]>) };
+    if (record.key === "provider") settings.provider = { ...settings.provider, ...(record.value as Partial<PlatformSettings["provider"]>) };
+    if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
   }
 
   return settings;

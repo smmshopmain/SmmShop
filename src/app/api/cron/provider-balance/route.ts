@@ -1,10 +1,15 @@
+import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
+import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
 import { ensureDefaultProviderFromEnv, providerRequest } from "@/lib/provider";
 import { getSettings, Provider } from "@/models";
 import { notifyTelegram } from "@/lib/telegram";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await requireCronOrAdmin(request);
+  if (authError) return authError;
+
   try {
     await dbConnect();
     await ensureDefaultProviderFromEnv();

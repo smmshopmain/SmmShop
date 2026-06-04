@@ -1,7 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
-import { AuditLog, Deposit, User, WalletTransaction } from "@/models";
+import { applyDepositDecision } from "@/lib/deposits";
+import { AuditLog, Deposit } from "@/models";
 import { notifyTelegram } from "@/lib/telegram";
 
 export async function GET() {
@@ -28,29 +29,15 @@ export async function PATCH(request: NextRequest) {
     if (!deposit) return fail("Deposit not found", 404);
     if (deposit.status !== "Pending") return fail("Deposit already reviewed");
 
-    deposit.status = action === "approve" ? "Approved" : "Rejected";
-    deposit.reviewedBy = auth.id;
-    deposit.reviewedAt = new Date();
-    deposit.rejectionReason = body.rejectionReason;
-    await deposit.save();
-
-    if (action === "approve") {
-      const user = await User.findById(deposit.user);
-      if (!user) return fail("Deposit user not found", 404);
-      const balanceBefore = user.walletBalance;
-      user.walletBalance += deposit.amount;
-      await user.save();
-      await WalletTransaction.create({
-        user: user._id,
-        type: "deposit",
-        amount: deposit.amount,
-        balanceBefore,
-        balanceAfter: user.walletBalance,
-        source: "deposit_approved",
-        reference: String(deposit._id),
-        createdBy: auth.id,
-      });
-    }
+    await applyDepositDecision({
+      deposit,
+      decision: {
+        status: action === "approve" ? "Approved" : "Rejected",
+        message: body.rejectionReason,
+      },
+      source: "deposit_approved",
+      reviewedBy: auth.id,
+    });
 
     await AuditLog.create({ actor: auth.id, action: `deposit.${action}`, entity: "Deposit", entityId: id });
     await notifyTelegram(action === "approve" ? "Deposit Approval" : "Deposit Rejection", [`Deposit: ${id}`]);

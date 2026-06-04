@@ -1,9 +1,14 @@
+import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
+import { requireCronOrAdmin } from "@/lib/cron";
 import { calculateSellingRate } from "@/lib/pricing";
 import { dbConnect } from "@/lib/db";
 import { getSettings, Service } from "@/models";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await requireCronOrAdmin(request);
+  if (authError) return authError;
+
   try {
     await dbConnect();
     const settings = await getSettings();

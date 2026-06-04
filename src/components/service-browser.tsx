@@ -14,6 +14,11 @@ type ServiceItem = {
   refill: boolean;
 };
 
+type PromoPreview = {
+  code: string;
+  discount: number;
+};
+
 export function ServiceBrowser() {
   const [services, setServices] = useState<ServiceItem[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -21,6 +26,8 @@ export function ServiceBrowser() {
   const [category, setCategory] = useState("");
   const [selected, setSelected] = useState<ServiceItem | null>(null);
   const [quantity, setQuantity] = useState(0);
+  const [promoCode, setPromoCode] = useState("");
+  const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -42,6 +49,38 @@ export function ServiceBrowser() {
     if (!selected || !quantity) return "0.00";
     return ((selected.sellingRate * quantity) / 1000).toFixed(2);
   }, [quantity, selected]);
+  const estimatedTotalNumber = Number(estimatedTotal);
+  const finalTotal = Math.max(0, estimatedTotalNumber - (promoPreview?.discount ?? 0)).toFixed(2);
+
+  async function applyPromo() {
+    if (!promoCode.trim()) {
+      setPromoPreview(null);
+      setMessage("Enter a promo code first.");
+      return;
+    }
+    if (!selected || !quantity) {
+      setPromoPreview(null);
+      setMessage("Select a service and quantity before applying promo.");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    const response = await fetch("/api/promo-codes/apply", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ code: promoCode.trim(), amount: estimatedTotalNumber }),
+    });
+    const result = await response.json();
+    setLoading(false);
+    if (!response.ok) {
+      setPromoPreview(null);
+      setMessage(result.message ?? "Unable to apply promo");
+      return;
+    }
+    setPromoPreview(result.data);
+    setPromoCode(result.data.code);
+    setMessage(`Promo applied. Discount Rs.${result.data.discount.toFixed(2)}.`);
+  }
 
   async function order(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -56,13 +95,17 @@ export function ServiceBrowser() {
         serviceId: selected._id,
         link: form.get("link"),
         quantity: Number(form.get("quantity")),
-        promoCode: form.get("promoCode") || undefined,
+        promoCode: promoCode.trim() || undefined,
         warningAccepted: form.get("warningAccepted") === "on",
       }),
     });
     const result = await response.json();
     setLoading(false);
-    setMessage(response.ok ? "Order placed successfully." : result.message ?? "Order failed");
+    setMessage(response.ok ? "Order placed successfully." : (result.message ?? "Order failed"));
+    if (response.ok) {
+      setPromoPreview(null);
+      setPromoCode("");
+    }
   }
 
   return (
@@ -98,6 +141,8 @@ export function ServiceBrowser() {
               onClick={() => {
                 setSelected(service);
                 setQuantity(service.min);
+                setPromoPreview(null);
+                setMessage("");
               }}
               className="grid w-full gap-2 px-4 py-3 text-left hover:bg-amber-50 md:grid-cols-[1fr_120px_130px]"
             >
@@ -136,15 +181,35 @@ export function ServiceBrowser() {
               min={selected?.min ?? 1}
               max={selected?.max ?? 100000}
               value={quantity || ""}
-              onChange={(event) => setQuantity(Number(event.target.value))}
+              onChange={(event) => {
+                setQuantity(Number(event.target.value));
+                setPromoPreview(null);
+              }}
               required
               className="rounded-md border border-neutral-300 px-3 py-2"
             />
           </label>
-          <label className="grid gap-2 text-sm font-medium">
+          <div className="grid gap-2 text-sm font-medium">
             Promo code
-            <input name="promoCode" className="rounded-md border border-neutral-300 px-3 py-2" />
-          </label>
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input
+                value={promoCode}
+                onChange={(event) => {
+                  setPromoCode(event.target.value);
+                  setPromoPreview(null);
+                }}
+                className="rounded-md border border-neutral-300 px-3 py-2"
+              />
+              <button
+                type="button"
+                onClick={applyPromo}
+                disabled={!selected || loading}
+                className="rounded-md border border-teal-700 px-4 py-2 text-sm font-semibold text-teal-800 hover:bg-teal-50 disabled:opacity-60"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
           <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             <p>{WARNING_EN}</p>
             <p className="mt-2">{WARNING_HI}</p>
@@ -153,7 +218,22 @@ export function ServiceBrowser() {
             </label>
           </div>
           <p className="text-sm text-neutral-600">Selected rate: Rs.{rate} per 1000</p>
-          <p className="text-sm font-semibold">Estimated total before promo: Rs.{estimatedTotal}</p>
+          <div className="rounded-md bg-neutral-50 p-3 text-sm">
+            <div className="flex justify-between gap-3">
+              <span>Estimated total</span>
+              <strong>Rs.{estimatedTotal}</strong>
+            </div>
+            {promoPreview && (
+              <div className="mt-2 flex justify-between gap-3 text-teal-800">
+                <span>Promo discount ({promoPreview.code})</span>
+                <strong>- Rs.{promoPreview.discount.toFixed(2)}</strong>
+              </div>
+            )}
+            <div className="mt-2 flex justify-between gap-3 border-t border-neutral-200 pt-2">
+              <span>Final total</span>
+              <strong>Rs.{finalTotal}</strong>
+            </div>
+          </div>
           {message && <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
           <button
             disabled={!selected || loading}

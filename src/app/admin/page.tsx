@@ -1,4 +1,5 @@
 import { BadgeIndianRupee, Banknote, ShoppingBag, Users } from "lucide-react";
+import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { requireAdmin } from "@/lib/auth";
@@ -52,6 +53,11 @@ export default async function AdminPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Admin dashboard</h1>
         <p className="mt-1 text-sm text-neutral-600">Users, orders, revenue, deposits, profit, and provider health.</p>
+      </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <ActionButton label="Sync order status" endpoint="/api/cron/status-sync" method="GET" />
+        <ActionButton label="Sync refill status" endpoint="/api/cron/refill-sync" method="GET" />
+        <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />
       </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Users" value={stats.totalUsers} icon={Users} />

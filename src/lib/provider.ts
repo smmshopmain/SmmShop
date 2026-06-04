@@ -82,3 +82,37 @@ export async function addProviderOrder(
   }
   throw new Error(`All providers failed. ${errors.join("; ")}`);
 }
+
+export type ProviderStatus = {
+  status?: string;
+  start_count?: string | number;
+  remains?: string | number;
+};
+
+export async function getProviderStatuses(
+  provider: ProviderRecord,
+  orderIds: string[],
+) {
+  if (orderIds.length === 0) return {};
+  if (orderIds.length === 1) {
+    const status = await providerRequest<ProviderStatus>(provider, {
+      action: "status",
+      order: orderIds[0],
+    });
+    return { [orderIds[0]]: status };
+  }
+
+  const result = await providerRequest<Record<string, ProviderStatus | { error?: string }>>(provider, {
+    action: "status",
+    orders: orderIds.join(","),
+  });
+
+  return result;
+}
+
+export async function cancelProviderOrder(provider: ProviderRecord, orderId: string) {
+  return providerRequest<{ cancel?: string | number; error?: string }>(provider, {
+    action: "cancel",
+    order: orderId,
+  });
+}

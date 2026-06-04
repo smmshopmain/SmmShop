@@ -1,4 +1,6 @@
+import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
+import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
 import { calculateSellingRate } from "@/lib/pricing";
 import { ensureDefaultProviderFromEnv, providerRequest } from "@/lib/provider";
@@ -16,7 +18,10 @@ type ProviderService = {
   cancel?: boolean | string;
 };
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await requireCronOrAdmin(request);
+  if (authError) return authError;
+
   try {
     await dbConnect();
     await ensureDefaultProviderFromEnv();

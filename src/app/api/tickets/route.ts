@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { notifyInApp } from "@/lib/notifications";
 import { Ticket } from "@/models";
 
 const schema = z.object({
@@ -35,6 +36,11 @@ export async function POST(request: NextRequest) {
       priority: input.priority,
       messages: [{ sender: auth.id, body: input.message }],
     });
+    await notifyInApp({
+      user: auth.id,
+      title: "Ticket created",
+      body: input.subject,
+    });
     return ok({ ticket });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to create ticket");
@@ -60,10 +66,20 @@ export async function PATCH(request: NextRequest) {
         isAdmin: auth.role === "admin",
       });
       ticket.status = auth.role === "admin" ? "Answered" : "Open";
+      await notifyInApp({
+        user: ticket.user,
+        title: auth.role === "admin" ? "Admin replied to your ticket" : "Ticket reply added",
+        body: ticket.subject,
+      });
     }
 
     if (input.action === "close") {
       ticket.status = "Closed";
+      await notifyInApp({
+        user: ticket.user,
+        title: "Ticket closed",
+        body: ticket.subject,
+      });
     }
 
     await ticket.save();

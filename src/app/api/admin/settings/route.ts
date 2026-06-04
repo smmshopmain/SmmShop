@@ -4,7 +4,7 @@ import { fail, ok, requireAdmin } from "@/lib/api";
 import { getSettings, Setting } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["pricing", "deposits", "provider"]),
+  key: z.enum(["pricing", "deposits", "provider", "referrals"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -21,9 +21,14 @@ export async function PATCH(request: NextRequest) {
   try {
     await requireAdmin();
     const input = schema.parse(await request.json());
+    const existing = await Setting.findOne({ key: input.key }).lean();
+    const value =
+      existing?.value && typeof existing.value === "object" && !Array.isArray(existing.value)
+        ? { ...(existing.value as Record<string, unknown>), ...input.value }
+        : input.value;
     const setting = await Setting.findOneAndUpdate(
       { key: input.key },
-      { value: input.value },
+      { value },
       { upsert: true, new: true },
     );
     return ok({ setting });

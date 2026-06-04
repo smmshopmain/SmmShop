@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { notifyInApp } from "@/lib/notifications";
 import { calculateOrderPrice } from "@/lib/pricing";
-import { addProviderOrder, getEnabledProviders } from "@/lib/provider";
+import { addProviderOrder, cancelProviderOrder, getEnabledProviders } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
-import { Order, PromoCode, Service, WalletTransaction } from "@/models";
+import { Order, PromoCode, Referral, Service, User, WalletTransaction, getSettings } from "@/models";
 import { roundMoney } from "@/lib/pricing";
 
 const schema = z.object({
@@ -13,6 +14,11 @@ const schema = z.object({
   quantity: z.number().int().positive(),
   warningAccepted: z.literal(true),
   promoCode: z.string().trim().min(2).optional(),
+});
+
+const patchSchema = z.object({
+  id: z.string().min(1),
+  action: z.enum(["cancel"]),
 });
 
 export async function GET() {
@@ -122,6 +128,45 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (dbUser.referredBy && sellingPrice > 0) {
+      const settings = await getSettings();
+      const commission = roundMoney((sellingPrice * (settings.referrals.commissionPercent ?? 0)) / 100);
+      if (commission > 0) {
+        const referrer = await User.findById(dbUser.referredBy);
+        if (referrer) {
+          const referralBalanceBefore = referrer.walletBalance;
+          referrer.walletBalance += commission;
+          referrer.referralEarnings += commission;
+          await referrer.save();
+          await WalletTransaction.create({
+            user: referrer._id,
+            type: "referral",
+            amount: commission,
+            balanceBefore: referralBalanceBefore,
+            balanceAfter: referrer.walletBalance,
+            source: "referral_order_commission",
+            reference: String(order._id),
+          });
+          await Referral.findOneAndUpdate(
+            { referrer: referrer._id, referredUser: dbUser._id },
+            { $inc: { earnings: commission }, status: "Paid" },
+            { upsert: true, new: true },
+          );
+          await notifyInApp({
+            user: referrer._id,
+            title: "Referral commission credited",
+            body: `Rs.${commission} credited from ${dbUser.name}'s order.`,
+          });
+        }
+      }
+    }
+
+    await notifyInApp({
+      user: auth.id,
+      title: "Order placed",
+      body: `Order ${order._id} placed for Rs.${sellingPrice}.`,
+    });
+
     await notifyTelegram("New Order", [
       `User: ${auth.email}`,
       `Order: ${order._id}`,
@@ -131,5 +176,60 @@ export async function POST(request: NextRequest) {
     return ok({ order });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to place order");
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const input = await parseBody(request, patchSchema);
+    const { auth, dbUser } = await requireUser();
+    const order = await Order.findOne({ _id: input.id, user: auth.id })
+      .populate("provider")
+      .populate("service");
+    if (!order) return fail("Order not found", 404);
+    if (!["Pending", "Processing", "In Progress"].includes(order.status)) {
+      return fail("Only active orders can be canceled");
+    }
+    if (!order.service?.cancel) return fail("This service does not support cancellation");
+    if (!order.providerOrderId) return fail("Provider order id is missing");
+
+    const result = await cancelProviderOrder(order.provider, order.providerOrderId);
+    if (result.error) return fail(result.error);
+
+    order.status = "Canceled";
+    order.providerResponse = { ...(order.providerResponse ?? {}), cancel: result };
+    order.lastStatusSyncAt = new Date();
+    await order.save();
+
+    const existingRefund = await WalletTransaction.exists({
+      user: auth.id,
+      type: "refund",
+      source: "order_cancel",
+      reference: String(order._id),
+    });
+    if (!existingRefund && order.sellingPrice > 0) {
+      const balanceBefore = dbUser.walletBalance;
+      dbUser.walletBalance += order.sellingPrice;
+      await dbUser.save();
+      await WalletTransaction.create({
+        user: auth.id,
+        type: "refund",
+        amount: order.sellingPrice,
+        balanceBefore,
+        balanceAfter: dbUser.walletBalance,
+        source: "order_cancel",
+        reference: String(order._id),
+      });
+    }
+
+    await notifyInApp({
+      user: auth.id,
+      title: "Order canceled",
+      body: `Order ${order._id} was canceled and refunded.`,
+    });
+
+    return ok({ order });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Unable to cancel order");
   }
 }

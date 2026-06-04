@@ -16,6 +16,16 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: APP_BASE_URL
+        sync: false
+      - key: PAYMENT_WEBHOOK_SECRET
+        sync: false
+      - key: PAYMENT_VERIFY_API_URL
+        sync: false
+      - key: PAYMENT_VERIFY_API_KEY
+        sync: false
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: TELEGRAM_CHAT_ID
@@ -29,4 +39,74 @@ services:
       - key: SMTP_PASS
         sync: false
       - key: EMAIL_FROM
+        sync: false
+  - type: cron
+    name: smm-status-sync
+    runtime: node
+    schedule: "*/10 * * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/status-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: smm-provider-balance-sync
+    runtime: node
+    schedule: "0 */6 * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/provider-balance`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: smm-service-price-sync
+    runtime: node
+    schedule: "15 */12 * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/service-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: smm-price-sync
+    runtime: node
+    schedule: "30 */12 * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/price-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: smm-refill-sync
+    runtime: node
+    schedule: "*/20 * * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/refill-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+  - type: cron
+    name: smm-deposit-verification
+    runtime: node
+    schedule: "*/5 * * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/deposit-verification`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: PAYMENT_VERIFY_API_URL
+        sync: false
+      - key: PAYMENT_VERIFY_API_KEY
         sync: false

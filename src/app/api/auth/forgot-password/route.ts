@@ -11,7 +11,7 @@ const schema = z.object({ email: z.email() });
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "local";
-  if (!rateLimit(`forgot-password:${ip}`, 5)) return fail("Too many password reset requests", 429);
+  if (!(await rateLimit(`forgot-password:${ip}`, 5))) return fail("Too many password reset requests", 429);
 
   try {
     const { email } = await parseBody(request, schema);

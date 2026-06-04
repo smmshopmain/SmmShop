@@ -35,6 +35,10 @@ export default async function AdminServicesPage() {
         <h1 className="text-2xl font-semibold">Service admin</h1>
         <p className="mt-1 text-sm text-neutral-600">Control service visibility and service-level margins.</p>
       </div>
+      <div className="mb-4 flex flex-wrap gap-2">
+        <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
+      </div>
       <section className="rounded-md border border-neutral-200 bg-white">
         {services.map((service) => (
           <div key={String(service._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm xl:grid-cols-[1fr_140px_120px_120px_220px]">

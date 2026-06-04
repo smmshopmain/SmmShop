@@ -13,7 +13,7 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "local";
-  if (!rateLimit(`login:${ip}`, 10)) return fail("Too many login attempts", 429);
+  if (!(await rateLimit(`login:${ip}`, 10))) return fail("Too many login attempts", 429);
 
   try {
     const input = await parseBody(request, schema);

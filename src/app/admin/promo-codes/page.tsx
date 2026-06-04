@@ -1,8 +1,8 @@
 import { AppShell } from "@/components/app-shell";
-import { ActionButton, PromoCodeForm } from "@/components/admin-controls";
+import { ActionButton, PromoCodeEditForm, PromoCodeForm } from "@/components/admin-controls";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
-import { PromoCode } from "@/models";
+import { PromoCode, WalletTransaction } from "@/models";
 
 export default async function PromoCodesPage() {
   let promoCodes: Array<{
@@ -14,11 +14,21 @@ export default async function PromoCodesPage() {
     maxUses?: number;
     usedCount: number;
     active: boolean;
+    expiresAt?: Date;
   }> = [];
+  let promoDiscounts: Record<string, number> = {};
 
   try {
     await requireAdmin();
-    promoCodes = (await PromoCode.find().sort({ createdAt: -1 }).limit(100).lean()) as typeof promoCodes;
+    const [codes, discounts] = await Promise.all([
+      PromoCode.find().sort({ createdAt: -1 }).limit(100).lean(),
+      WalletTransaction.aggregate([
+        { $match: { type: "promo" } },
+        { $group: { _id: "$reference", totalDiscount: { $sum: "$amount" } } },
+      ]),
+    ]);
+    promoCodes = codes as typeof promoCodes;
+    promoDiscounts = Object.fromEntries(discounts.map((item) => [item._id, item.totalDiscount]));
   } catch {
     promoCodes = [];
   }
@@ -36,6 +46,7 @@ export default async function PromoCodesPage() {
                 <p className="text-neutral-500">
                   {promo.discountValue} {promo.discountType === "percent" ? "%" : "Rs."} off, min Rs.{promo.minOrderAmount}
                 </p>
+                <p className="text-neutral-500">Total discount: Rs.{promoDiscounts[promo.code] ?? 0}</p>
               </div>
               <span>{promo.usedCount}/{promo.maxUses ?? "unlimited"}</span>
               <StatusBadge status={promo.active ? "Approved" : "Canceled"} />
@@ -43,6 +54,18 @@ export default async function PromoCodesPage() {
                 label={promo.active ? "Disable" : "Enable"}
                 endpoint="/api/admin/promo-codes"
                 body={{ id: String(promo._id), active: !promo.active }}
+              />
+              <PromoCodeEditForm
+                promo={{
+                  _id: String(promo._id),
+                  code: promo.code,
+                  discountType: promo.discountType,
+                  discountValue: promo.discountValue,
+                  minOrderAmount: promo.minOrderAmount,
+                  maxUses: promo.maxUses,
+                  active: promo.active,
+                  expiresAt: promo.expiresAt,
+                }}
               />
             </div>
           ))}

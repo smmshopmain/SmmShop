@@ -1,6 +1,8 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { applyDepositDecision, verifyDepositWithGateway } from "@/lib/deposits";
+import { notifyInApp } from "@/lib/notifications";
 import { Deposit, getSettings } from "@/models";
 import { notifyTelegram } from "@/lib/telegram";
 
@@ -35,11 +37,33 @@ export async function POST(request: NextRequest) {
       verificationEndTime: settings.deposits.verificationEndTime,
     });
 
+    let automaticVerification = { status: "Pending", message: "Manual review required." };
+    if (settings.deposits.verificationMode === "automatic") {
+      const decision = await verifyDepositWithGateway(deposit);
+      await applyDepositDecision({
+        deposit,
+        decision,
+        source: "deposit_auto_verification",
+      });
+      automaticVerification = {
+        status: decision.status,
+        message: decision.message ?? "Automatic verification checked.",
+      };
+    }
+
     await notifyTelegram("Deposit Request", [
       `User: ${auth.email}`,
       `Amount: ${input.amount}`,
       `UTR: ${input.utr}`,
     ]);
+    await notifyInApp({
+      user: auth.id,
+      title: "Deposit request submitted",
+      body:
+        deposit.status === "Pending"
+          ? `Rs.${input.amount} deposit with UTR ${input.utr} is pending verification.`
+          : `Rs.${input.amount} deposit with UTR ${input.utr} was marked ${deposit.status}.`,
+    });
 
     return ok({
       deposit,
@@ -47,6 +71,7 @@ export async function POST(request: NextRequest) {
         start: deposit.verificationStartTime,
         end: deposit.verificationEndTime,
       },
+      automaticVerification,
     });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to submit deposit");
