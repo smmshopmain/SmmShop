@@ -41,6 +41,15 @@ services:
       - key: EMAIL_FROM
         sync: false
   - type: cron
+    name: smm-keep-alive
+    runtime: node
+    schedule: "*/10 * * * *"
+    buildCommand: npm ci
+    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/keep-alive`).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    envVars:
+      - key: APP_BASE_URL
+        sync: false
+  - type: cron
     name: smm-status-sync
     runtime: node
     schedule: "*/10 * * * *"

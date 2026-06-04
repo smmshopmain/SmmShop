@@ -52,6 +52,32 @@ Start Command: npm run start
 
 Add all variables from `.env.example` in Render Environment. Do not upload `.env.local`.
 
+### Payment Details
+
+Admin can configure deposit payment details from:
+
+```text
+/admin/settings
+```
+
+Open Admin > Settings, then scroll to **Payment details shown to users**. Add the QR image, UPI ID, bank name, account holder name, account number, IFSC, and payment instructions. Users will see these details on Dashboard > Wallet before submitting a deposit request.
+
+### Render Keep Alive
+
+The blueprint includes `smm-keep-alive`, a cron service that calls:
+
+```text
+/api/keep-alive
+```
+
+Set `APP_BASE_URL` on Render to your live URL, for example:
+
+```text
+https://your-service-name.onrender.com
+```
+
+This sends an inbound request every 10 minutes to reduce Render free-tier cold starts.
+
 ## Useful Commands
 
 ```bash
