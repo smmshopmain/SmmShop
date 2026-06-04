@@ -12,6 +12,42 @@ const schema = z.object({
   proofUrl: z.string().optional(),
 });
 
+function makeDepositId() {
+  const date = new Date().toISOString().slice(0, 10).replaceAll("-", "");
+  const random = Math.random().toString(36).slice(2, 8).toUpperCase();
+  return `DEP-${date}-${random}`;
+}
+
+async function createDeposit(input: {
+  user: string;
+  amount: number;
+  utr: string;
+  proofUrl?: string;
+  mode: string;
+  verificationStartTime: string;
+  verificationEndTime: string;
+}) {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      return await Deposit.create({
+        ...input,
+        depositId: makeDepositId(),
+      });
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw new Error("Unable to generate unique deposit ID");
+}
+
 export async function GET() {
   try {
     const { auth } = await requireUser();
@@ -27,7 +63,7 @@ export async function POST(request: NextRequest) {
     const input = await parseBody(request, schema);
     const { auth } = await requireUser();
     const settings = await getSettings();
-    const deposit = await Deposit.create({
+    const deposit = await createDeposit({
       user: auth.id,
       amount: input.amount,
       utr: input.utr,
@@ -53,6 +89,7 @@ export async function POST(request: NextRequest) {
 
     await notifyTelegram("Deposit Request", [
       `User: ${auth.email}`,
+      `Deposit ID: ${deposit.depositId}`,
       `Amount: ${input.amount}`,
       `UTR: ${input.utr}`,
     ]);
@@ -61,8 +98,8 @@ export async function POST(request: NextRequest) {
       title: "Deposit request submitted",
       body:
         deposit.status === "Pending"
-          ? `Rs.${input.amount} deposit with UTR ${input.utr} is pending verification.`
-          : `Rs.${input.amount} deposit with UTR ${input.utr} was marked ${deposit.status}.`,
+          ? `Rs.${input.amount} deposit ${deposit.depositId} with UTR ${input.utr} is pending verification.`
+          : `Rs.${input.amount} deposit ${deposit.depositId} with UTR ${input.utr} was marked ${deposit.status}.`,
     });
 
     return ok({

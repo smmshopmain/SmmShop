@@ -8,6 +8,7 @@ import { Deposit } from "@/models";
 export default async function AdminDepositsPage() {
   let deposits: Array<{
     _id: string;
+    depositId?: string;
     amount: number;
     utr: string;
     status: string;
@@ -32,6 +33,7 @@ export default async function AdminDepositsPage() {
           <div key={String(deposit._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_120px_150px_120px_160px]">
             <div>
               <p className="font-medium">{deposit.user?.email ?? "User"}</p>
+              <p className="text-neutral-900">{deposit.depositId ?? String(deposit._id)}</p>
               <p className="text-neutral-500">UTR {deposit.utr}</p>
               {deposit.proofUrl && <ProofPreview proofUrl={deposit.proofUrl} />}
             </div>

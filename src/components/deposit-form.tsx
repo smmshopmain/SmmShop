@@ -63,7 +63,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     setLoading(false);
     setMessage(
       response.ok
-        ? `Deposit submitted. Verification window: ${result.data.schedule.start} - ${result.data.schedule.end}.`
+        ? `Deposit submitted. ID: ${result.data.deposit.depositId}. Verification window: ${result.data.schedule.start} - ${result.data.schedule.end}.`
         : result.message,
     );
     if (response.ok) event.currentTarget.reset();

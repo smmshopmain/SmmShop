@@ -7,7 +7,7 @@ import { Deposit, getSettings, WalletTransaction, type PlatformSettings } from "
 export default async function WalletPage() {
   let balance = 0;
   let transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }> = [];
-  let deposits: Array<{ _id: string; amount: number; utr: string; status: string; createdAt: Date }> = [];
+  let deposits: Array<{ _id: string; depositId?: string; amount: number; utr: string; status: string; createdAt: Date }> = [];
   let payment: PlatformSettings["deposits"]["payment"] = {
     qrImageUrl: "",
     upiId: "",
@@ -47,8 +47,11 @@ export default async function WalletPage() {
           </div>
           <div className="divide-y divide-neutral-100">
             {deposits.map((deposit) => (
-              <div key={String(deposit._id)} className="flex items-center justify-between gap-3 p-4 text-sm">
-                <span>UTR {deposit.utr}</span>
+              <div key={String(deposit._id)} className="grid gap-2 p-4 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                <span>
+                  <span className="block font-medium">{deposit.depositId ?? String(deposit._id)}</span>
+                  <span className="block text-neutral-500">UTR {deposit.utr}</span>
+                </span>
                 <StatusBadge status={deposit.status} />
                 <strong>Rs.{deposit.amount}</strong>
               </div>

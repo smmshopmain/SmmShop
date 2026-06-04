@@ -10,6 +10,7 @@ type DepositDecision = {
 
 type DepositDoc = {
   _id: unknown;
+  depositId?: string;
   user: unknown;
   amount: number;
   utr: string;
@@ -86,19 +87,19 @@ export async function applyDepositDecision({
       userId: deposit.user,
       amount: deposit.amount,
       source,
-      reference: decision.reference ?? String(deposit._id),
+      reference: decision.reference ?? deposit.depositId ?? String(deposit._id),
       createdBy: reviewedBy,
     });
     await notifyInApp({
       user: deposit.user,
       title: "Deposit approved",
-      body: `Rs.${deposit.amount} has been added to your wallet.`,
+      body: `Rs.${deposit.amount} for deposit ${deposit.depositId ?? deposit._id} has been added to your wallet.`,
     });
   } else {
     await notifyInApp({
       user: deposit.user,
       title: "Deposit rejected",
-      body: decision.message || `Deposit ${deposit._id} was rejected.`,
+      body: decision.message || `Deposit ${deposit.depositId ?? deposit._id} was rejected.`,
     });
   }
 
@@ -107,6 +108,7 @@ export async function applyDepositDecision({
 
 export async function verifyDepositWithGateway(deposit: {
   _id: unknown;
+  depositId?: string;
   utr: string;
   amount: number;
 }) {
@@ -129,7 +131,7 @@ export async function verifyDepositWithGateway(deposit: {
     body: JSON.stringify({
       utr: deposit.utr,
       amount: deposit.amount,
-      depositId: String(deposit._id),
+      depositId: deposit.depositId ?? String(deposit._id),
     }),
     cache: "no-store",
   });

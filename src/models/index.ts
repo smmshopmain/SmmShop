@@ -54,6 +54,7 @@ const WalletTransactionSchema = new Schema(
 
 const DepositSchema = new Schema(
   {
+    depositId: { type: String, unique: true, sparse: true, index: true, trim: true },
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     amount: { type: Number, required: true, min: 1 },
     utr: { type: String, required: true, trim: true },
