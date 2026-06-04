@@ -5,6 +5,12 @@ import { dbConnect } from "@/lib/db";
 import { User } from "@/models";
 
 const COOKIE_NAME = "smm_token";
+const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  sameSite: "lax" as const,
+  secure: process.env.NODE_ENV === "production",
+  path: "/",
+};
 
 export type AuthUser = {
   id: string;
@@ -74,15 +80,15 @@ export async function setSessionCookie(user: AuthUser) {
   const token = await signSession(user);
   const store = await cookies();
   store.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...SESSION_COOKIE_OPTIONS,
     maxAge: 60 * 60 * 24 * 7,
   });
 }
 
 export async function clearSessionCookie() {
   const store = await cookies();
-  store.delete(COOKIE_NAME);
+  store.set(COOKIE_NAME, "", {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 0,
+  });
 }
