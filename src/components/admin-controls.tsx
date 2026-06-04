@@ -9,17 +9,20 @@ export function ActionButton({
   method = "PATCH",
   body,
   danger = false,
+  confirmMessage,
 }: {
   label: string;
   endpoint: string;
   method?: "GET" | "POST" | "PATCH" | "DELETE";
   body?: Record<string, unknown>;
   danger?: boolean;
+  confirmMessage?: string;
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
   async function run() {
+    if (confirmMessage && !window.confirm(confirmMessage)) return;
     setLoading(true);
     setMessage("");
     const response = await fetch(endpoint, {

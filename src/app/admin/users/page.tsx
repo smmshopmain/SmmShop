@@ -20,9 +20,11 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
     walletFrozen: boolean;
     role: string;
   }> = [];
+  let currentAdminId = "";
 
   try {
-    await requireAdmin();
+    const { auth } = await requireAdmin();
+    currentAdminId = auth.id;
     const filter = q
       ? {
           $or: [
@@ -79,6 +81,16 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
                 body={{ id: String(user._id), action: user.walletFrozen ? "unfreeze_wallet" : "freeze_wallet" }}
                 danger={!user.walletFrozen}
               />
+              {String(user._id) !== currentAdminId && (
+                <ActionButton
+                  label="Delete"
+                  endpoint="/api/admin/users"
+                  method="DELETE"
+                  body={{ id: String(user._id) }}
+                  danger
+                  confirmMessage={`Delete ${user.name} (${user.email})? This cannot be undone.`}
+                />
+              )}
             </div>
             <AdminResetPasswordForm userId={String(user._id)} />
             <WalletAdjustForm userId={String(user._id)} />

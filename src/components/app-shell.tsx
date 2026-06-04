@@ -76,30 +76,37 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
 
-      <div className="lg:pl-64">
-        <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-4 py-3 backdrop-blur">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-            <Link href="/dashboard" className="font-semibold lg:hidden">
-              SMM Panel
-            </Link>
-            <nav className="flex gap-2 overflow-x-auto lg:hidden">
-              {links.slice(0, 5).map((item) => (
-                <Link key={item.href} href={item.href} className="rounded-md px-3 py-2 text-xs font-medium">
+      <div className="min-w-0 lg:pl-64">
+        <header className="sticky top-0 z-10 border-b border-neutral-200 bg-white/95 px-3 py-3 backdrop-blur sm:px-4">
+          <div className="mx-auto grid max-w-7xl gap-3">
+            <div className="flex min-w-0 items-center justify-between gap-3">
+              <Link href="/dashboard" className="shrink-0 font-semibold lg:hidden">
+                SMM Panel
+              </Link>
+              <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
+                <span className="hidden truncate text-neutral-600 sm:block">{user?.email}</span>
+                <form action="/api/auth/logout" method="post" className="shrink-0">
+                  <button className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100">
+                    Logout
+                  </button>
+                </form>
+              </div>
+            </div>
+            <nav className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1 lg:hidden">
+              {links.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-amber-50 hover:text-neutral-950"
+                >
+                  <item.icon className="size-4" />
                   {item.label}
                 </Link>
               ))}
             </nav>
-            <div className="ml-auto flex items-center gap-3 text-sm">
-              <span className="hidden text-neutral-600 sm:block">{user?.email}</span>
-              <form action="/api/auth/logout" method="post">
-                <button className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100">
-                  Logout
-                </button>
-              </form>
-            </div>
           </div>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto min-w-0 max-w-7xl px-3 py-5 sm:px-6 sm:py-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
