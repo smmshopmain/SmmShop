@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StatusBadge } from "@/components/status-badge";
 
 export function ActionButton({
   label,
@@ -248,6 +249,129 @@ export function AdminResetPasswordForm({ userId }: { userId: string }) {
       <button className="rounded-md bg-neutral-900 px-3 py-2 font-semibold text-white">Reset password</button>
       {message && <span className="text-neutral-500">{message}</span>}
     </form>
+  );
+}
+
+export type AdminServiceItem = {
+  _id: string;
+  name: string;
+  category: string;
+  providerRate: number;
+  sellingRate: number;
+  min: number;
+  max: number;
+  active: boolean;
+  marginPercent?: number;
+  provider?: { name?: string };
+};
+
+export function ServiceAdminList({ services }: { services: AdminServiceItem[] }) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkMargin, setBulkMargin] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const allSelected = services.length > 0 && selectedIds.length === services.length;
+
+  function toggleService(serviceId: string) {
+    setSelectedIds((current) =>
+      current.includes(serviceId)
+        ? current.filter((id) => id !== serviceId)
+        : [...current, serviceId],
+    );
+  }
+
+  function toggleAll() {
+    setSelectedIds(allSelected ? [] : services.map((service) => service._id));
+  }
+
+  async function applyBulkMargin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (selectedIds.length === 0) {
+      setMessage("Select at least one service.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    const response = await fetch("/api/admin/services", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        ids: selectedIds,
+        marginPercent: Number(bulkMargin),
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? `Updated ${result.data?.updated ?? selectedIds.length} services.` : result.message ?? "Unable to update services.");
+    if (response.ok) window.location.reload();
+  }
+
+  return (
+    <section className="rounded-md border border-neutral-200 bg-white">
+      {services.length > 0 && (
+        <div className="border-b border-neutral-200 bg-neutral-50 p-4">
+          <form onSubmit={applyBulkMargin} className="flex flex-wrap items-end gap-3 text-sm">
+            <label className="flex min-h-10 items-center gap-2 font-medium">
+              <input type="checkbox" checked={allSelected} onChange={toggleAll} className="size-4 rounded border-neutral-300" />
+              Select all
+            </label>
+            <label className="grid gap-1 text-xs font-medium">
+              Margin %
+              <input
+                value={bulkMargin}
+                onChange={(event) => setBulkMargin(event.target.value)}
+                type="number"
+                min={0}
+                max={500}
+                step="0.01"
+                required
+                className="w-28 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <button
+              disabled={loading || selectedIds.length === 0}
+              className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {loading ? "Applying..." : `Apply to selected (${selectedIds.length})`}
+            </button>
+            {message && <span className="text-xs text-neutral-600">{message}</span>}
+          </form>
+        </div>
+      )}
+      {services.map((service) => (
+        <div key={service._id} className="grid gap-3 border-b border-neutral-100 p-4 text-sm xl:grid-cols-[32px_1fr_140px_120px_120px_220px]">
+          <label className="flex items-start pt-1">
+            <input
+              type="checkbox"
+              checked={selectedIds.includes(service._id)}
+              onChange={() => toggleService(service._id)}
+              aria-label={`Select ${service.name}`}
+              className="size-4 rounded border-neutral-300"
+            />
+          </label>
+          <div>
+            <p className="font-medium">{service.name}</p>
+            <p className="text-neutral-500">
+              {service.category} / {service.provider?.name ?? "Provider"} / {service.min}-{service.max}
+            </p>
+          </div>
+          <span>Cost Rs.{service.providerRate}/1k</span>
+          <strong>Sell Rs.{service.sellingRate}/1k</strong>
+          <StatusBadge status={service.active ? "Approved" : "Canceled"} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ServiceMarginForm serviceId={service._id} currentMargin={service.marginPercent} />
+            <ActionButton
+              label={service.active ? "Disable" : "Enable"}
+              endpoint="/api/admin/services"
+              body={{ id: service._id, active: !service.active }}
+              danger={service.active}
+            />
+          </div>
+        </div>
+      ))}
+      {services.length === 0 && <p className="p-4 text-sm text-neutral-500">No services imported yet. Run service sync after adding a provider.</p>}
+    </section>
   );
 }
 
