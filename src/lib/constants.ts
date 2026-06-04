@@ -18,10 +18,10 @@ export const REFILL_STATUSES = [
 ] as const;
 
 export const WARNING_EN =
-  "If you submit an incorrect, private, deleted, inaccessible, or invalid link, no refund will be provided.";
+  "Wrong/private/invalid link par refund nahi milega.";
 
 export const WARNING_HI =
-  "Agar aap galat, private, deleted, inaccessible ya invalid link submit karte hain to kisi bhi prakar ka refund nahi diya jayega.";
+  "Galat/private/invalid link par refund nahi milega.";
 
 export const DEFAULT_VERIFICATION_SCHEDULE = {
   verificationStartTime: "10:00",

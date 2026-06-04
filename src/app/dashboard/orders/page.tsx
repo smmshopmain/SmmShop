@@ -18,7 +18,10 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     quantity: number;
     status: string;
     sellingPrice: number;
+    startCount?: number;
+    remains?: number;
     createdAt: Date;
+    updatedAt: Date;
     providerOrderId?: string;
     service?: { name?: string; refill?: boolean; cancel?: boolean };
   }> = [];
@@ -64,19 +67,43 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
       <section className="overflow-hidden rounded-md border border-neutral-200 bg-white">
         <div className="divide-y divide-neutral-100">
           {orders.map((order) => (
-            <div key={String(order._id)} className="grid gap-3 p-4 text-sm md:grid-cols-[1fr_90px_110px_90px_190px]">
-              <div>
+            <div key={String(order._id)} className="grid gap-4 p-4 text-sm xl:grid-cols-[minmax(220px,1fr)_180px_120px_110px_110px_110px_120px_170px]">
+              <div className="min-w-0">
                 <p className="font-medium">{order.service?.name ?? "Service"}</p>
                 <p className="truncate text-neutral-500">{order.link}</p>
+                <p className="mt-1 text-xs text-neutral-500">Order ID: {String(order._id)}</p>
+                <p className="text-xs text-neutral-500">Provider Order ID: {order.providerOrderId ?? "-"}</p>
               </div>
-              <p>{order.quantity}</p>
-              <StatusBadge status={order.status} />
-              <p className="font-semibold">Rs.{order.sellingPrice}</p>
-              <div className="flex flex-wrap gap-2">
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Quantity</p>
+                <p>{order.quantity}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Status</p>
+                <StatusBadge status={order.status} />
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Start Count</p>
+                <p>{order.startCount ?? "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Remains</p>
+                <p>{order.remains ?? "-"}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Charge</p>
+                <p className="font-semibold">Rs.{order.sellingPrice}</p>
+              </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Time</p>
+                <p>Created: {new Date(order.createdAt).toLocaleString()}</p>
+                <p className="text-neutral-500">Updated: {new Date(order.updatedAt).toLocaleString()}</p>
+              </div>
+              <div className="flex flex-wrap gap-2 xl:justify-end">
                 {order.service?.refill && order.status === "Completed" && (
                   <ActionButton label="Refill" endpoint="/api/refills" method="POST" body={{ orderId: String(order._id) }} />
                 )}
-                {order.service?.cancel && ["Pending", "Processing", "In Progress"].includes(order.status) && (
+                {order.service?.cancel && ["Pending", "Processing", "In Progress", "Partial"].includes(order.status) && (
                   <ActionButton label="Cancel" endpoint="/api/orders" body={{ id: String(order._id), action: "cancel" }} danger />
                 )}
                 {!order.service?.refill && !order.service?.cancel && <span className="text-xs text-neutral-400">No actions</span>}

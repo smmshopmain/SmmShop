@@ -1,5 +1,14 @@
 import { notifyInApp } from "@/lib/notifications";
 import { Deposit, User, WalletTransaction } from "@/models";
+import { notifyTelegram, sendTelegramAttachment, sendTelegramMessage } from "@/lib/telegram";
+
+export const TELEGRAM_REJECT_REASONS: Record<string, string> = {
+  invalid_utr: "Invalid UTR",
+  payment_not_found: "Payment Not Found",
+  wrong_amount: "Wrong Amount",
+  duplicate_payment: "Duplicate Payment",
+  other: "Other",
+};
 
 type DepositDecision = {
   status: "Pending" | "Approved" | "Rejected";
@@ -16,6 +25,8 @@ type DepositDoc = {
   utr: string;
   status: "Pending" | "Approved" | "Rejected";
   reviewedBy?: unknown;
+  adminAction?: string;
+  adminTelegramId?: string;
   reviewedAt?: Date;
   rejectionReason?: string;
   providerResponse?: unknown;
@@ -67,17 +78,23 @@ export async function applyDepositDecision({
   decision,
   source,
   reviewedBy,
+  adminAction,
+  adminTelegramId,
 }: {
   deposit: DepositDoc;
   decision: DepositDecision;
   source: string;
   reviewedBy?: unknown;
+  adminAction?: string;
+  adminTelegramId?: string;
 }) {
   if (deposit.status !== "Pending") return deposit;
   if (decision.status === "Pending") return deposit;
 
   deposit.status = decision.status;
   deposit.reviewedBy = reviewedBy;
+  deposit.adminAction = adminAction;
+  deposit.adminTelegramId = adminTelegramId;
   deposit.reviewedAt = new Date();
   deposit.rejectionReason = decision.status === "Rejected" ? decision.message : undefined;
   await deposit.save();
@@ -92,18 +109,114 @@ export async function applyDepositDecision({
     });
     await notifyInApp({
       user: deposit.user,
-      title: "Deposit approved",
-      body: `Rs.${deposit.amount} for deposit ${deposit.depositId ?? deposit._id} has been added to your wallet.`,
+      title: "✅ Deposit Approved",
+      body: `Amount: ₹${deposit.amount}\n\nFunds successfully added to your wallet.`,
     });
+    await notifyTelegram("✅ Deposit Approved", [
+      `Deposit: ${deposit.depositId ?? deposit._id}`,
+      `Amount: ₹${deposit.amount}`,
+      "Funds credited to user wallet.",
+    ]);
   } else {
     await notifyInApp({
       user: deposit.user,
-      title: "Deposit rejected",
-      body: decision.message || `Deposit ${deposit.depositId ?? deposit._id} was rejected.`,
+      title: "❌ Deposit Rejected",
+      body: `Reason: ${decision.message || "Other"}`,
     });
+    await notifyTelegram("❌ Deposit Rejected", [
+      `Deposit: ${deposit.depositId ?? deposit._id}`,
+      `Amount: ₹${deposit.amount}`,
+      `Reason: ${decision.message || "Other"}`,
+    ]);
   }
 
   return deposit;
+}
+
+export function depositTelegramKeyboard(depositMongoId: unknown) {
+  const id = String(depositMongoId);
+  return {
+    inline_keyboard: [
+      [
+        { text: "✅ Approve", callback_data: `dep:approve:${id}` },
+        { text: "❌ Reject", callback_data: `dep:reject:${id}` },
+      ],
+    ],
+  };
+}
+
+export function depositRejectReasonKeyboard(depositMongoId: unknown) {
+  const id = String(depositMongoId);
+  return {
+    inline_keyboard: [
+      [{ text: "Invalid UTR", callback_data: `dep:reason:${id}:invalid_utr` }],
+      [{ text: "Payment Not Found", callback_data: `dep:reason:${id}:payment_not_found` }],
+      [{ text: "Wrong Amount", callback_data: `dep:reason:${id}:wrong_amount` }],
+      [{ text: "Duplicate Payment", callback_data: `dep:reason:${id}:duplicate_payment` }],
+      [{ text: "Other", callback_data: `dep:reason:${id}:other` }],
+    ],
+  };
+}
+
+export function makeAbsoluteUrl(value: string, origin?: string) {
+  if (/^https?:\/\//i.test(value)) return value;
+  const base = process.env.APP_BASE_URL || origin;
+  if (!base) return value;
+  return new URL(value, base).toString();
+}
+
+export async function notifyTelegramDepositRequest({
+  deposit,
+  user,
+  origin,
+}: {
+  deposit: {
+    _id: unknown;
+    depositId?: string;
+    amount: number;
+    utr: string;
+    proofUrl?: string;
+    status: string;
+    createdAt?: Date;
+  };
+  user: { _id: unknown; name?: string; email?: string };
+  origin?: string;
+}) {
+  const createdAt = deposit.createdAt ? new Date(deposit.createdAt) : new Date();
+  const message = [
+    "💰 New Deposit Request",
+    "",
+    `Request ID: ${deposit.depositId ?? deposit._id}`,
+    "",
+    `User ID: USER-${String(user._id).slice(-6).toUpperCase()}`,
+    `Username: ${user.name ?? "User"}`,
+    `Email: ${user.email ?? "-"}`,
+    "",
+    `Amount: ₹${deposit.amount}`,
+    `UTR: ${deposit.utr}`,
+    "",
+    `Date: ${createdAt.toLocaleDateString("en-IN")}`,
+    `Time: ${createdAt.toLocaleTimeString("en-IN")}`,
+    "",
+    `Status: ${deposit.status}`,
+    "",
+    "Screenshot Attached",
+  ].join("\n");
+
+  const replyMarkup = depositTelegramKeyboard(deposit._id);
+  if (deposit.proofUrl) {
+    const fileUrl = makeAbsoluteUrl(deposit.proofUrl, origin);
+    if (/^https?:\/\//i.test(fileUrl)) {
+      await sendTelegramAttachment({
+        caption: message,
+        fileUrl,
+        replyMarkup,
+      });
+      return;
+    }
+  }
+
+  await sendTelegramMessage({ text: message, replyMarkup });
 }
 
 export async function verifyDepositWithGateway(deposit: {

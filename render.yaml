@@ -30,6 +30,8 @@ services:
         sync: false
       - key: TELEGRAM_CHAT_ID
         sync: false
+      - key: TELEGRAM_ADMIN_ID
+        sync: false
       - key: SMTP_HOST
         value: smtp.gmail.com
       - key: SMTP_PORT
@@ -52,7 +54,7 @@ services:
   - type: cron
     name: smm-status-sync
     runtime: node
-    schedule: "*/10 * * * *"
+    schedule: "*/2 * * * *"
     buildCommand: npm ci
     startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/status-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
     envVars:
@@ -72,9 +74,9 @@ services:
       - key: CRON_SECRET
         sync: false
   - type: cron
-    name: smm-service-price-sync
+    name: smm-service-sync
     runtime: node
-    schedule: "0 */6 * * *"
+    schedule: "*/30 * * * *"
     buildCommand: npm ci
     startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/service-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
     envVars:

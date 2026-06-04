@@ -21,6 +21,15 @@ const patchSchema = z.object({
   action: z.enum(["cancel"]),
 });
 
+function isValidOrderLink(value: string) {
+  try {
+    const url = new URL(value);
+    return ["http:", "https:"].includes(url.protocol) && Boolean(url.hostname.includes("."));
+  } catch {
+    return false;
+  }
+}
+
 export async function GET() {
   try {
     const { auth } = await requireUser();
@@ -43,6 +52,8 @@ export async function POST(request: NextRequest) {
 
     const service = await Service.findById(input.serviceId).populate("provider").lean();
     if (!service || !service.active) return fail("Service is unavailable", 404);
+    if (!service.provider?.enabled) return fail("Provider is disabled for this service", 503);
+    if (!isValidOrderLink(input.link)) return fail("Enter a valid public http/https link");
     if (input.quantity < service.min || input.quantity > service.max) {
       return fail(`Quantity must be between ${service.min} and ${service.max}`);
     }
@@ -68,8 +79,6 @@ export async function POST(request: NextRequest) {
     const balanceBefore = dbUser.walletBalance;
     dbUser.walletBalance -= sellingPrice;
     await dbUser.save();
-
-    if (!service.provider?.enabled) return fail("Provider is disabled for this service", 503);
 
     let providerResult;
     try {
@@ -101,6 +110,7 @@ export async function POST(request: NextRequest) {
       quantity: input.quantity,
       status: "Pending",
       providerCost,
+      providerCharge: providerCost,
       sellingPrice,
       promoCode: promo?.code,
       promoDiscount,

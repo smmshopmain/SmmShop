@@ -93,16 +93,16 @@ export async function getEnabledProviders() {
 }
 
 export async function ensureDefaultProviderFromEnv() {
-  const apiUrl = process.env.PROVIDER_API_URL;
+  const apiUrl = process.env.PROVIDER_API_URL || "https://cheapestsmmpanels.com/api/v2";
   const apiKey = process.env.PROVIDER_API_KEY;
-  if (!apiUrl || !apiKey) return null;
+  if (!apiKey) return null;
 
   const existing = await Provider.findOne({ apiUrl, apiKey });
   if (existing) return existing;
 
   const providerCount = await Provider.countDocuments();
   return Provider.create({
-    name: "Default Provider",
+    name: "Cheapest SMM Panels",
     apiUrl,
     apiKey,
     enabled: true,
@@ -144,6 +144,7 @@ export type ProviderStatus = {
   status?: string;
   start_count?: string | number;
   remains?: string | number;
+  charge?: string | number;
 };
 
 export async function getProviderStatuses(
@@ -204,6 +205,7 @@ export function parseProviderBoolean(value: unknown) {
 
 export function normalizeProviderOrderStatus(value: unknown) {
   const normalized = String(value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (normalized === "cancelled") return "Canceled";
   const match = ORDER_STATUSES.find((status) => status.toLowerCase() === normalized);
   return match;
 }

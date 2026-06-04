@@ -15,6 +15,7 @@ type StatusResponse = {
   status?: string;
   start_count?: string | number;
   remains?: string | number;
+  charge?: string | number;
 };
 
 export async function GET(request: NextRequest) {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     const activeOrders = await Order.find({
-      status: { $in: ["Pending", "Processing", "In Progress"] },
+      status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
       providerOrderId: { $exists: true },
     })
       .populate("provider")
@@ -49,8 +50,22 @@ export async function GET(request: NextRequest) {
           if (!status) continue;
           const normalizedStatus = normalizeProviderOrderStatus(status.status);
           if (normalizedStatus) order.status = normalizedStatus;
-          if (status.start_count !== undefined) order.startCount = Number(status.start_count);
-          if (status.remains !== undefined) order.remains = Number(status.remains);
+          if (status.start_count !== undefined) {
+            const startCount = Number(status.start_count);
+            if (Number.isFinite(startCount)) order.startCount = startCount;
+          }
+          if (status.remains !== undefined) {
+            const remains = Number(status.remains);
+            if (Number.isFinite(remains)) order.remains = remains;
+          }
+          if (status.charge !== undefined) {
+            const providerCharge = Number(status.charge);
+            if (Number.isFinite(providerCharge)) {
+              order.providerCharge = providerCharge;
+              order.providerCost = providerCharge;
+              order.profit = order.sellingPrice - providerCharge;
+            }
+          }
           order.lastStatusSyncAt = new Date();
           order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
           await order.save();

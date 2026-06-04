@@ -1,15 +1,15 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
-import { applyDepositDecision, verifyDepositWithGateway } from "@/lib/deposits";
+import { applyDepositDecision, notifyTelegramDepositRequest, verifyDepositWithGateway } from "@/lib/deposits";
 import { notifyInApp } from "@/lib/notifications";
 import { Deposit, getSettings } from "@/models";
-import { notifyTelegram } from "@/lib/telegram";
+import { publicOrigin } from "@/lib/request-origin";
 
 const schema = z.object({
   amount: z.number().min(1),
   utr: z.string().min(4).max(80),
-  proofUrl: z.string().optional(),
+  proofUrl: z.string().min(1, "Payment screenshot is required"),
 });
 
 function makeDepositId() {
@@ -61,7 +61,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const input = await parseBody(request, schema);
-    const { auth } = await requireUser();
+    const { auth, dbUser } = await requireUser();
     const settings = await getSettings();
     const deposit = await createDeposit({
       user: auth.id,
@@ -87,12 +87,11 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    await notifyTelegram("Deposit Request", [
-      `User: ${auth.email}`,
-      `Deposit ID: ${deposit.depositId}`,
-      `Amount: ${input.amount}`,
-      `UTR: ${input.utr}`,
-    ]);
+    await notifyTelegramDepositRequest({
+      deposit,
+      user: { _id: dbUser._id, name: dbUser.name, email: dbUser.email },
+      origin: publicOrigin(request),
+    });
     await notifyInApp({
       user: auth.id,
       title: "Deposit request submitted",

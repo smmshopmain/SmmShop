@@ -19,6 +19,7 @@ MONGODB_URI=
 JWT_SECRET=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
+TELEGRAM_ADMIN_ID=
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=
@@ -90,3 +91,14 @@ npm run start
 
 - `/api/health` checks MongoDB connectivity.
 - `/api/keep-alive` is available for Render/free-tier keep-alive monitors.
+
+## Telegram Deposit Verification
+
+Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_ADMIN_ID`, and `APP_BASE_URL`.
+Configure the Telegram bot webhook to:
+
+```text
+https://your-service-name.onrender.com/api/telegram/deposits
+```
+
+Only `TELEGRAM_ADMIN_ID` can use the approve/reject buttons.

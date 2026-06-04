@@ -31,8 +31,14 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     const form = new FormData(event.currentTarget);
     setLoading(true);
     setMessage("");
-    let proofUrl = form.get("proofUrl") || undefined;
+    let proofUrl = String(form.get("proofUrl") ?? "").trim();
     const proofFile = form.get("proofFile");
+
+    if (!(proofFile instanceof File && proofFile.size > 0) && !proofUrl) {
+      setLoading(false);
+      setMessage("Payment screenshot is required.");
+      return;
+    }
 
     if (proofFile instanceof File && proofFile.size > 0) {
       const uploadForm = new FormData();
@@ -105,11 +111,11 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
         <input name="utr" required className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
       <label className="grid gap-2 text-sm font-medium">
-        Proof file
+        Payment screenshot
         <input name="proofFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
       </label>
       <label className="grid gap-2 text-sm font-medium">
-        Proof URL
+        Screenshot URL
         <input name="proofUrl" type="url" className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
       {message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>}

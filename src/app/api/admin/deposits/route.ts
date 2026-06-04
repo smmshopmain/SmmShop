@@ -3,7 +3,6 @@ import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { applyDepositDecision } from "@/lib/deposits";
 import { AuditLog, Deposit } from "@/models";
-import { notifyTelegram } from "@/lib/telegram";
 
 export async function GET() {
   try {
@@ -37,10 +36,10 @@ export async function PATCH(request: NextRequest) {
       },
       source: action === "approve" ? "deposit_approved" : "deposit_rejected",
       reviewedBy: auth.id,
+      adminAction: action === "approve" ? "web_approve" : "web_reject",
     });
 
     await AuditLog.create({ actor: auth.id, action: `deposit.${action}`, entity: "Deposit", entityId: id });
-    await notifyTelegram(action === "approve" ? "Deposit Approval" : "Deposit Rejection", [`Deposit: ${id}`]);
     return ok({ deposit });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to review deposit");
