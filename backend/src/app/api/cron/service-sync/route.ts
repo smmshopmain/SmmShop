@@ -31,6 +31,25 @@ function cleanString(value: unknown, fallback: string) {
   return parsed || fallback;
 }
 
+function normalizeServiceList(value: unknown): ProviderService[] {
+  if (Array.isArray(value)) return value;
+  if (value && typeof value === "object") {
+    const candidate = value as Record<string, unknown>;
+    const arrays = [
+      candidate.services,
+      candidate.data,
+      candidate.result,
+      candidate.list,
+      candidate.response,
+      candidate.payload,
+    ];
+    for (const maybeArray of arrays) {
+      if (Array.isArray(maybeArray)) return maybeArray as ProviderService[];
+    }
+  }
+  return [];
+}
+
 export async function GET(request: NextRequest) {
   const authError = await requireCronOrAdmin(request);
   if (authError) return authError;
@@ -48,7 +67,8 @@ export async function GET(request: NextRequest) {
     const errors: string[] = [];
     for (const provider of providers) {
       try {
-        const services = await providerRequest<ProviderService[]>(provider, { action: "services" });
+        const servicesResponse = await providerRequest<unknown>(provider, { action: "services" });
+        const services = normalizeServiceList(servicesResponse);
         if (!Array.isArray(services)) {
           throw new Error(`${provider.name} did not return a services array`);
         }
@@ -190,7 +210,15 @@ export async function GET(request: NextRequest) {
       { active: false, serviceCount: 0, lastSyncedAt: new Date() },
     );
     categoriesSynced = activeCategoryNames.length;
-
+    if (errors.length && imported + updated === 0) {
+      return fail("Service sync did not import any services", 500, {
+        imported,
+        updated,
+        deactivated,
+        categoriesSynced,
+        errors,
+      });
+    }
     return ok({ imported, updated, deactivated, categoriesSynced, errors: errors.length ? errors : undefined });
   } catch (error) {
     await logProviderEvent({

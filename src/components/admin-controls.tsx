@@ -34,8 +34,11 @@ export function ActionButton({
     });
     const result = await response.json().catch(() => ({}));
     setLoading(false);
-    setMessage(response.ok ? "Done" : result.message ?? "Failed");
-    if (response.ok) window.location.reload();
+    const errors = Array.isArray(result.errors) ? result.errors : undefined;
+    const successMessage = result.message || "Done";
+    const errorMessage = errors?.length ? errors.join("; ") : result.message;
+    setMessage(response.ok ? successMessage : errorMessage ?? "Failed");
+    if (response.ok && !errors?.length) window.location.reload();
   }
 
   return (
