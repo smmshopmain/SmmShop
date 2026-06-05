@@ -7,9 +7,29 @@ export async function GET(request: NextRequest) {
   const authError = await requireCronOrAdmin(request);
   if (authError) return authError;
 
+  // Run the import but don't let the HTTP request hang. If the task
+  // doesn't finish within `timeoutMs`, return a 202 and continue
+  // running the task in background.
+  const timeoutMs = Number(process.env.MANUAL_SYNC_TIMEOUT_MS ?? 10000);
+
+  const taskPromise = serviceImportTask();
+  const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), timeoutMs));
+
+  const raced = await Promise.race([taskPromise, timeoutPromise]);
+  if (raced === null) {
+    // start background continuation
+    void (async () => {
+      try {
+        await taskPromise;
+      } catch (err) {
+        console.error("Background serviceImportTask failed:", err);
+      }
+    })();
+    return ok({ message: "Service import started (running in background)" });
+  }
+
   try {
-    const result = await serviceImportTask();
-    return ok(result);
+    return ok(raced as unknown);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Service import failed");
   }
