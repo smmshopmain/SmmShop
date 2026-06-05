@@ -14,8 +14,13 @@ import { Order, Refill } from "@/models";
 type StatusResponse = {
   status?: string;
   start_count?: string | number;
+  startCount?: string | number;
   remains?: string | number;
+  remains_count?: string | number;
+  remaining?: string | number;
   charge?: string | number;
+  providerCharge?: string | number;
+  provider_charge?: string | number;
 };
 
 export async function GET(request: NextRequest) {
@@ -50,16 +55,21 @@ export async function GET(request: NextRequest) {
           if (!status) continue;
           const normalizedStatus = normalizeProviderOrderStatus(status.status);
           if (normalizedStatus) order.status = normalizedStatus;
-          if (status.start_count !== undefined) {
-            const startCount = Number(status.start_count);
+          const startCountValue = status.start_count ?? status.startCount;
+          if (startCountValue !== undefined) {
+            const startCount = Number(startCountValue);
             if (Number.isFinite(startCount)) order.startCount = startCount;
           }
-          if (status.remains !== undefined) {
-            const remains = Number(status.remains);
+
+          const remainsValue = status.remains ?? status.remains_count ?? status.remaining;
+          if (remainsValue !== undefined) {
+            const remains = Number(remainsValue);
             if (Number.isFinite(remains)) order.remains = remains;
           }
-          if (status.charge !== undefined) {
-            const providerCharge = Number(status.charge);
+
+          const providerChargeValue = status.charge ?? status.providerCharge ?? status.provider_charge;
+          if (providerChargeValue !== undefined) {
+            const providerCharge = Number(providerChargeValue);
             if (Number.isFinite(providerCharge)) {
               order.providerCharge = providerCharge;
               order.providerCost = providerCharge;

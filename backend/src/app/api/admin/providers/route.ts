@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { ensureDefaultProviderFromEnv } from "@/lib/provider";
-import { Provider, Order, AuditLog } from "@/models";
+import { Provider, Order, Service, Category, AuditLog } from "@/models";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -70,10 +70,16 @@ export async function DELETE(request: NextRequest) {
     if (!id) return fail("Provider id is required");
     const activeOrders = await Order.countDocuments({
       provider: id,
-      status: { $in: ["Pending", "Processing", "In Progress"] },
+      status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
     });
     if (activeOrders > 0) return fail("Provider has active orders and cannot be deleted", 409);
-    const provider = await Provider.findByIdAndDelete(id);
+
+    const provider = await Provider.findById(id);
+    if (!provider) return fail("Provider not found", 404);
+
+    await Provider.findByIdAndDelete(id);
+    await Service.deleteMany({ provider: id });
+    await Category.updateMany({ providers: id }, { $pull: { providers: id } });
     await AuditLog.create({ actor: auth.id, action: "provider.delete", entity: "Provider", entityId: id, before: provider });
     return ok({ deleted: true });
   } catch (error) {

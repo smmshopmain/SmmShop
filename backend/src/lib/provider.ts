@@ -236,15 +236,40 @@ export function parseProviderBoolean(value: unknown) {
   return false;
 }
 
+function normalizeStatusValue(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[_\-\s]+/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function normalizeToken(value: string) {
+  return value.replace(/\s+/g, "");
+}
+
 export function normalizeProviderOrderStatus(value: unknown) {
-  const normalized = String(value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
-  if (normalized === "cancelled") return "Canceled";
-  const match = ORDER_STATUSES.find((status) => status.toLowerCase() === normalized);
-  return match;
+  const normalized = normalizeStatusValue(value);
+  const compact = normalizeToken(normalized);
+  if (normalized === "cancelled" || compact === "cancelled") return "Canceled";
+  if (compact === "complete" || compact === "completed") return "Completed";
+
+  for (const status of ORDER_STATUSES) {
+    const candidate = status.toLowerCase();
+    const candidateCompact = normalizeToken(candidate);
+    if (normalized === candidate || compact === candidateCompact) return status;
+  }
+
+  return undefined;
 }
 
 export function normalizeProviderRefillStatus(value: unknown) {
-  const normalized = String(value ?? "").trim().toLowerCase().replace(/[_-]+/g, " ");
-  const match = REFILL_STATUSES.find((status) => status.toLowerCase() === normalized);
-  return match;
+  const normalized = normalizeStatusValue(value);
+  const compact = normalizeToken(normalized);
+  for (const status of REFILL_STATUSES) {
+    const candidate = status.toLowerCase();
+    const candidateCompact = normalizeToken(candidate);
+    if (normalized === candidate || compact === candidateCompact) return status;
+  }
+  return undefined;
 }
