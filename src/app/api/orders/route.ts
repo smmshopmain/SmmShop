@@ -164,7 +164,7 @@ export async function POST(request: NextRequest) {
           await Referral.findOneAndUpdate(
             { referrer: referrer._id, referredUser: dbUser._id },
             { $inc: { earnings: commission }, status: "Paid" },
-            { upsert: true, new: true },
+            { upsert: true, returnDocument: "after" },
           );
           await notifyInApp({
             user: referrer._id,

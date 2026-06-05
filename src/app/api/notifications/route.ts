@@ -35,7 +35,7 @@ export async function PATCH(request: NextRequest) {
     const notification = await Notification.findOneAndUpdate(
       { _id: input.id, user: auth.id },
       { readAt: new Date() },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!notification) return fail("Notification not found", 404);
     return ok({ notification });

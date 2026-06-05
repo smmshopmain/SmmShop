@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest) {
     const setting = await Setting.findOneAndUpdate(
       { key: input.key },
       { value },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     return ok({ setting });
   } catch (error) {

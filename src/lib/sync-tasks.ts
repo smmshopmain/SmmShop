@@ -68,20 +68,36 @@ async function upsertSyncStatus(taskType: TaskType, patch: Partial<{
   if (patch.status === "completed" && patch.finishedAt === undefined) {
     update.finishedAt = new Date();
   }
-  return SyncStatus.findOneAndUpdate(
-    { taskType },
-    { $set: update },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
+  try {
+    await dbConnect();
+  } catch (err) {
+    console.error("upsertSyncStatus: MongoDB unavailable, skipping SyncStatus write", err);
+    return null as any;
+  }
+
+  try {
+    return SyncStatus.findOneAndUpdate(
+      { taskType },
+      { $set: update },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
+    );
+  } catch (err) {
+    console.error("upsertSyncStatus: write failed", err);
+    return null as any;
+  }
 }
 
 async function failSyncStatus(taskType: TaskType, message: string, details?: unknown) {
-  await upsertSyncStatus(taskType, {
-    status: "failed",
-    message,
-    finishedAt: new Date(),
-    details,
-  });
+  try {
+    await upsertSyncStatus(taskType, {
+      status: "failed",
+      message,
+      finishedAt: new Date(),
+      details,
+    });
+  } catch (err) {
+    console.error("failSyncStatus: unable to persist failure status", err);
+  }
 }
 
 export async function getCurrentSyncStatuses() {
@@ -138,7 +154,7 @@ async function upsertServiceFromProvider(
       },
       $addToSet: { providers: provider._id },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 
   const existing = await Service.findOne({ provider: provider._id, providerServiceId }).select("marginPercent");
@@ -180,7 +196,7 @@ async function upsertServiceFromProvider(
       lastSyncedAt: new Date(),
       providerData: item,
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 
   return { providerServiceId, imported: !existing, updated: Boolean(existing) };

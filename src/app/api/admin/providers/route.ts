@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     const provider = await Provider.findOneAndUpdate(
       { apiUrl: input.apiUrl, apiKey: input.apiKey },
       input,
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: "after" },
     );
     await AuditLog.create({
       actor: auth.id,
@@ -54,7 +54,7 @@ export async function PATCH(request: NextRequest) {
     const id = z.string().parse(body.id);
     const input = schema.partial().parse(body);
     const before = await Provider.findById(id).lean();
-    const provider = await Provider.findByIdAndUpdate(id, input, { new: true });
+    const provider = await Provider.findByIdAndUpdate(id, input, { returnDocument: "after" });
     await AuditLog.create({ actor: auth.id, action: "provider.update", entity: "Provider", entityId: id, before, after: provider });
     return ok({ provider });
   } catch (error) {
