@@ -8,7 +8,11 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
   response.headers.set("Access-Control-Allow-Origin", origin);
   response.headers.set("Access-Control-Allow-Credentials", "true");
   response.headers.set("Access-Control-Allow-Methods", ALLOWED_METHODS);
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Content-Type,Authorization,X-Requested-With,Accept",
+  );
+  response.headers.set("Access-Control-Max-Age", "86400");
   response.headers.set("Vary", "Origin");
   return response;
 }

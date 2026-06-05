@@ -37,22 +37,33 @@ export function publicOrigin(request: NextRequest) {
   return request.nextUrl.origin.toLowerCase();
 }
 
-export function allowedRequestOrigins(request: NextRequest) {
+export function configuredRequestOrigins() {
   return new Set(
     [
-      normalizeOrigin(process.env.APP_BASE_URL),
       normalizeOrigin(process.env.FRONTEND_URL),
       ...normalizeMultiOrigins(process.env.ALLOWED_ORIGINS),
-      normalizeOrigin(request.nextUrl.origin),
-      normalizeOrigin(publicOrigin(request)),
     ]
       .filter((origin): origin is string => Boolean(origin))
-      .map((origin) => origin?.toLowerCase()),
+      .map((origin) => origin.toLowerCase()),
+  );
+}
+
+export function allowedRequestOrigins(request: NextRequest) {
+  return new Set([
+    ...configuredRequestOrigins(),
+    normalizeOrigin(request.nextUrl.origin),
+    normalizeOrigin(publicOrigin(request)),
+  ]
+    .filter((origin): origin is string => Boolean(origin))
+    .map((origin) => origin.toLowerCase()),
   );
 }
 
 export function isAllowedOrigin(request: NextRequest, origin: string | null) {
   if (!origin) return true;
   const normalizedOrigin = normalizeOrigin(origin);
-  return Boolean(normalizedOrigin && allowedRequestOrigins(request).has(normalizedOrigin));
+  const configuredOrigins = configuredRequestOrigins();
+  if (!normalizedOrigin) return false;
+  if (configuredOrigins.size === 0) return true;
+  return configuredOrigins.has(normalizedOrigin);
 }
