@@ -120,11 +120,31 @@ export async function serviceSyncTask() {
       details: { providerName: provider.name, providerIndex: providerProgress },
     });
 
+    // per-provider counters for more detailed logging
+    let providerImported = 0;
+    let providerUpdated = 0;
+
+    await logProviderEvent({
+      provider,
+      scope: "service_sync",
+      action: "services",
+      message: `Requesting services list from provider`,
+      details: { provider: provider.name },
+    });
+
     const rawServices = await providerRequest<ProviderService[]>(provider, { action: "services" });
     const services = getServiceArray(rawServices);
     if (!Array.isArray(services) || services.length === 0) {
       throw new Error(`${provider.name} did not return a services array`);
     }
+
+    await logProviderEvent({
+      provider,
+      scope: "service_sync",
+      action: "services",
+      message: `Provider returned services`,
+      details: { provider: provider.name, providerServiceCount: services.length },
+    });
 
     const providerServiceIds: string[] = [];
     for (const item of services) {
@@ -192,8 +212,20 @@ export async function serviceSyncTask() {
         { upsert: true, new: true },
       );
 
-      if (existing) updated += 1;
-      else imported += 1;
+      if (existing) {
+        updated += 1;
+        providerUpdated += 1;
+      } else {
+        imported += 1;
+        providerImported += 1;
+        await logProviderEvent({
+          provider,
+          scope: "service_sync",
+          action: "service_import",
+          message: `Imported service ${providerServiceId}`,
+          details: { providerServiceId, name: item.name ?? item.service ?? null },
+        });
+      }
     }
 
     const deactivateResult = await Service.updateMany(
@@ -220,7 +252,7 @@ export async function serviceSyncTask() {
       scope: "service_sync",
       action: "services",
       message: `Synced ${providerServiceIds.length} services from ${provider.name}`,
-      details: { providerServiceCount: providerServiceIds.length },
+      details: { providerServiceCount: providerServiceIds.length, imported: providerImported, updated: providerUpdated, deactivated: deactivated },
     });
   }
 

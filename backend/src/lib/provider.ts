@@ -62,13 +62,28 @@ export async function providerRequest<T>(
 
   while (attempt < maxAttempts) {
     attempt += 1;
+    // add a timeout to avoid hanging requests
+    const controller = new AbortController();
+    const timeoutMs = Number(process.env.PROVIDER_REQUEST_TIMEOUT_MS ?? 15000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
+      await logProviderEvent({
+        provider,
+        scope: "provider_api",
+        action: String(payload.action ?? "request"),
+        message: `Requesting ${String(payload.action ?? "request")} (attempt ${attempt})`,
+        details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined }, attempt },
+      });
+
       const response = await fetch(provider.apiUrl, {
         method: "POST",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body,
         cache: "no-store",
+        signal: controller.signal,
       });
+
+      clearTimeout(timer);
 
       if (!response.ok) {
         const message = `${provider.name} responded with ${response.status}`;
@@ -81,6 +96,15 @@ export async function providerRequest<T>(
       }
 
       const text = await response.text();
+
+      await logProviderEvent({
+        provider,
+        scope: "provider_api",
+        action: String(payload.action ?? "request"),
+        message: `Provider response (length=${String(text.length)})`,
+        details: { snippet: text.slice(0, 200) },
+      });
+
       let parsed: T & ProviderErrorResult;
       try {
         parsed = JSON.parse(text) as T & ProviderErrorResult;
@@ -92,15 +116,16 @@ export async function providerRequest<T>(
       }
       return parsed as T;
     } catch (error) {
+      clearTimeout(timer);
       lastError = error;
-      const retryable = error instanceof Error && attempt < maxAttempts;
+      const retryable = error instanceof Error && attempt < maxAttempts && (error.name !== "AbortError");
       if (retryable) {
         await logProviderEvent({
           provider,
           level: "warning",
           scope: "provider_api",
           action: String(payload.action ?? "request"),
-          message: `Retry ${attempt} failed: ${error.message}`,
+          message: `Retry ${attempt} failed: ${error instanceof Error ? error.message : String(error)}`,
           details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined }, attempt },
         });
         await sleep(500 * attempt);

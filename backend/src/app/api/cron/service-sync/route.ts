@@ -67,11 +67,26 @@ export async function GET(request: NextRequest) {
     const errors: string[] = [];
     for (const provider of providers) {
       try {
+        await logProviderEvent({
+          provider,
+          scope: "service_sync",
+          action: "services",
+          message: `Requesting services from provider ${provider.name}`,
+        });
+
         const servicesResponse = await providerRequest<unknown>(provider, { action: "services" });
         const services = normalizeServiceList(servicesResponse);
         if (!Array.isArray(services)) {
           throw new Error(`${provider.name} did not return a services array`);
         }
+
+        await logProviderEvent({
+          provider,
+          scope: "service_sync",
+          action: "services",
+          message: `Provider ${provider.name} returned ${services.length} items`,
+          details: { count: Array.isArray(services) ? services.length : 0 },
+        });
 
         const providerServiceIds: string[] = [];
 
