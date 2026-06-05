@@ -3,7 +3,6 @@ import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
-import { Deposit } from "@/models";
 
 const STATUSES = ["Pending", "Approved", "Rejected"];
 
@@ -27,11 +26,18 @@ export default async function AdminDepositsPage({ searchParams }: { searchParams
 
   try {
     await requireAdmin();
-    deposits = (await Deposit.find(status ? { status } : {})
-      .populate("user", "name email")
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean()) as typeof deposits;
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+    const response = await fetch(`${backendUrl}/api/admin/deposits`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      cache: "no-store",
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      deposits = data.deposits?.filter((d: any) => !status || d.status === status) || [];
+    }
   } catch {
     deposits = [];
   }
