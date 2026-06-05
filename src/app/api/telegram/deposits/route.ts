@@ -30,10 +30,12 @@ type TelegramUpdate = {
 function isTelegramAdmin(callback: TelegramCallbackQuery) {
   const adminId = process.env.TELEGRAM_ADMIN_ID;
   const fromId = callback.from?.id ? String(callback.from.id) : "";
+  if (!fromId) return false;
+  
   if (adminId) return fromId === adminId;
-
-  const chatId = callback.message?.chat?.id ? String(callback.message.chat.id) : "";
-  return Boolean(fromId && process.env.TELEGRAM_CHAT_ID && fromId === process.env.TELEGRAM_CHAT_ID && chatId === fromId);
+  
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  return chatId ? fromId === chatId : false;
 }
 
 async function clearButtons(callback: TelegramCallbackQuery) {
@@ -90,7 +92,7 @@ export async function POST(request: NextRequest) {
     await applyDepositDecision({
       deposit,
       decision: { status: "Approved" },
-      source: "deposit_approved",
+      source: "telegram_deposit_approved",
       adminAction: "telegram_approve",
       adminTelegramId: String(callback.from?.id),
     });
@@ -104,7 +106,7 @@ export async function POST(request: NextRequest) {
     await applyDepositDecision({
       deposit,
       decision: { status: "Rejected", message: reason },
-      source: "deposit_rejected",
+      source: "telegram_deposit_rejected",
       adminAction: "telegram_reject",
       adminTelegramId: String(callback.from?.id),
     });
