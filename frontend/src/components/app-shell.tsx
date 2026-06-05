@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   BadgeIndianRupee,
@@ -17,7 +19,9 @@ import {
   Users,
   Wallet,
 } from "lucide-react";
-import { currentUser } from "@/lib/auth";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { apiJson, apiUrl } from "@/lib/client-api";
 
 const userLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
@@ -47,9 +51,47 @@ const adminLinks = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export async function AppShell({ children }: { children: React.ReactNode }) {
-  const user = await currentUser();
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    apiJson("/api/auth/me")
+      .then((data) => {
+        if (!mounted) return;
+        const user = data?.user ?? (data?.ok ? data : null);
+        setUser(user);
+      })
+      .catch(() => {
+        if (mounted) {
+          setUser(null);
+          router.push("/login");
+        }
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
   const links = user?.role === "admin" ? [...userLinks, ...adminLinks] : userLinks;
+
+  async function logout(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      await fetch(apiUrl("/api/auth/logout"), {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore failure and still redirect to login
+    }
+    router.push("/login");
+  }
 
   return (
     <div className="min-h-screen">
@@ -67,7 +109,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
           {links.map((item) => (
             <Link
               key={item.href}
-              href={item.href}
+              href={item.href as any}
               className="flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-neutral-700 hover:bg-amber-50 hover:text-neutral-950"
             >
               <item.icon className="size-4" />
@@ -85,8 +127,8 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
                 SMM Panel
               </Link>
               <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
-                <span className="hidden truncate text-neutral-600 sm:block">{user?.email}</span>
-                <form action="/api/auth/logout" method="post" className="shrink-0">
+                <span className="hidden truncate text-neutral-600 sm:block">{loading ? "Loading..." : user?.email ?? ""}</span>
+                <form onSubmit={logout} className="shrink-0">
                   <button className="rounded-md border border-neutral-300 px-3 py-2 text-sm font-medium hover:bg-neutral-100">
                     Logout
                   </button>
@@ -97,7 +139,7 @@ export async function AppShell({ children }: { children: React.ReactNode }) {
               {links.map((item) => (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.href as any}
                   className="inline-flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-xs font-medium text-neutral-700 hover:bg-amber-50 hover:text-neutral-950"
                 >
                   <item.icon className="size-4" />
