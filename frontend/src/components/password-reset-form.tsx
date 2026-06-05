@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 type Step = "request" | "reset" | "done";
 
@@ -22,7 +23,7 @@ export function PasswordResetForm() {
 
     const form = new FormData(event.currentTarget);
     const nextEmail = String(form.get("email") ?? "").trim();
-    const response = await fetch("/api/auth/forgot-password", {
+    const response = await apiFetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email: nextEmail }),
@@ -47,7 +48,7 @@ export function PasswordResetForm() {
     setMessage("");
 
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/auth/reset-password", {
+    const response = await apiFetch("/api/auth/reset-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

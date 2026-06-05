@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -23,7 +24,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             password: form.get("password"),
             referralCode: form.get("referralCode") || undefined,
           };
-    const response = await fetch(`/api/auth/${mode}`, {
+    const response = await apiFetch(`/api/auth/${mode}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -34,7 +35,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       setError(result.message ?? "Something went wrong");
       return;
     }
-    router.push(searchParams.get("next") ?? "/dashboard");
+    router.push((searchParams.get("next") ?? "/dashboard") as any);
     router.refresh();
   }
 

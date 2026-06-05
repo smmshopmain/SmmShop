@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 export function TicketForm() {
   const [message, setMessage] = useState("");
@@ -8,7 +9,7 @@ export function TicketForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/tickets", {
+    const response = await apiFetch("/api/tickets", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

@@ -81,6 +81,12 @@ const ProviderSchema = new Schema(
     priority: { type: Number, default: 1, index: true },
     balance: money,
     lastBalanceSyncAt: Date,
+    lastServiceSyncAt: Date,
+    serviceCache: {
+      lastFetchedAt: Date,
+      serviceCount: Number,
+      raw: Schema.Types.Mixed,
+    },
     lastError: String,
   },
   { timestamps: true },

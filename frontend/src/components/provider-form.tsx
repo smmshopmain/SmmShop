@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 export function ProviderForm() {
   const [message, setMessage] = useState("");
@@ -8,7 +9,7 @@ export function ProviderForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/providers", {
+    const response = await apiFetch("/api/admin/providers", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -59,7 +60,7 @@ export function ProviderEditForm({
     };
     if (apiKey) body.apiKey = apiKey;
 
-    const response = await fetch("/api/admin/providers", {
+    const response = await apiFetch("/api/admin/providers", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),

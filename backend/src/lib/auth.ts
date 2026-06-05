@@ -5,10 +5,11 @@ import { dbConnect } from "@/lib/db";
 import { User } from "@/models";
 
 const COOKIE_NAME = "smm_token";
+const isProduction = process.env.NODE_ENV === "production";
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
+  sameSite: "none" as const,
+  secure: isProduction,
   path: "/",
 };
 

@@ -13,10 +13,18 @@ npm install
 2. Copy `.env.example` to `.env.local` and fill real values:
 
 ```bash
+NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
+FRONTEND_URL=https://your-frontend.vercel.app
+ALLOWED_ORIGINS=https://your-frontend.vercel.app,https://your-backend.onrender.com
 PROVIDER_API_URL=
 PROVIDER_API_KEY=
 MONGODB_URI=
 JWT_SECRET=
+CRON_SECRET=
+APP_BASE_URL=
+PAYMENT_WEBHOOK_SECRET=
+PAYMENT_VERIFY_API_URL=
+PAYMENT_VERIFY_API_KEY=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 TELEGRAM_ADMIN_ID=
@@ -34,6 +42,22 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## Frontend and Backend Deployment
+
+- Frontend: deploy the next.js application to Vercel.
+- Backend: deploy the API routes and cron jobs to Render.
+- The frontend uses `NEXT_PUBLIC_API_URL` for all backend requests.
+- The backend allows CORS for configured Vercel domains via `FRONTEND_URL` and `ALLOWED_ORIGINS`.
+
+### Vercel
+
+Set `NEXT_PUBLIC_API_URL` to your Render backend URL.
+Example: `https://your-backend.onrender.com`
+
+### Render
+
+Use the existing Render service configuration and set backend env vars as shown above. The Render service keeps the backend API, MongoDB access, Telegram integration, and cron sync jobs running.
 
 ## Auth Notes
 

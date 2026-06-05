@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 type PaymentDetails = {
   qrImageUrl: string;
@@ -43,7 +44,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     if (proofFile instanceof File && proofFile.size > 0) {
       const uploadForm = new FormData();
       uploadForm.set("file", proofFile);
-      const uploadResponse = await fetch("/api/uploads/deposit-proof", {
+      const uploadResponse = await apiFetch("/api/uploads/deposit-proof", {
         method: "POST",
         body: uploadForm,
       });
@@ -56,7 +57,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
       proofUrl = uploadResult.data.url;
     }
 
-    const response = await fetch("/api/deposits", {
+    const response = await apiFetch("/api/deposits", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

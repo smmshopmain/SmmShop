@@ -3,6 +3,7 @@
 import { Info, Search, ShoppingCart } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
+import { apiFetch } from "@/lib/client-api";
 import {
   FaApple,
   FaBars,
@@ -96,23 +97,31 @@ export function ServiceBrowser() {
   const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [serviceLoading, setServiceLoading] = useState(true);
   const activePlatform = PLATFORM_OPTIONS.find((item) => item.id === platform) ?? PLATFORM_OPTIONS[0];
 
   useEffect(() => {
     let active = true;
+    setServiceLoading(true);
+    setMessage("Loading services...");
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     if (category) params.set("category", category);
     if (platform) params.set("platform", platform);
-    fetch(`/api/services?${params}`)
+    apiFetch(`/api/services?${params}`)
       .then((response) => response.json())
       .then((result) => {
         if (!active) return;
         setServices(result.data?.services ?? []);
         setCategories(result.data?.categories ?? []);
+        setMessage("");
       })
       .catch(() => {
-        if (active) setMessage("Unable to load services");
+        if (!active) return;
+        setMessage("Unable to load services. Showing cached results if available.");
+      })
+      .finally(() => {
+        if (active) setServiceLoading(false);
       });
     return () => {
       active = false;
@@ -140,7 +149,7 @@ export function ServiceBrowser() {
     }
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/promo-codes/apply", {
+    const response = await apiFetch("/api/promo-codes/apply", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ code: promoCode.trim(), amount: estimatedTotalNumber }),
@@ -163,7 +172,7 @@ export function ServiceBrowser() {
     setLoading(true);
     setMessage("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/orders", {
+    const response = await apiFetch("/api/orders", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -329,7 +338,11 @@ export function ServiceBrowser() {
                 </button>
               );
             })}
-            {services.length === 0 && <p className="p-6 text-sm text-neutral-500">No services found.</p>}
+            {services.length === 0 && (
+              <p className="p-6 text-sm text-neutral-500">
+                {serviceLoading ? "Loading services..." : message || "No services found."}
+              </p>
+            )}
           </div>
         </div>
       </section>

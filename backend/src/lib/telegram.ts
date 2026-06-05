@@ -24,7 +24,7 @@ export async function ensureTelegramWebhook(origin?: string) {
   const webhookUrl = new URL("/api/telegram/deposits", baseUrl).toString();
   return telegramRequest("setWebhook", {
     url: webhookUrl,
-    allowed_updates: ["callback_query"],
+    allowed_updates: ["callback_query", "message"],
   });
 }
 

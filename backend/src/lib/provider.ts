@@ -42,6 +42,10 @@ export async function logProviderEvent({
   }
 }
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function providerRequest<T>(
   provider: ProviderRecord,
   payload: ProviderPayload,
@@ -52,40 +56,69 @@ export async function providerRequest<T>(
     if (value !== undefined) body.set(key, String(value));
   }
 
-  try {
-    const response = await fetch(provider.apiUrl, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body,
-      cache: "no-store",
-    });
+  const maxAttempts = 3;
+  let attempt = 0;
+  let lastError: unknown = null;
 
-    if (!response.ok) {
-      throw new Error(`${provider.name} responded with ${response.status}`);
-    }
-
-    const text = await response.text();
-    let parsed: T & ProviderErrorResult;
+  while (attempt < maxAttempts) {
+    attempt += 1;
     try {
-      parsed = JSON.parse(text) as T & ProviderErrorResult;
-    } catch {
-      throw new Error(`${provider.name} returned invalid JSON`);
+      const response = await fetch(provider.apiUrl, {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body,
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        const message = `${provider.name} responded with ${response.status}`;
+        if (attempt >= maxAttempts || response.status < 500) {
+          throw new Error(message);
+        }
+        lastError = new Error(message);
+        await sleep(400 * attempt);
+        continue;
+      }
+
+      const text = await response.text();
+      let parsed: T & ProviderErrorResult;
+      try {
+        parsed = JSON.parse(text) as T & ProviderErrorResult;
+      } catch {
+        throw new Error(`${provider.name} returned invalid JSON`);
+      }
+      if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
+        throw new Error(String(parsed.error));
+      }
+      return parsed as T;
+    } catch (error) {
+      lastError = error;
+      const retryable = error instanceof Error && attempt < maxAttempts;
+      if (retryable) {
+        await logProviderEvent({
+          provider,
+          level: "warning",
+          scope: "provider_api",
+          action: String(payload.action ?? "request"),
+          message: `Retry ${attempt} failed: ${error.message}`,
+          details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined }, attempt },
+        });
+        await sleep(500 * attempt);
+        continue;
+      }
+      await logProviderEvent({
+        provider,
+        level: "error",
+        scope: "provider_api",
+        action: String(payload.action ?? "request"),
+        message: error instanceof Error ? error.message : "Provider request failed",
+        details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined } },
+      });
+      throw error;
     }
-    if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
-      throw new Error(String(parsed.error));
-    }
-    return parsed as T;
-  } catch (error) {
-    await logProviderEvent({
-      provider,
-      level: "error",
-      scope: "provider_api",
-      action: String(payload.action ?? "request"),
-      message: error instanceof Error ? error.message : "Provider request failed",
-      details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined } },
-    });
-    throw error;
   }
+
+  throw lastError instanceof Error ? lastError : new Error("Provider request failed");
 }
 
 export async function getEnabledProviders() {
@@ -93,16 +126,16 @@ export async function getEnabledProviders() {
 }
 
 export async function ensureDefaultProviderFromEnv() {
-  const apiUrl = process.env.PROVIDER_API_URL || "https://cheapestsmmpanels.com/api/v2";
+  const apiUrl = process.env.PROVIDER_API_URL;
   const apiKey = process.env.PROVIDER_API_KEY;
-  if (!apiKey) return null;
+  if (!apiUrl || !apiKey) return null;
 
   const existing = await Provider.findOne({ apiUrl, apiKey });
   if (existing) return existing;
 
   const providerCount = await Provider.countDocuments();
   return Provider.create({
-    name: "Cheapest SMM Panels",
+    name: "Default provider",
     apiUrl,
     apiKey,
     enabled: true,

@@ -2,6 +2,7 @@
 
 import { KeyRound, Mail } from "lucide-react";
 import { useState } from "react";
+import { apiFetch } from "@/lib/client-api";
 
 export function ProfileSettingsForm({
   profile,
@@ -16,7 +17,7 @@ export function ProfileSettingsForm({
     const form = new FormData(event.currentTarget);
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/auth/me", {
+    const response = await apiFetch("/api/auth/me", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -95,7 +96,7 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
     const nextEmail = email.trim();
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/auth/change-email/request", {
+    const response = await apiFetch("/api/auth/change-email/request", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email: nextEmail }),
@@ -111,7 +112,7 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
     const form = new FormData(event.currentTarget);
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/auth/change-email/verify", {
+    const response = await apiFetch("/api/auth/change-email/verify", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -193,7 +194,7 @@ export function ChangePasswordForm() {
 
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/auth/change-password", {
+    const response = await apiFetch("/api/auth/change-password", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

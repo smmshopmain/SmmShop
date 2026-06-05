@@ -8,6 +8,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_API_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ALLOWED_ORIGINS
+        sync: false
       - key: PROVIDER_API_URL
         sync: false
       - key: PROVIDER_API_KEY
@@ -76,7 +82,7 @@ services:
   - type: cron
     name: smm-service-sync
     runtime: node
-    schedule: "*/30 * * * *"
+    schedule: "*/5 * * * *"
     buildCommand: npm ci
     startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/service-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
     envVars:

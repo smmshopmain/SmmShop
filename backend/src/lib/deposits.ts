@@ -208,6 +208,8 @@ export async function notifyTelegramDepositRequest({
     `Status: ${deposit.status}`,
     "",
     "Screenshot Attached",
+    "",
+    "Use /pending in Telegram to list all pending deposit requests.",
   ].join("\n");
 
   const replyMarkup = depositTelegramKeyboard(deposit._id);

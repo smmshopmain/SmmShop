@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
+import { apiFetch } from "@/lib/client-api";
 
 export function ActionButton({
   label,
@@ -26,7 +27,7 @@ export function ActionButton({
     if (confirmMessage && !window.confirm(confirmMessage)) return;
     setLoading(true);
     setMessage("");
-    const response = await fetch(endpoint, {
+    const response = await apiFetch(endpoint, {
       method,
       headers: body ? { "content-type": "application/json" } : undefined,
       body: body ? JSON.stringify(body) : undefined,
@@ -64,7 +65,7 @@ export function DepositRejectForm({ depositId }: { depositId: string }) {
     if (!window.confirm("Reject this deposit?")) return;
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/admin/deposits", {
+    const response = await apiFetch("/api/admin/deposits", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -100,7 +101,7 @@ export function WalletAdjustForm({ userId }: { userId: string }) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/wallet", {
+    const response = await apiFetch("/api/admin/wallet", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -136,7 +137,7 @@ export function PromoCodeForm() {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/promo-codes", {
+    const response = await apiFetch("/api/admin/promo-codes", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -198,7 +199,7 @@ export function PromoCodeEditForm({
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/admin/promo-codes", {
+    const response = await apiFetch("/api/admin/promo-codes", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -270,7 +271,7 @@ export function AdminResetPasswordForm({ userId }: { userId: string }) {
       setMessage("Password must be at least 8 characters.");
       return;
     }
-    const response = await fetch("/api/admin/users", {
+    const response = await apiFetch("/api/admin/users", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id: userId, action: "reset_password", password }),
@@ -337,7 +338,7 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
 
     setLoading(true);
     setMessage("");
-    const response = await fetch("/api/admin/services", {
+    const response = await apiFetch("/api/admin/services", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -426,7 +427,7 @@ export function ServiceMarginForm({ serviceId, currentMargin }: { serviceId: str
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     const margin = form.get("marginPercent");
-    const response = await fetch("/api/admin/services", {
+    const response = await apiFetch("/api/admin/services", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -500,7 +501,7 @@ export function SettingsForm({
     if (qrFile instanceof File && qrFile.size > 0) {
       const uploadForm = new FormData();
       uploadForm.set("file", qrFile);
-      const uploadResponse = await fetch("/api/admin/payment-qr", {
+      const uploadResponse = await apiFetch("/api/admin/payment-qr", {
         method: "POST",
         body: uploadForm,
       });
@@ -521,7 +522,7 @@ export function SettingsForm({
       }
     }
     const requests = [
-      fetch("/api/admin/settings", {
+      apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -532,7 +533,7 @@ export function SettingsForm({
           },
         }),
       }),
-      fetch("/api/admin/settings", {
+      apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -553,7 +554,7 @@ export function SettingsForm({
           },
         }),
       }),
-      fetch("/api/admin/settings", {
+      apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -561,7 +562,7 @@ export function SettingsForm({
           value: { lowBalanceThreshold: Number(form.get("lowBalanceThreshold")) },
         }),
       }),
-      fetch("/api/admin/settings", {
+      apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
@@ -688,7 +689,7 @@ export function TicketReplyForm({ ticketId }: { ticketId: string }) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/tickets", {
+    const response = await apiFetch("/api/tickets", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ id: ticketId, action: "reply", message: form.get("message") }),
