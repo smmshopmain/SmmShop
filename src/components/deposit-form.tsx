@@ -17,6 +17,7 @@ type PaymentDetails = {
 export function DepositForm({ payment }: { payment: PaymentDetails }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const hasPaymentDetails = Boolean(
     payment.qrImageUrl ||
       payment.upiId ||
@@ -26,6 +27,34 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
       payment.bankName ||
       payment.instructions,
   );
+
+  function uploadFile(file: File) {
+    return new Promise<{ ok: boolean; response: unknown }>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/uploads/deposit-proof");
+      xhr.withCredentials = true;
+
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) {
+          setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          resolve({ ok: xhr.status >= 200 && xhr.status < 300, response: result });
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      xhr.onerror = () => reject(new Error("Upload failed"));
+      const uploadForm = new FormData();
+      uploadForm.set("file", file);
+      xhr.send(uploadForm);
+    });
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -42,19 +71,23 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     }
 
     if (proofFile instanceof File && proofFile.size > 0) {
-      const uploadForm = new FormData();
-      uploadForm.set("file", proofFile);
-      const uploadResponse = await apiFetch("/api/uploads/deposit-proof", {
-        method: "POST",
-        body: uploadForm,
-      });
-      const uploadResult = await uploadResponse.json();
-      if (!uploadResponse.ok) {
+      try {
+        setUploadProgress(0);
+        const uploadResult = await uploadFile(proofFile);
+        const parsed = uploadResult.response as { ok?: boolean; data?: { url?: string }; message?: string };
+        if (!uploadResult.ok || !parsed.data?.url) {
+          setLoading(false);
+          setUploadProgress(null);
+          setMessage(parsed.message ?? "Proof upload failed");
+          return;
+        }
+        proofUrl = parsed.data.url;
+      } catch (error) {
         setLoading(false);
-        setMessage(uploadResult.message ?? "Proof upload failed");
+        setUploadProgress(null);
+        setMessage(error instanceof Error ? error.message : "Proof upload failed");
         return;
       }
-      proofUrl = uploadResult.data.url;
     }
 
     const response = await apiFetch("/api/deposits", {
@@ -119,6 +152,14 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
         Screenshot URL
         <input name="proofUrl" type="url" className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
+      {uploadProgress !== null && (
+        <div className="rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">
+          Uploading proof: {uploadProgress}%
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-neutral-200">
+            <div className="h-2 rounded-full bg-teal-700" style={{ width: `${uploadProgress}%` }} />
+          </div>
+        </div>
+      )}
       {message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>}
       <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
         {loading ? "Submitting..." : "Submit deposit"}

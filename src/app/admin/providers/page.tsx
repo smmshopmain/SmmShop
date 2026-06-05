@@ -1,4 +1,4 @@
-import { ActionButton } from "@/components/admin-controls";
+import { ActionButton, SyncStatusPanel } from "@/components/admin-controls";
 import { ProviderEditForm, ProviderForm } from "@/components/provider-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
@@ -33,6 +33,7 @@ export default async function ProvidersPage() {
         <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
         <ActionButton label="Provider balance" endpoint="/api/cron/provider-balance" method="GET" />
       </div>
+      <SyncStatusPanel />
       <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
         <ProviderForm />
         <section className="rounded-md border border-neutral-200 bg-white">

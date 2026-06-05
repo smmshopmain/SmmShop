@@ -1,4 +1,4 @@
-import { ActionButton, ServiceAdminList, type AdminServiceItem } from "@/components/admin-controls";
+import { ActionButton, ServiceAdminList, SyncStatusPanel, type AdminServiceItem } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
 import { Service } from "@/models";
@@ -33,6 +33,7 @@ export default async function AdminServicesPage() {
         <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
         <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
       </div>
+      <SyncStatusPanel />
       <ServiceAdminList services={services} />
     </AppShell>
   );

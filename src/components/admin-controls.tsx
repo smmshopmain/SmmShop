@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { apiFetch } from "@/lib/client-api";
 
@@ -55,6 +55,83 @@ export function ActionButton({
       </button>
       {message && <span className="text-xs text-neutral-500">{message}</span>}
     </span>
+  );
+}
+
+export function SyncStatusPanel() {
+  const [statuses, setStatuses] = useState<Array<{
+    taskType: string;
+    status: string;
+    message?: string;
+    total?: number;
+    processed?: number;
+    startedAt?: string;
+    finishedAt?: string;
+  }>>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchStatuses() {
+      try {
+        const response = await apiFetch("/api/admin/sync-status");
+        const result = await response.json();
+        if (!active || !response.ok) return;
+        setStatuses(Array.isArray(result.data?.statuses) ? result.data.statuses : []);
+      } catch {
+        if (active) setStatuses([]);
+      }
+    }
+
+    fetchStatuses();
+    const interval = setInterval(fetchStatuses, 2000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (statuses.length === 0) {
+    return null;
+  }
+
+  function formatLabel(taskType: string) {
+    switch (taskType) {
+      case "service_sync":
+        return "Service import";
+      case "price_sync":
+        return "Price recalculation";
+      default:
+        return taskType.replace(/_/g, " ");
+    }
+  }
+
+  return (
+    <section className="rounded-md border border-neutral-200 bg-white p-4 text-sm">
+      <h2 className="text-lg font-semibold">Sync progress</h2>
+      <div className="mt-3 grid gap-4">
+        {statuses.map((status) => {
+          const total = status.total ?? 0;
+          const processed = status.processed ?? 0;
+          const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+          return (
+            <div key={status.taskType} className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <div className="flex items-center justify-between gap-4 text-sm font-medium text-neutral-900">
+                <span>{formatLabel(status.taskType)}</span>
+                <span className="rounded-full bg-white px-2 py-1 text-xs text-neutral-600">{status.status}</span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200">
+                <div className="h-2 rounded-full bg-teal-700" style={{ width: `${percent}%` }} />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+                <span>{status.message ?? `${processed}/${total} completed`}</span>
+                {total > 0 && <span>{percent}%</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
