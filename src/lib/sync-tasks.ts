@@ -8,7 +8,7 @@ import {
 } from "@/lib/provider";
 import { Category, getSettings, Provider, Service, SyncStatus } from "@/models";
 
-type TaskType = "service_sync" | "price_sync";
+type TaskType = "service_import" | "service_sync" | "price_sync";
 
 type ProviderService = Record<string, unknown> & {
   service?: string | number;
@@ -89,173 +89,163 @@ export async function getCurrentSyncStatuses() {
   return SyncStatus.find().sort({ updatedAt: -1 }).lean();
 }
 
-export async function serviceSyncTask() {
-  try {
-    await dbConnect();
-    await ensureDefaultProviderFromEnv();
-    const settings = await getSettings();
-    const providers = await Provider.find({ enabled: true }).sort({ priority: 1 });
-    const totalProviders = providers.length;
+async function fetchProviderServices(provider: typeof Provider.prototype) {
+  await logProviderEvent({
+    provider,
+    scope: "service_sync",
+    action: "fetch_services",
+    message: "Starting provider service fetch",
+    details: { providerName: provider.name, apiUrl: provider.apiUrl },
+  });
 
-    await upsertSyncStatus("service_sync", {
-      status: "running",
-      message: `Starting service import for ${totalProviders} provider${totalProviders === 1 ? "" : "s"}`,
-      total: totalProviders,
-      processed: 0,
-      details: { providerCount: totalProviders },
-    });
-
-    let imported = 0;
-    let updated = 0;
-    let deactivated = 0;
-    let categoriesSynced = 0;
-
-    for (const [index, provider] of providers.entries()) {
-    const providerProgress = index + 1;
-    await upsertSyncStatus("service_sync", {
-      processed: providerProgress,
-      total: totalProviders,
-      status: "running",
-      message: `Syncing services from ${provider.name} (${providerProgress}/${totalProviders})`,
-      details: { providerName: provider.name, providerIndex: providerProgress },
-    });
-
-    // per-provider counters for more detailed logging
-    let providerImported = 0;
-    let providerUpdated = 0;
-
-    await logProviderEvent({
-      provider,
-      scope: "service_sync",
-      action: "services",
-      message: `Requesting services list from provider`,
-      details: { provider: provider.name },
-    });
-
-    const rawServices = await providerRequest<ProviderService[]>(provider, { action: "services" });
-    const services = getServiceArray(rawServices);
-    if (!Array.isArray(services) || services.length === 0) {
-      throw new Error(`${provider.name} did not return a services array`);
-    }
-
-    await logProviderEvent({
-      provider,
-      scope: "service_sync",
-      action: "services",
-      message: `Provider returned services`,
-      details: { provider: provider.name, providerServiceCount: services.length },
-    });
-
-    const providerServiceIds: string[] = [];
-    for (const item of services) {
-      const providerServiceId = cleanString(item.service, "");
-      if (!providerServiceId) continue;
-
-      const categoryName = cleanString(item.category, "Uncategorized");
-      const providerRate = toNumber(item.rate, 0);
-      const min = toNumber(item.min, 1);
-      const max = toNumber(item.max, 100000);
-      providerServiceIds.push(providerServiceId);
-
-      const category = await Category.findOneAndUpdate(
-        { name: categoryName },
-        {
-          $set: {
-            name: categoryName,
-            active: true,
-            lastSyncedAt: new Date(),
-          },
-          $addToSet: { providers: provider._id },
-        },
-        { upsert: true, new: true },
-      );
-
-      const existing = await Service.findOne({ provider: provider._id, providerServiceId }).select("marginPercent");
-      const serviceMargins: Record<string, number> = {
-        ...(settings.pricing.serviceMargins as Record<string, number>),
-      };
-      if (existing?.marginPercent !== undefined && existing?.marginPercent !== null) {
-        serviceMargins[providerServiceId] = existing.marginPercent;
-      }
-
-      const sellingRate = calculateSellingRate(
-        providerRate,
-        categoryName,
-        providerServiceId,
-        existing?.marginPercent !== undefined && existing?.marginPercent !== null
-          ? {
-              ...settings.pricing,
-              serviceMargins,
-            }
-          : settings.pricing,
-      );
-
-      await Service.findOneAndUpdate(
-        { provider: provider._id, providerServiceId },
-        {
-          provider: provider._id,
-          providerServiceId,
-          name: cleanString(item.name, `Service ${providerServiceId}`),
-          categoryRef: category._id,
-          category: categoryName,
-          type: cleanString(item.type, ""),
-          providerRate,
-          sellingRate,
-          min,
-          max,
-          refill: parseProviderBoolean(item.refill),
-          cancel: parseProviderBoolean(item.cancel),
-          active: true,
-          lastSyncedAt: new Date(),
-          providerData: item,
-        },
-        { upsert: true, new: true },
-      );
-
-      if (existing) {
-        updated += 1;
-        providerUpdated += 1;
-      } else {
-        imported += 1;
-        providerImported += 1;
-        await logProviderEvent({
-          provider,
-          scope: "service_sync",
-          action: "service_import",
-          message: `Imported service ${providerServiceId}`,
-          details: { providerServiceId, name: item.name ?? item.service ?? null },
-        });
-      }
-    }
-
-    const deactivateResult = await Service.updateMany(
-      {
-        provider: provider._id,
-        providerServiceId: { $nin: providerServiceIds },
-        active: true,
-      },
-      { active: false, lastSyncedAt: new Date() },
-    );
-    deactivated += deactivateResult.modifiedCount;
-
-    provider.lastServiceSyncAt = new Date();
-    provider.serviceCache = {
-      lastFetchedAt: new Date(),
-      serviceCount: providerServiceIds.length,
-      raw: rawServices,
-    };
-    provider.lastError = undefined;
-    await provider.save();
-
-    await logProviderEvent({
-      provider,
-      scope: "service_sync",
-      action: "services",
-      message: `Synced ${providerServiceIds.length} services from ${provider.name}`,
-      details: { providerServiceCount: providerServiceIds.length, imported: providerImported, updated: providerUpdated, deactivated: deactivated },
-    });
+  const rawServices = await providerRequest<ProviderService[]>(provider, { action: "services" });
+  const services = getServiceArray(rawServices);
+  if (!Array.isArray(services) || services.length === 0) {
+    throw new Error(`${provider.name} returned no services`);
   }
 
+  await logProviderEvent({
+    provider,
+    scope: "service_sync",
+    action: "fetch_services",
+    message: "Provider returned service payload",
+    details: { providerName: provider.name, serviceCount: services.length },
+  });
+
+  return { services, rawServices };
+}
+
+async function upsertServiceFromProvider(
+  provider: typeof Provider.prototype,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+  item: ProviderService,
+) {
+  const providerServiceId = cleanString(item.service, "");
+  if (!providerServiceId) return null;
+
+  const categoryName = cleanString(item.category, "Uncategorized");
+  const providerRate = toNumber(item.rate, 0);
+  const min = toNumber(item.min, 1);
+  const max = toNumber(item.max, 100000);
+
+  const category = await Category.findOneAndUpdate(
+    { name: categoryName },
+    {
+      $set: {
+        name: categoryName,
+        active: true,
+        lastSyncedAt: new Date(),
+      },
+      $addToSet: { providers: provider._id },
+    },
+    { upsert: true, new: true },
+  );
+
+  const existing = await Service.findOne({ provider: provider._id, providerServiceId }).select("marginPercent");
+  const serviceMargins: Record<string, number> = {
+    ...(settings.pricing.serviceMargins as Record<string, number>),
+  };
+  if (existing?.marginPercent !== undefined && existing?.marginPercent !== null) {
+    serviceMargins[providerServiceId] = existing.marginPercent;
+  }
+
+  const sellingRate = calculateSellingRate(
+    providerRate,
+    categoryName,
+    providerServiceId,
+    existing?.marginPercent !== undefined && existing?.marginPercent !== null
+      ? {
+          ...settings.pricing,
+          serviceMargins,
+        }
+      : settings.pricing,
+  );
+
+  await Service.findOneAndUpdate(
+    { provider: provider._id, providerServiceId },
+    {
+      provider: provider._id,
+      providerServiceId,
+      name: cleanString(item.name, `Service ${providerServiceId}`),
+      categoryRef: category._id,
+      category: categoryName,
+      type: cleanString(item.type, ""),
+      providerRate,
+      sellingRate,
+      min,
+      max,
+      refill: parseProviderBoolean(item.refill),
+      cancel: parseProviderBoolean(item.cancel),
+      active: true,
+      lastSyncedAt: new Date(),
+      providerData: item,
+    },
+    { upsert: true, new: true },
+  );
+
+  return { providerServiceId, imported: !existing, updated: Boolean(existing) };
+}
+
+async function syncProvider(
+  provider: typeof Provider.prototype,
+  settings: Awaited<ReturnType<typeof getSettings>>,
+) {
+  const { services, rawServices } = await fetchProviderServices(provider);
+
+  const providerServiceIds: string[] = [];
+  let imported = 0;
+  let updated = 0;
+
+  for (const item of services) {
+    const result = await upsertServiceFromProvider(provider, settings, item);
+    if (!result) continue;
+    providerServiceIds.push(result.providerServiceId);
+    imported += result.imported ? 1 : 0;
+    updated += result.updated ? 1 : 0;
+  }
+
+  const deactivation = await Service.updateMany(
+    {
+      provider: provider._id,
+      providerServiceId: { $nin: providerServiceIds },
+      active: true,
+    },
+    { active: false, lastSyncedAt: new Date() },
+  );
+
+  provider.lastServiceSyncAt = new Date();
+  provider.serviceCache = {
+    lastFetchedAt: new Date(),
+    serviceCount: providerServiceIds.length,
+    raw: rawServices,
+  };
+  provider.lastError = undefined;
+  await provider.save();
+
+  await logProviderEvent({
+    provider,
+    scope: "service_sync",
+    action: "services",
+    message: `Provider sync complete`,
+    details: {
+      providerName: provider.name,
+      imported,
+      updated,
+      deactivated: deactivation.modifiedCount,
+      serviceCount: providerServiceIds.length,
+    },
+  });
+
+  return {
+    providerName: provider.name,
+    imported,
+    updated,
+    deactivated: deactivation.modifiedCount,
+    serviceCount: providerServiceIds.length,
+  };
+}
+
+async function updateCategoryMetrics() {
   const activeCategoryNames = await Service.distinct("category", { active: true });
   for (const name of activeCategoryNames) {
     const serviceCount = await Service.countDocuments({ category: name, active: true });
@@ -265,23 +255,97 @@ export async function serviceSyncTask() {
     { name: { $nin: activeCategoryNames }, active: true },
     { active: false, serviceCount: 0, lastSyncedAt: new Date() },
   );
-  categoriesSynced = activeCategoryNames.length;
+  return activeCategoryNames.length;
+}
 
-    await upsertSyncStatus("service_sync", {
+async function runProviderSyncTask(taskType: TaskType, title: string) {
+  try {
+    await dbConnect();
+    await ensureDefaultProviderFromEnv();
+    const settings = await getSettings();
+    const providers = await Provider.find({ enabled: true }).sort({ priority: 1 });
+    const totalProviders = providers.length;
+
+    await upsertSyncStatus(taskType, {
+      status: "running",
+      message: `${title} for ${totalProviders} provider${totalProviders === 1 ? "" : "s"}`,
+      total: totalProviders,
+      processed: 0,
+      details: { providerCount: totalProviders },
+    });
+
+    const providerResults: Array<{
+      providerName: string;
+      imported: number;
+      updated: number;
+      deactivated: number;
+      serviceCount: number;
+      error?: string;
+    }> = [];
+
+    for (const [index, provider] of providers.entries()) {
+      const providerProgress = index + 1;
+      await upsertSyncStatus(taskType, {
+        status: "running",
+        processed: providerProgress,
+        total: totalProviders,
+        message: `${title} ${provider.name} (${providerProgress}/${totalProviders})`,
+        details: { providerName: provider.name, providerIndex: providerProgress },
+      });
+
+      try {
+        const providerResult = await syncProvider(provider, settings);
+        providerResults.push(providerResult);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Provider sync failed";
+        await logProviderEvent({
+          provider,
+          level: "error",
+          scope: "service_sync",
+          action: "services",
+          message: `Provider sync failed: ${message}`,
+          details: { providerName: provider.name },
+        });
+        await Provider.findByIdAndUpdate(provider._id, { lastError: message });
+        providerResults.push({
+          providerName: provider.name,
+          imported: 0,
+          updated: 0,
+          deactivated: 0,
+          serviceCount: 0,
+          error: message,
+        });
+      }
+    }
+
+    const categoriesSynced = await updateCategoryMetrics();
+    const imported = providerResults.reduce((sum, item) => sum + item.imported, 0);
+    const updated = providerResults.reduce((sum, item) => sum + item.updated, 0);
+    const deactivated = providerResults.reduce((sum, item) => sum + item.deactivated, 0);
+
+    await upsertSyncStatus(taskType, {
       status: "completed",
-      message: `Imported ${imported} services, updated ${updated}, deactivated ${deactivated}`,
+      message: `${title} completed. Imported ${imported}, updated ${updated}, deactivated ${deactivated}`,
       processed: totalProviders,
       total: totalProviders,
       finishedAt: new Date(),
-      details: { imported, updated, deactivated, categoriesSynced },
+      details: { imported, updated, deactivated, categoriesSynced, providerResults },
     });
 
-    return { imported, updated, deactivated, categoriesSynced };
+    return { imported, updated, deactivated, categoriesSynced, providerResults };
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Service sync failed";
-    await failSyncStatus("service_sync", message, { error });
+    const message = error instanceof Error ? error.message : `${title} failed`;
+    await failSyncStatus(taskType, message, { error });
     throw error;
   }
+}
+
+export async function serviceImportTask() {
+  return runProviderSyncTask("service_import", "Service import");
+}
+
+export async function serviceSyncTask() {
+  return runProviderSyncTask("service_sync", "Service sync");
 }
 
 export async function priceSyncTask() {
@@ -299,47 +363,47 @@ export async function priceSyncTask() {
       details: { serviceCount: total },
     });
 
-  let updated = 0;
-  const step = Math.max(1, Math.floor(total / 40));
+    let updated = 0;
+    const step = Math.max(1, Math.floor(total / 40));
 
-  for (const [index, service] of services.entries()) {
-    const serviceMargins: Record<string, number> = {
-      ...(settings.pricing.serviceMargins as Record<string, number>),
-    };
-    if (service.marginPercent !== undefined && service.marginPercent !== null) {
-      serviceMargins[service.providerServiceId] = service.marginPercent;
+    for (const [index, service] of services.entries()) {
+      const serviceMargins: Record<string, number> = {
+        ...(settings.pricing.serviceMargins as Record<string, number>),
+      };
+      if (service.marginPercent !== undefined && service.marginPercent !== null) {
+        serviceMargins[service.providerServiceId] = service.marginPercent;
+      }
+
+      service.sellingRate = calculateSellingRate(
+        service.providerRate,
+        service.category,
+        service.providerServiceId,
+        service.marginPercent !== undefined && service.marginPercent !== null
+          ? {
+              ...settings.pricing,
+              serviceMargins,
+            }
+          : settings.pricing,
+      );
+      await service.save();
+      updated += 1;
+
+      if (index % step === 0 || index === total - 1) {
+        await upsertSyncStatus("price_sync", {
+          status: "running",
+          processed: index + 1,
+          total,
+          message: `Recalculating price ${index + 1}/${total}`,
+        });
+      }
     }
 
-    service.sellingRate = calculateSellingRate(
-      service.providerRate,
-      service.category,
-      service.providerServiceId,
-      service.marginPercent !== undefined && service.marginPercent !== null
-        ? {
-            ...settings.pricing,
-            serviceMargins,
-          }
-        : settings.pricing,
-    );
-    await service.save();
-    updated += 1;
-
-    if (index % step === 0 || index === total - 1) {
-      await upsertSyncStatus("price_sync", {
-        status: "running",
-        processed: index + 1,
-        total,
-        message: `Recalculating price ${index + 1}/${total}`,
-      });
-    }
-  }
-
-  await logProviderEvent({
-    scope: "price_sync",
-    action: "recalculate",
-    message: `Recalculated ${updated} service prices`,
-    details: { updated },
-  });
+    await logProviderEvent({
+      scope: "price_sync",
+      action: "recalculate",
+      message: `Recalculated ${updated} service prices`,
+      details: { updated },
+    });
 
     await upsertSyncStatus("price_sync", {
       status: "completed",
