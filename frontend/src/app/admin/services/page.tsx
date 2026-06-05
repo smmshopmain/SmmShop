@@ -29,7 +29,7 @@ export default async function AdminServicesPage() {
         <p className="mt-1 text-sm text-neutral-600">Control service visibility and service-level margins.</p>
       </div>
       <div className="mb-4 flex flex-wrap gap-2">
-        <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
         <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
         <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
       </div>

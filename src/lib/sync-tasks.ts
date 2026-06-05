@@ -52,15 +52,18 @@ function getServiceArray(value: unknown): ProviderService[] {
   return [];
 }
 
-async function upsertSyncStatus(taskType: TaskType, patch: Partial<{
-  status: string;
-  message: string;
-  total: number;
-  processed: number;
-  details: unknown;
-  startedAt: Date | null;
-  finishedAt: Date | null;
-}>) {
+async function upsertSyncStatus(
+  taskType: TaskType,
+  patch: Partial<{
+    status: string;
+    message: string;
+    total: number;
+    processed: number;
+    details: unknown;
+    startedAt: Date | null;
+    finishedAt: Date | null;
+  }>,
+): Promise<Awaited<ReturnType<typeof SyncStatus.findOneAndUpdate>> | null> {
   const update: Record<string, unknown> = { ...patch };
   if (patch.status === "running" && patch.startedAt === undefined) {
     update.startedAt = new Date();
@@ -72,18 +75,18 @@ async function upsertSyncStatus(taskType: TaskType, patch: Partial<{
     await dbConnect();
   } catch (err) {
     console.error("upsertSyncStatus: MongoDB unavailable, skipping SyncStatus write", err);
-    return null as any;
+    return null;
   }
 
   try {
-    return SyncStatus.findOneAndUpdate(
+    return await SyncStatus.findOneAndUpdate(
       { taskType },
       { $set: update },
       { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
     );
   } catch (err) {
     console.error("upsertSyncStatus: write failed", err);
-    return null as any;
+    return null;
   }
 }
 
@@ -276,10 +279,28 @@ async function updateCategoryMetrics() {
 
 async function runProviderSyncTask(taskType: TaskType, title: string) {
   try {
-    await dbConnect();
-    await ensureDefaultProviderFromEnv();
-    const settings = await getSettings();
-    const providers = await Provider.find({ enabled: true }).sort({ priority: 1 });
+    const dryRun = process.env.DRY_RUN_SYNC === "1";
+    let settings: Awaited<ReturnType<typeof getSettings>>;
+    let providers: typeof Provider.prototype[];
+
+    if (dryRun) {
+      settings = { pricing: { serviceMargins: {} } } as Awaited<ReturnType<typeof getSettings>>;
+      providers = [
+        {
+          _id: "dryrun",
+          name: "DryRunProvider",
+          apiUrl: process.env.PROVIDER_API_URL || "",
+          apiKey: process.env.PROVIDER_API_KEY || "",
+          priority: 1,
+        } as unknown as typeof Provider.prototype,
+      ];
+    } else {
+      await dbConnect();
+      await ensureDefaultProviderFromEnv();
+      settings = await getSettings();
+      providers = await Provider.find({ enabled: true }).sort({ priority: 1 });
+    }
+
     const totalProviders = providers.length;
 
     await upsertSyncStatus(taskType, {
@@ -290,14 +311,16 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
       details: { providerCount: totalProviders },
     });
 
-    const providerResults: Array<{
+    type ProviderSyncResult = {
       providerName: string;
       imported: number;
       updated: number;
       deactivated: number;
       serviceCount: number;
       error?: string;
-    }> = [];
+    };
+
+    const providerResults: ProviderSyncResult[] = [];
 
     for (const [index, provider] of providers.entries()) {
       const providerProgress = index + 1;
@@ -310,7 +333,22 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
       });
 
       try {
-        const providerResult = await syncProvider(provider, settings);
+        let providerResult: ProviderSyncResult;
+        if (dryRun) {
+          const services = [
+            { service: "dry-1", name: "Dry Service 1", category: "Dry", rate: 1, min: 1, max: 10 },
+            { service: "dry-2", name: "Dry Service 2", category: "Dry", rate: 2, min: 1, max: 10 },
+          ];
+          providerResult = {
+            providerName: provider.name,
+            imported: services.length,
+            updated: 0,
+            deactivated: 0,
+            serviceCount: services.length,
+          };
+        } else {
+          providerResult = await syncProvider(provider, settings);
+        }
         providerResults.push(providerResult);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Provider sync failed";

@@ -37,7 +37,7 @@ export default function ProvidersPage() {
     <AppShell>
       <h1 className="mb-6 text-2xl font-semibold">Provider management</h1>
       <div className="mb-4 flex flex-wrap gap-2">
-        <ActionButton label="Import services" endpoint="/api/cron/service-sync" method="GET" />
+        <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
         <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
         <ActionButton label="Provider balance" endpoint="/api/cron/provider-balance" method="GET" />
       </div>
