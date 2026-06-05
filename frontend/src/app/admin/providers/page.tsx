@@ -72,6 +72,13 @@ export default function ProvidersPage() {
                     method="DELETE"
                     danger
                   />
+                  <ActionButton
+                    label="Force delete"
+                    endpoint={`/api/admin/providers?id=${String(provider._id)}&force=true`}
+                    method="DELETE"
+                    danger
+                    confirmMessage="Force delete this provider even if active orders exist?"
+                  />
                 </div>
                 <ProviderEditForm
                   provider={{

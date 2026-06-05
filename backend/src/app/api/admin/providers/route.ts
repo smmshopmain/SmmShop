@@ -67,12 +67,13 @@ export async function DELETE(request: NextRequest) {
     const { auth } = await requireAdmin();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
+    const force = searchParams.get("force") === "true";
     if (!id) return fail("Provider id is required");
     const activeOrders = await Order.countDocuments({
       provider: id,
       status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
     });
-    if (activeOrders > 0) return fail("Provider has active orders and cannot be deleted", 409);
+    if (activeOrders > 0 && !force) return fail("Provider has active orders and cannot be deleted", 409);
 
     const provider = await Provider.findById(id);
     if (!provider) return fail("Provider not found", 404);
@@ -80,7 +81,15 @@ export async function DELETE(request: NextRequest) {
     await Provider.findByIdAndDelete(id);
     await Service.deleteMany({ provider: provider._id });
     await Category.updateMany({ providers: provider._id }, { $pull: { providers: provider._id } });
-    await AuditLog.create({ actor: auth.id, action: "provider.delete", entity: "Provider", entityId: id, before: provider });
+    await AuditLog.create({
+      actor: auth.id,
+      action: force ? "provider.force_delete" : "provider.delete",
+      entity: "Provider",
+      entityId: id,
+      before: provider,
+      after: null,
+      details: { force, activeOrders },
+    });
     return ok({ deleted: true });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to delete provider");
