@@ -16,6 +16,7 @@ export function ProviderForm() {
         name: form.get("name"),
         apiUrl: form.get("apiUrl"),
         apiKey: form.get("apiKey"),
+        username: form.get("username"),
         priority: Number(form.get("priority")),
         enabled: form.get("enabled") === "on",
       }),
@@ -30,6 +31,7 @@ export function ProviderForm() {
       <input name="name" placeholder="Provider name" required className="rounded-md border border-neutral-300 px-3 py-2" />
       <input name="apiUrl" placeholder="API URL" type="url" required className="rounded-md border border-neutral-300 px-3 py-2" />
       <input name="apiKey" placeholder="API key" required className="rounded-md border border-neutral-300 px-3 py-2" />
+      <input name="username" placeholder="Provider username (optional)" className="rounded-md border border-neutral-300 px-3 py-2" />
       <input name="priority" placeholder="Priority" type="number" min={1} defaultValue={1} className="rounded-md border border-neutral-300 px-3 py-2" />
       <label className="flex items-center gap-2 text-sm font-medium">
         <input name="enabled" type="checkbox" defaultChecked /> Enabled
@@ -43,7 +45,7 @@ export function ProviderForm() {
 export function ProviderEditForm({
   provider,
 }: {
-  provider: { _id: string; name: string; apiUrl: string; priority: number; enabled: boolean };
+  provider: { _id: string; name: string; apiUrl: string; username?: string; priority: number; enabled: boolean };
 }) {
   const [message, setMessage] = useState("");
 
@@ -55,6 +57,7 @@ export function ProviderEditForm({
       id: provider._id,
       name: form.get("name"),
       apiUrl: form.get("apiUrl"),
+      username: form.get("username"),
       priority: Number(form.get("priority")),
       enabled: form.get("enabled") === "on",
     };
@@ -83,6 +86,12 @@ export function ProviderEditForm({
         type="url"
         defaultValue={provider.apiUrl}
         required
+        className="rounded-md border border-neutral-300 px-2 py-2 text-xs"
+      />
+      <input
+        name="username"
+        placeholder="Provider username (optional)"
+        defaultValue={provider.username ?? ""}
         className="rounded-md border border-neutral-300 px-2 py-2 text-xs"
       />
       <input

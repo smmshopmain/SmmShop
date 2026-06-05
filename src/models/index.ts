@@ -77,6 +77,7 @@ const ProviderSchema = new Schema(
     name: { type: String, required: true, trim: true },
     apiUrl: { type: String, required: true, trim: true },
     apiKey: { type: String, required: true },
+    username: { type: String, trim: true },
     enabled: { type: Boolean, default: true, index: true },
     priority: { type: Number, default: 1, index: true },
     balance: money,

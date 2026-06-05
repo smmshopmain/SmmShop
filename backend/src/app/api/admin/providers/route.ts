@@ -8,6 +8,7 @@ const schema = z.object({
   name: z.string().min(2),
   apiUrl: z.url(),
   apiKey: z.string().min(3),
+  username: z.string().trim().optional(),
   priority: z.number().int().min(1).default(1),
   enabled: z.boolean().default(true),
 });

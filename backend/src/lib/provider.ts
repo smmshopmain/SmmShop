@@ -6,6 +6,7 @@ type ProviderRecord = {
   name: string;
   apiUrl: string;
   apiKey: string;
+  username?: string;
   priority: number;
 };
 
@@ -52,6 +53,9 @@ export async function providerRequest<T>(
 ) {
   const body = new URLSearchParams();
   body.set("key", provider.apiKey);
+  if (provider.username) {
+    body.set("username", provider.username);
+  }
   for (const [key, value] of Object.entries(payload)) {
     if (value !== undefined) body.set(key, String(value));
   }
@@ -153,6 +157,7 @@ export async function getEnabledProviders() {
 export async function ensureDefaultProviderFromEnv() {
   const apiUrl = process.env.PROVIDER_API_URL;
   const apiKey = process.env.PROVIDER_API_KEY;
+  const username = process.env.PROVIDER_USERNAME;
   if (!apiUrl || !apiKey) return null;
 
   const existing = await Provider.findOne({ apiUrl, apiKey });
@@ -163,6 +168,7 @@ export async function ensureDefaultProviderFromEnv() {
     name: "Default provider",
     apiUrl,
     apiKey,
+    username: username || undefined,
     enabled: true,
     priority: providerCount + 1,
   });

@@ -54,6 +54,7 @@ export default function ProvidersPage() {
                 <div>
                   <p className="font-medium">{provider.name}</p>
                   <p className="truncate text-neutral-500">{provider.apiUrl}</p>
+                  {provider.username && <p className="truncate text-neutral-500">Username: {provider.username}</p>}
                   {provider.lastError && <p className="text-rose-700">{provider.lastError}</p>}
                 </div>
                 <span>#{provider.priority}</span>
@@ -85,6 +86,7 @@ export default function ProvidersPage() {
                     _id: String(provider._id),
                     name: provider.name,
                     apiUrl: provider.apiUrl,
+                    username: provider.username,
                     priority: provider.priority,
                     enabled: provider.enabled,
                   }}
