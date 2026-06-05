@@ -127,45 +127,45 @@ export async function GET(request: NextRequest) {
           else imported += 1;
         }
 
-      const deactivateResult = await Service.updateMany(
-        {
-          provider: provider._id,
-          providerServiceId: { $nin: providerServiceIds },
-          active: true,
-        },
-        { active: false, lastSyncedAt: new Date() },
-      );
-      deactivated += deactivateResult.modifiedCount;
+        const deactivateResult = await Service.updateMany(
+          {
+            provider: provider._id,
+            providerServiceId: { $nin: providerServiceIds },
+            active: true,
+          },
+          { active: false, lastSyncedAt: new Date() },
+        );
+        deactivated += deactivateResult.modifiedCount;
 
-      provider.serviceCache = {
-        lastFetchedAt: new Date(),
-        serviceCount: services.length,
-        raw: services,
-      };
-      provider.lastServiceSyncAt = new Date();
-      provider.lastError = undefined;
-      await provider.save();
-      await logProviderEvent({
-        provider,
-        scope: "service_sync",
-        action: "services",
-        message: `Synced ${services.length} provider services`,
-        details: { imported, updated, deactivated, categoriesSynced },
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Service sync failed";
-      errors.push(`${provider.name}: ${message}`);
-      await Provider.findByIdAndUpdate(provider._id, { lastError: message });
-      await logProviderEvent({
-        provider,
-        level: "error",
-        scope: "service_sync",
-        action: "services",
-        message,
-        details: { provider: provider._id },
-      });
-      continue;
-    }
+        provider.serviceCache = {
+          lastFetchedAt: new Date(),
+          serviceCount: services.length,
+          raw: services,
+        };
+        provider.lastServiceSyncAt = new Date();
+        provider.lastError = undefined;
+        await provider.save();
+        await logProviderEvent({
+          provider,
+          scope: "service_sync",
+          action: "services",
+          message: `Synced ${services.length} provider services`,
+          details: { imported, updated, deactivated, categoriesSynced },
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Service sync failed";
+        errors.push(`${provider.name}: ${message}`);
+        await Provider.findByIdAndUpdate(provider._id, { lastError: message });
+        await logProviderEvent({
+          provider,
+          level: "error",
+          scope: "service_sync",
+          action: "services",
+          message,
+          details: { provider: provider._id },
+        });
+        continue;
+      }
     }
 
     const activeCategoryNames = await Service.distinct("category", { active: true });
