@@ -24,6 +24,7 @@
   },
   "devDependencies": {
     "@types/node": "^20",
+    "@types/react": "^18",
     "@types/nodemailer": "^8.0.0",
     "typescript": "^5",
     "tsx": "^4.22.4"
