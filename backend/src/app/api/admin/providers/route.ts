@@ -78,8 +78,8 @@ export async function DELETE(request: NextRequest) {
     if (!provider) return fail("Provider not found", 404);
 
     await Provider.findByIdAndDelete(id);
-    await Service.deleteMany({ provider: id });
-    await Category.updateMany({ providers: id }, { $pull: { providers: id } });
+    await Service.deleteMany({ provider: provider._id });
+    await Category.updateMany({ providers: provider._id }, { $pull: { providers: provider._id } });
     await AuditLog.create({ actor: auth.id, action: "provider.delete", entity: "Provider", entityId: id, before: provider });
     return ok({ deleted: true });
   } catch (error) {

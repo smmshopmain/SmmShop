@@ -57,18 +57,27 @@ export async function GET(request: NextRequest) {
 
         for (const item of services) {
           const providerServiceId = cleanString(
-            item.service ?? item.serviceId ?? item.id ?? item.providerServiceId,
+            item.service ?? item.serviceId ?? item.id ?? item.providerServiceId ?? item.service_id ?? item.sid,
             "",
           );
           if (!providerServiceId) continue;
 
           const categoryName = cleanString(
-            item.category ?? item.categoryName ?? item.cat ?? item.group,
+            item.category ?? item.categoryName ?? item.category_name ?? item.cat ?? item.group,
             "Uncategorized",
           );
-          const providerRate = toNumber(item.rate ?? item.price ?? item.cost ?? item.providerRate, 0);
-          const min = toNumber(item.min ?? item.min_order ?? item.minQty ?? item.minimum ?? 1, 1);
-          const max = toNumber(item.max ?? item.max_order ?? item.maxQty ?? item.maximum ?? 100000, 100000);
+          const providerRate = toNumber(
+            item.rate ?? item.price ?? item.cost ?? item.providerRate ?? item.provider_charge ?? item.charge,
+            0,
+          );
+          const min = toNumber(
+            item.min ?? item.min_order ?? item.min_order_quantity ?? item.minQty ?? item.minqty ?? item.minimum ?? 1,
+            1,
+          );
+          const max = toNumber(
+            item.max ?? item.max_order ?? item.max_order_quantity ?? item.maxQty ?? item.maxqty ?? item.maximum ?? 100000,
+            100000,
+          );
           providerServiceIds.push(providerServiceId);
 
           const category = await Category.findOneAndUpdate(
@@ -107,10 +116,13 @@ export async function GET(request: NextRequest) {
             {
               provider: provider._id,
               providerServiceId,
-              name: cleanString(item.name, `Service ${providerServiceId}`),
+              name: cleanString(
+                item.name ?? item.serviceName ?? item.service_name ?? item.title,
+                `Service ${providerServiceId}`,
+              ),
               categoryRef: category._id,
               category: categoryName,
-              type: cleanString(item.type, ""),
+              type: cleanString(item.type ?? item.serviceType ?? item.typeName, ""),
               providerRate,
               sellingRate,
               min,
