@@ -2,9 +2,5 @@
   "version": 2,
   "builds": [
     { "src": "frontend/package.json", "use": "@vercel/next" }
-  ],
-  "routes": [
-    { "src": "/favicon.ico", "dest": "/frontend/public/favicon.ico" },
-    { "src": "^/(.*)$", "dest": "/frontend/$1" }
   ]
 }
