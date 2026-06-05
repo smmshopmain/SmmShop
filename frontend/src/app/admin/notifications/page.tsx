@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { requireAdmin } from "@/lib/auth";
-import { Notification } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function AdminNotificationsPage() {
   let notifications: Array<{
@@ -13,12 +12,8 @@ export default async function AdminNotificationsPage() {
   }> = [];
 
   try {
-    await requireAdmin();
-    notifications = (await Notification.find()
-      .populate("user", "email")
-      .sort({ createdAt: -1 })
-      .limit(200)
-      .lean()) as typeof notifications;
+    const data = await serverApiJson("/api/admin/notifications");
+    notifications = data.notifications ?? [];
   } catch {
     notifications = [];
   }

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiUrl } from "@/lib/client-api";
 
 export function ActionButton({
   label,
@@ -489,6 +489,7 @@ export function SettingsForm({
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const currentQrImageUrl = payment.qrImageUrl?.startsWith("/api/") ? apiUrl(payment.qrImageUrl) : payment.qrImageUrl;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -654,11 +655,11 @@ export function SettingsForm({
             <textarea name="instructions" rows={3} defaultValue={payment.instructions} className="rounded-md border border-neutral-300 px-3 py-2" />
           </label>
         </div>
-        {payment.qrImageUrl && (
+        {currentQrImageUrl && (
           <div className="grid gap-2 text-sm">
             <span className="font-medium">Current QR</span>
             <img
-              src={payment.qrImageUrl}
+              src={currentQrImageUrl}
               alt="Payment QR"
               className="h-44 w-44 rounded-md border border-neutral-200 bg-white object-contain p-2"
             />

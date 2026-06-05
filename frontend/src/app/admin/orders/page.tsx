@@ -1,12 +1,7 @@
 import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { requireAdmin } from "@/lib/auth";
-import { Order } from "@/models";
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function AdminOrdersPage({ searchParams }: { searchParams?: Promise<{ q?: string; status?: string }> }) {
   const params = await searchParams;
@@ -25,16 +20,8 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
   }> = [];
 
   try {
-    await requireAdmin();
-    const filter: Record<string, unknown> = {};
-    if (status) filter.status = status;
-    if (q) filter.$or = [{ link: new RegExp(escapeRegExp(q), "i") }, { providerOrderId: new RegExp(escapeRegExp(q), "i") }];
-    orders = (await Order.find(filter)
-      .populate("user", "email")
-      .populate("service", "name cancel")
-      .sort({ createdAt: -1 })
-      .limit(200)
-      .lean()) as typeof orders;
+    const data = await serverApiJson(`/api/admin/orders?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}`);
+    orders = data.orders ?? [];
   } catch {
     orders = [];
   }

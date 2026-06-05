@@ -1,8 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { ActionButton, PromoCodeEditForm, PromoCodeForm } from "@/components/admin-controls";
 import { StatusBadge } from "@/components/status-badge";
-import { requireAdmin } from "@/lib/auth";
-import { PromoCode, WalletTransaction } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function PromoCodesPage() {
   let promoCodes: Array<{
@@ -19,16 +18,9 @@ export default async function PromoCodesPage() {
   let promoDiscounts: Record<string, number> = {};
 
   try {
-    await requireAdmin();
-    const [codes, discounts] = await Promise.all([
-      PromoCode.find().sort({ createdAt: -1 }).limit(100).lean(),
-      WalletTransaction.aggregate([
-        { $match: { type: "promo" } },
-        { $group: { _id: "$reference", totalDiscount: { $sum: "$amount" } } },
-      ]),
-    ]);
-    promoCodes = codes as typeof promoCodes;
-    promoDiscounts = Object.fromEntries(discounts.map((item) => [item._id, item.totalDiscount]));
+    const data = await serverApiJson("/api/admin/promo-codes");
+    promoCodes = data.promoCodes ?? [];
+    promoDiscounts = data.promoDiscounts ?? {};
   } catch {
     promoCodes = [];
   }

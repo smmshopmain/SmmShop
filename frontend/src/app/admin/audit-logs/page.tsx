@@ -1,6 +1,5 @@
 import { AppShell } from "@/components/app-shell";
-import { requireAdmin } from "@/lib/auth";
-import { AuditLog } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 function JsonBlock({ value }: { value: unknown }) {
   if (!value) return <span className="text-xs text-neutral-400">None</span>;
@@ -28,13 +27,8 @@ export default async function AuditLogsPage({ searchParams }: { searchParams?: P
   }> = [];
 
   try {
-    await requireAdmin();
-    const filter = action ? { action: new RegExp(action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i") } : {};
-    logs = (await AuditLog.find(filter)
-      .populate("actor", "name email")
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean()) as typeof logs;
+    const data = await serverApiJson(`/api/admin/audit-logs?action=${encodeURIComponent(action)}`);
+    logs = data.logs ?? [];
   } catch {
     logs = [];
   }

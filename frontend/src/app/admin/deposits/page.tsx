@@ -2,7 +2,8 @@
 import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { requireAdmin } from "@/lib/auth";
+import { apiUrl } from "@/lib/client-api";
+import { serverApiJson } from "@/lib/server-api";
 
 const STATUSES = ["Pending", "Approved", "Rejected"];
 
@@ -25,19 +26,8 @@ export default async function AdminDepositsPage({ searchParams }: { searchParams
   }> = [];
 
   try {
-    await requireAdmin();
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
-    const response = await fetch(`${backendUrl}/api/admin/deposits`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      cache: "no-store",
-    });
-    
-    if (response.ok) {
-      const data = await response.json();
-      deposits = data.deposits?.filter((d: any) => !status || d.status === status) || [];
-    }
+    const data = await serverApiJson("/api/admin/deposits");
+    deposits = (data.deposits ?? []).filter((deposit: { status: string }) => !status || deposit.status === status);
   } catch {
     deposits = [];
   }
@@ -101,21 +91,22 @@ function FilterLink({ label, active, href }: { label: string; active: boolean; h
 }
 
 function ProofPreview({ proofUrl }: { proofUrl: string }) {
-  const isImage = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(proofUrl);
+  const resolvedProofUrl = proofUrl.startsWith("/api/") ? apiUrl(proofUrl) : proofUrl;
+  const isImage = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(resolvedProofUrl);
 
   return (
     <div className="mt-2 grid gap-2">
       {isImage ? (
-        <a href={proofUrl} target="_blank" rel="noreferrer" className="block w-fit">
+        <a href={resolvedProofUrl} target="_blank" rel="noreferrer" className="block w-fit">
           <img
-            src={proofUrl}
+            src={resolvedProofUrl}
             alt="Payment proof"
             className="h-28 w-28 rounded-md border border-neutral-200 bg-neutral-50 object-cover"
           />
         </a>
       ) : (
         <a
-          href={proofUrl}
+          href={resolvedProofUrl}
           className="inline-flex w-fit rounded-md bg-neutral-900 px-3 py-2 text-xs font-semibold text-white hover:bg-neutral-800"
           target="_blank"
           rel="noreferrer"
@@ -123,7 +114,7 @@ function ProofPreview({ proofUrl }: { proofUrl: string }) {
           Open PDF proof
         </a>
       )}
-      <a href={proofUrl} className="text-xs font-medium text-teal-700 hover:underline" target="_blank" rel="noreferrer">
+      <a href={resolvedProofUrl} className="text-xs font-medium text-teal-700 hover:underline" target="_blank" rel="noreferrer">
         Open payment proof
       </a>
     </div>

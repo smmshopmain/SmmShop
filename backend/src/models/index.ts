@@ -242,6 +242,20 @@ const ProviderLogSchema = new Schema(
   { timestamps: true },
 );
 
+const SyncStatusSchema = new Schema(
+  {
+    taskType: { type: String, required: true, unique: true, index: true },
+    status: { type: String, enum: ["pending", "running", "completed", "failed"], default: "pending", index: true },
+    message: String,
+    total: { type: Number, default: 0, min: 0 },
+    processed: { type: Number, default: 0, min: 0 },
+    details: Schema.Types.Mixed,
+    startedAt: Date,
+    finishedAt: Date,
+  },
+  { timestamps: true },
+);
+
 const NotificationSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User" },
@@ -278,6 +292,7 @@ export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
+export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSchema);
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);

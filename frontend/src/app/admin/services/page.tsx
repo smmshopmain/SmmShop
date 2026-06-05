@@ -1,19 +1,13 @@
 import { ActionButton, ServiceAdminList, type AdminServiceItem } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
-import { requireAdmin } from "@/lib/auth";
-import { Service } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function AdminServicesPage() {
   let services: AdminServiceItem[] = [];
 
   try {
-    await requireAdmin();
-    const records = (await Service.find()
-      .populate("provider", "name")
-      .sort({ category: 1, name: 1 })
-      .limit(250)
-      .lean()) as Array<Omit<AdminServiceItem, "_id"> & { _id: unknown }>;
-    services = records.map((service) => ({
+    const { services: records = [] } = await serverApiJson("/api/admin/services");
+    services = (records as Array<Omit<AdminServiceItem, "_id"> & { _id: unknown }>).map((service) => ({
       ...service,
       _id: String(service._id),
       provider: service.provider ? { name: service.provider.name } : undefined,

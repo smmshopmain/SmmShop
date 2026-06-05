@@ -1,8 +1,7 @@
 import { TicketReplyForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { requireAdmin } from "@/lib/auth";
-import { Ticket } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function AdminTicketsPage() {
   let tickets: Array<{
@@ -15,8 +14,8 @@ export default async function AdminTicketsPage() {
   }> = [];
 
   try {
-    await requireAdmin();
-    tickets = (await Ticket.find().populate("user", "name email").sort({ updatedAt: -1 }).limit(100).lean()) as typeof tickets;
+    const data = await serverApiJson("/api/admin/tickets");
+    tickets = data.tickets ?? [];
   } catch {
     tickets = [];
   }

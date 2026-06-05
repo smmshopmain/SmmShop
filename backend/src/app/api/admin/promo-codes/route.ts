@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
-import { AuditLog, PromoCode } from "@/models";
+import { AuditLog, PromoCode, WalletTransaction } from "@/models";
 
 const schema = z.object({
   code: z.string().trim().min(2).max(40),
@@ -16,8 +16,14 @@ const schema = z.object({
 export async function GET() {
   try {
     await requireAdmin();
-    const promoCodes = await PromoCode.find().sort({ createdAt: -1 }).limit(100).lean();
-    return ok({ promoCodes });
+    const [promoCodes, discounts] = await Promise.all([
+      PromoCode.find().sort({ createdAt: -1 }).limit(100).lean(),
+      WalletTransaction.aggregate([
+        { $match: { type: "promo" } },
+        { $group: { _id: "$reference", totalDiscount: { $sum: "$amount" } } },
+      ]),
+    ]);
+    return ok({ promoCodes, promoDiscounts: Object.fromEntries(discounts.map((item) => [item._id, item.totalDiscount])) });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load promo codes", 403);
   }

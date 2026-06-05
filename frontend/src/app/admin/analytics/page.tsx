@@ -1,30 +1,8 @@
 import { BadgeIndianRupee, Banknote, ShoppingBag } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
-import { requireAdmin } from "@/lib/auth";
-import { Order } from "@/models";
-
-async function revenueSince(days: number) {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  date.setDate(date.getDate() - days);
-  const [result] = await Order.aggregate([
-    { $match: { createdAt: { $gte: date } } },
-    { $group: { _id: null, orders: { $sum: 1 }, revenue: { $sum: "$sellingPrice" }, profit: { $sum: "$profit" } } },
-  ]);
-  return { orders: result?.orders ?? 0, revenue: result?.revenue ?? 0, profit: result?.profit ?? 0 };
-}
-
-function dateFilter(from?: string, to?: string) {
-  const createdAt: Record<string, Date> = {};
-  if (from) createdAt.$gte = new Date(from);
-  if (to) {
-    const end = new Date(to);
-    end.setHours(23, 59, 59, 999);
-    createdAt.$lte = end;
-  }
-  return Object.keys(createdAt).length ? { createdAt } : {};
-}
+import { apiUrl } from "@/lib/client-api";
+import { serverApiJson } from "@/lib/server-api";
 
 export default async function AnalyticsPage({ searchParams }: { searchParams?: Promise<{ from?: string; to?: string }> }) {
   const params = await searchParams;
@@ -37,34 +15,17 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
   let topCustomers: Array<{ _id: string; name?: string; email?: string; orders: number; revenue: number; profit: number }> = [];
 
   try {
-    await requireAdmin();
-    const rangeMatch = dateFilter(from, to);
-    [daily, weekly, monthly, topServices, topCustomers] = await Promise.all([
-      revenueSince(1),
-      revenueSince(7),
-      revenueSince(30),
-      Order.aggregate([
-        { $match: rangeMatch },
-        { $group: { _id: "$service", orders: { $sum: 1 }, revenue: { $sum: "$sellingPrice" }, profit: { $sum: "$profit" } } },
-        { $sort: { orders: -1 } },
-        { $limit: 10 },
-        { $lookup: { from: "services", localField: "_id", foreignField: "_id", as: "service" } },
-        { $unwind: { path: "$service", preserveNullAndEmptyArrays: true } },
-        { $project: { name: "$service.name", orders: 1, revenue: 1, profit: 1 } },
-      ]),
-      Order.aggregate([
-        { $match: rangeMatch },
-        { $group: { _id: "$user", orders: { $sum: 1 }, revenue: { $sum: "$sellingPrice" }, profit: { $sum: "$profit" } } },
-        { $sort: { revenue: -1 } },
-        { $limit: 10 },
-        { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "user" } },
-        { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
-        { $project: { name: "$user.name", email: "$user.email", orders: 1, revenue: 1, profit: 1 } },
-      ]),
-    ]);
+    const data = await serverApiJson(`/api/admin/analytics?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
+    daily = data.daily ?? daily;
+    weekly = data.weekly ?? weekly;
+    monthly = data.monthly ?? monthly;
+    topServices = data.topServices ?? [];
+    topCustomers = data.topCustomers ?? [];
   } catch {
     topServices = [];
   }
+
+  const exportUrl = apiUrl(`/api/admin/analytics/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`);
 
   return (
     <AppShell>
@@ -77,7 +38,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
         <input name="to" type="date" defaultValue={to} className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
         <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">Apply</button>
         <a
-          href={`/api/admin/analytics/export?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`}
+          href={exportUrl}
           className="rounded-md border border-neutral-300 px-4 py-2 text-center text-sm font-semibold hover:bg-neutral-50"
         >
           Export CSV

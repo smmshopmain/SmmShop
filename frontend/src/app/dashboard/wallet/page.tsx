@@ -29,10 +29,9 @@ export default function WalletPage() {
         } catch {
           setDeposits([]);
         }
-        // attempt to fetch settings for payment info
         try {
-          const settings = await apiJson("/api/admin/settings");
-          setPayment(settings?.settings?.deposits?.payment ?? payment);
+          const paymentRes = await apiJson("/api/payment-details");
+          setPayment(paymentRes?.payment ?? payment);
         } catch {
           // ignore
         }

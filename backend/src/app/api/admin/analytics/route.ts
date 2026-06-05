@@ -1,5 +1,6 @@
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { Order } from "@/models";
+import { NextRequest } from "next/server";
 
 function daysAgo(days: number) {
   const date = new Date();
@@ -8,14 +9,28 @@ function daysAgo(days: number) {
   return date;
 }
 
-export async function GET() {
+function dateFilter(from?: string | null, to?: string | null) {
+  const createdAt: Record<string, Date> = {};
+  if (from) createdAt.$gte = new Date(from);
+  if (to) {
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+    createdAt.$lte = end;
+  }
+  return Object.keys(createdAt).length ? { createdAt } : {};
+}
+
+export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
+    const { searchParams } = new URL(request.url);
+    const rangeMatch = dateFilter(searchParams.get("from"), searchParams.get("to"));
     const [daily, weekly, monthly, topServices, topCustomers] = await Promise.all([
       revenueSince(daysAgo(1)),
       revenueSince(daysAgo(7)),
       revenueSince(daysAgo(30)),
       Order.aggregate([
+        { $match: rangeMatch },
         {
           $group: {
             _id: "$service",
@@ -46,6 +61,7 @@ export async function GET() {
         },
       ]),
       Order.aggregate([
+        { $match: rangeMatch },
         {
           $group: {
             _id: "$user",

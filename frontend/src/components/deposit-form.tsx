@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiUrl } from "@/lib/client-api";
 
 type PaymentDetails = {
   qrImageUrl: string;
@@ -26,6 +26,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
       payment.bankName ||
       payment.instructions,
   );
+  const qrImageUrl = payment.qrImageUrl?.startsWith("/api/") ? apiUrl(payment.qrImageUrl) : payment.qrImageUrl;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,9 +84,9 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
         <h3 className="font-semibold">Pay using these details</h3>
         {hasPaymentDetails ? (
           <>
-            {payment.qrImageUrl && (
+            {qrImageUrl && (
               <img
-                src={payment.qrImageUrl}
+                src={qrImageUrl}
                 alt="Payment QR"
                 className="h-52 w-52 rounded-md border border-neutral-200 bg-white object-contain p-2"
               />

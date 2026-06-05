@@ -161,7 +161,13 @@ export async function ensureDefaultProviderFromEnv() {
   if (!apiUrl || !apiKey) return null;
 
   const existing = await Provider.findOne({ apiUrl, apiKey });
-  if (existing) return existing;
+  if (existing) {
+    if (username && !existing.username) {
+      existing.username = username;
+      await existing.save();
+    }
+    return existing;
+  }
 
   const providerCount = await Provider.countDocuments();
   return Provider.create({
