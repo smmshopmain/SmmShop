@@ -42,3 +42,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ignore workspace nested build/deps
+backend/node_modules/
+frontend/node_modules/
+backend/.next/
+frontend/.next/
+backend/package-lock.json
+frontend/package-lock.json
