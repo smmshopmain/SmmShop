@@ -303,13 +303,15 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
 
     const totalProviders = providers.length;
 
-    await upsertSyncStatus(taskType, {
-      status: "running",
-      message: `${title} for ${totalProviders} provider${totalProviders === 1 ? "" : "s"}`,
-      total: totalProviders,
-      processed: 0,
-      details: { providerCount: totalProviders },
-    });
+    if (!dryRun) {
+      await upsertSyncStatus(taskType, {
+        status: "running",
+        message: `${title} for ${totalProviders} provider${totalProviders === 1 ? "" : "s"}`,
+        total: totalProviders,
+        processed: 0,
+        details: { providerCount: totalProviders },
+      });
+    }
 
     type ProviderSyncResult = {
       providerName: string;
@@ -324,13 +326,15 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
 
     for (const [index, provider] of providers.entries()) {
       const providerProgress = index + 1;
-      await upsertSyncStatus(taskType, {
-        status: "running",
-        processed: providerProgress,
-        total: totalProviders,
-        message: `${title} ${provider.name} (${providerProgress}/${totalProviders})`,
-        details: { providerName: provider.name, providerIndex: providerProgress },
-      });
+      if (!dryRun) {
+        await upsertSyncStatus(taskType, {
+          status: "running",
+          processed: providerProgress,
+          total: totalProviders,
+          message: `${title} ${provider.name} (${providerProgress}/${totalProviders})`,
+          details: { providerName: provider.name, providerIndex: providerProgress },
+        });
+      }
 
       try {
         let providerResult: ProviderSyncResult;
@@ -372,10 +376,16 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
       }
     }
 
-    const categoriesSynced = await updateCategoryMetrics();
     const imported = providerResults.reduce((sum, item) => sum + item.imported, 0);
     const updated = providerResults.reduce((sum, item) => sum + item.updated, 0);
     const deactivated = providerResults.reduce((sum, item) => sum + item.deactivated, 0);
+
+    if (dryRun) {
+      // In dry-run mode we avoid any further DB writes (categories, final sync status)
+      return { imported, updated, deactivated, categoriesSynced: 0, providerResults };
+    }
+
+    const categoriesSynced = await updateCategoryMetrics();
 
     await upsertSyncStatus(taskType, {
       status: "completed",
