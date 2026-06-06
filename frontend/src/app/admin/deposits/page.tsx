@@ -1,16 +1,16 @@
+"use client";
+
 /* eslint-disable @next/next/no-img-element */
 import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { apiUrl } from "@/lib/client-api";
-import { serverApiJson } from "@/lib/server-api";
+import { apiJson, apiUrl } from "@/lib/client-api";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const STATUSES = ["Pending", "Approved", "Rejected"];
 
-export default async function AdminDepositsPage({ searchParams }: { searchParams?: Promise<{ status?: string }> }) {
-  const params = await searchParams;
-  const status = params?.status && STATUSES.includes(params.status) ? params.status : "";
-  let deposits: Array<{
+type DepositRow = {
     _id: string;
     depositId?: string;
     amount: number;
@@ -23,14 +23,31 @@ export default async function AdminDepositsPage({ searchParams }: { searchParams
     verificationStartTime: string;
     verificationEndTime: string;
     user?: { name?: string; email?: string };
-  }> = [];
+};
 
-  try {
-    const data = await serverApiJson("/api/admin/deposits");
-    deposits = (data.deposits ?? []).filter((deposit: { status: string }) => !status || deposit.status === status);
-  } catch {
-    deposits = [];
-  }
+export default function AdminDepositsPage() {
+  const searchParams = useSearchParams();
+  const requestedStatus = searchParams.get("status") ?? "";
+  const status = STATUSES.includes(requestedStatus) ? requestedStatus : "";
+  const [allDeposits, setAllDeposits] = useState<DepositRow[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    apiJson("/api/admin/deposits")
+      .then((data) => {
+        if (!mounted) return;
+        setAllDeposits(Array.isArray(data.deposits) ? data.deposits : []);
+      })
+      .catch((error) => {
+        console.error("Unable to load admin deposits", error);
+        if (mounted) setAllDeposits([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const deposits = allDeposits.filter((deposit) => !status || deposit.status === status);
 
   return (
     <AppShell>
