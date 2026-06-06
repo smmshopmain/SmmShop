@@ -4,6 +4,11 @@ import { requireCronOrAdmin } from "@/lib/cron";
 import { serviceSyncTask } from "@/lib/sync-tasks";
 
 export async function GET(request: NextRequest) {
+  console.info("[service-sync:diagnostic] request received", {
+    origin: request.headers.get("origin"),
+    hasCronSecret: Boolean(request.headers.get("x-cron-secret") ?? request.nextUrl.searchParams.get("secret")),
+  });
+
   const authError = await requireCronOrAdmin(request);
   if (authError) return authError;
 
@@ -21,10 +26,13 @@ export async function GET(request: NextRequest) {
           console.error("Background serviceSyncTask failed:", err);
         }
       })();
+      console.info("[service-sync:diagnostic] task still running in background", { timeoutMs });
       return ok({ message: "Service sync started (running in background)" });
     }
+    console.info("[service-sync:diagnostic] task completed during request", raced);
     return ok(raced as unknown);
   } catch (error) {
+    console.error("[service-sync:diagnostic] task failed", error);
     return fail(error instanceof Error ? error.message : "Service sync failed");
   }
 }

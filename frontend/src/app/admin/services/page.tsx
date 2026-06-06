@@ -1,20 +1,35 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { ActionButton, ServiceAdminList, type AdminServiceItem } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
-import { serverApiJson } from "@/lib/server-api";
+import { apiJson } from "@/lib/client-api";
 
-export default async function AdminServicesPage() {
-  let services: AdminServiceItem[] = [];
+export default function AdminServicesPage() {
+  const [services, setServices] = useState<AdminServiceItem[]>([]);
 
-  try {
-    const { services: records = [] } = await serverApiJson("/api/admin/services");
-    services = (records as Array<Omit<AdminServiceItem, "_id"> & { _id: unknown }>).map((service) => ({
-      ...service,
-      _id: String(service._id),
-      provider: service.provider ? { name: service.provider.name } : undefined,
-    }));
-  } catch {
-    services = [];
-  }
+  useEffect(() => {
+    let mounted = true;
+
+    apiJson("/api/admin/services")
+      .then(({ services: records = [] }) => {
+        if (!mounted) return;
+        setServices(
+          (records as Array<Omit<AdminServiceItem, "_id"> & { _id: unknown }>).map((service) => ({
+            ...service,
+            _id: String(service._id),
+            provider: service.provider ? { name: service.provider.name } : undefined,
+          })),
+        );
+      })
+      .catch(() => {
+        if (mounted) setServices([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <AppShell>

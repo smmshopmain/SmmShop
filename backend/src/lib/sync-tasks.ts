@@ -123,6 +123,11 @@ async function fetchProviderServices(provider: typeof Provider.prototype) {
     throw new Error(`${provider.name} returned no services`);
   }
 
+  console.info("[service-sync:diagnostic] provider services parsed", {
+    providerName: provider.name,
+    serviceCount: services.length,
+  });
+
   await logProviderEvent({
     provider,
     scope: "service_sync",
@@ -240,6 +245,15 @@ async function syncProvider(
   };
   provider.lastError = undefined;
   await provider.save();
+
+  console.info("[service-sync:diagnostic] provider upsert complete", {
+    providerName: provider.name,
+    imported,
+    updated,
+    deactivated: deactivation.modifiedCount,
+    providerServiceCount: providerServiceIds.length,
+    collection: Service.collection.name,
+  });
 
   await logProviderEvent({
     provider,

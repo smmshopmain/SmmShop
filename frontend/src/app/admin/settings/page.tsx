@@ -1,40 +1,55 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { SettingsForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
-import { serverApiJson } from "@/lib/server-api";
+import { apiJson } from "@/lib/client-api";
 import type { PlatformSettings } from "@/models";
 
-export default async function SettingsPage() {
-  let settings: PlatformSettings = {
-    pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
-    deposits: {
-      verificationMode: "manual",
-      verificationStartTime: "10:00",
-      verificationEndTime: "22:00",
-      payment: {
-        qrImageUrl: "",
-        upiId: "",
-        accountNumber: "",
-        ifsc: "",
-        accountName: "",
-        bankName: "",
-        instructions: "",
-      },
+const DEFAULT_SETTINGS: PlatformSettings = {
+  pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
+  deposits: {
+    verificationMode: "manual",
+    verificationStartTime: "10:00",
+    verificationEndTime: "22:00",
+    payment: {
+      qrImageUrl: "",
+      upiId: "",
+      accountNumber: "",
+      ifsc: "",
+      accountName: "",
+      bankName: "",
+      instructions: "",
     },
-    provider: { lowBalanceThreshold: 100 },
-    referrals: { commissionPercent: 2 },
-  };
-  let categories: string[] = [];
+  },
+  provider: { lowBalanceThreshold: 100 },
+  referrals: { commissionPercent: 2 },
+};
 
-  try {
-    const [nextSettings, servicesData] = await Promise.all([
-      serverApiJson("/api/admin/settings"),
-      serverApiJson("/api/admin/services"),
-    ]);
-    settings = nextSettings;
-    categories = servicesData.categories ?? [];
-  } catch {
-    settings = { ...settings };
-  }
+export default function SettingsPage() {
+  const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+
+    Promise.all([apiJson("/api/admin/settings"), apiJson("/api/admin/services")])
+      .then(([nextSettings, servicesData]) => {
+        if (!mounted) return;
+        setSettings(nextSettings);
+        setCategories(servicesData.categories ?? []);
+      })
+      .catch(() => {
+        if (mounted) {
+          setSettings(DEFAULT_SETTINGS);
+          setCategories([]);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <AppShell>

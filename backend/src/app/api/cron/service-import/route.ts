@@ -4,6 +4,11 @@ import { requireCronOrAdmin } from "@/lib/cron";
 import { serviceImportTask } from "@/lib/sync-tasks";
 
 export async function GET(request: NextRequest) {
+  console.info("[service-import:diagnostic] request received", {
+    origin: request.headers.get("origin"),
+    hasCronSecret: Boolean(request.headers.get("x-cron-secret") ?? request.nextUrl.searchParams.get("secret")),
+  });
+
   const authError = await requireCronOrAdmin(request);
   if (authError) return authError;
 
@@ -24,10 +29,13 @@ export async function GET(request: NextRequest) {
           console.error("Background serviceImportTask failed:", err);
         }
       })();
+      console.info("[service-import:diagnostic] task still running in background", { timeoutMs });
       return ok({ message: "Service import started (running in background)" });
     }
+    console.info("[service-import:diagnostic] task completed during request", raced);
     return ok(raced as unknown);
   } catch (error) {
+    console.error("[service-import:diagnostic] task failed", error);
     return fail(error instanceof Error ? error.message : "Service import failed");
   }
 }
