@@ -4,7 +4,7 @@
 import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { apiJson, apiUrl } from "@/lib/client-api";
+import { apiJson, backendAssetUrl, isLegacyUploadPath } from "@/lib/client-api";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -108,8 +108,8 @@ function FilterLink({ label, active, href }: { label: string; active: boolean; h
 }
 
 function ProofPreview({ proofUrl }: { proofUrl: string }) {
-  const resolvedProofUrl = proofUrl.startsWith("/api/") ? apiUrl(proofUrl) : proofUrl;
-  const isImage = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(resolvedProofUrl);
+  const resolvedProofUrl = backendAssetUrl(proofUrl);
+  const isImage = !isLegacyUploadPath(proofUrl) && /\.(jpg|jpeg|png|webp)(\?|$)/i.test(resolvedProofUrl);
 
   return (
     <div className="mt-2 grid gap-2">
@@ -128,7 +128,7 @@ function ProofPreview({ proofUrl }: { proofUrl: string }) {
           target="_blank"
           rel="noreferrer"
         >
-          Open PDF proof
+          Open payment proof
         </a>
       )}
       <a href={resolvedProofUrl} className="text-xs font-medium text-teal-700 hover:underline" target="_blank" rel="noreferrer">

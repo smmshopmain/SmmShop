@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (q) filter.$text = { $search: q };
 
     const [services, categories] = await Promise.all([
-      Service.find(filter).populate("provider", "name").sort({ category: 1, name: 1 }).limit(300).lean(),
+      Service.find(filter).populate("provider", "name").sort({ sellingRate: 1, category: 1, name: 1 }).limit(300).lean(),
       Category.find().sort({ name: 1 }).select("name active serviceCount").lean(),
     ]);
     return ok({ services, categories: [...new Set(categories.map((categoryItem) => categoryItem.name))] });

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
-import { apiFetch, apiUrl } from "@/lib/client-api";
+import { apiFetch, backendAssetUrl } from "@/lib/client-api";
 
 export function ActionButton({
   label,
@@ -489,7 +489,7 @@ export function SettingsForm({
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const currentQrImageUrl = payment.qrImageUrl?.startsWith("/api/") ? apiUrl(payment.qrImageUrl) : payment.qrImageUrl;
+  const currentQrImageUrl = backendAssetUrl(payment.qrImageUrl);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

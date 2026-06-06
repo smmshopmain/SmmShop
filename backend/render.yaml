@@ -48,6 +48,16 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: EMAIL_API_URL
+        sync: false
+      - key: EMAIL_API_KEY
+        sync: false
   - type: cron
     name: smm-keep-alive
     runtime: node
