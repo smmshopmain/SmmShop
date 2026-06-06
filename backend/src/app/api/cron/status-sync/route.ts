@@ -15,13 +15,40 @@ type StatusResponse = {
   status?: string;
   start_count?: string | number;
   startCount?: string | number;
+  start?: string | number;
+  start_count_number?: string | number;
   remains?: string | number;
   remains_count?: string | number;
   remaining?: string | number;
+  remains_number?: string | number;
   charge?: string | number;
   providerCharge?: string | number;
   provider_charge?: string | number;
 };
+
+function asFiniteNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function statusResponseForOrder(statuses: unknown, providerOrderId: string): StatusResponse | null {
+  if (!statuses || typeof statuses !== "object") return null;
+  const record = statuses as Record<string, unknown>;
+  const direct = record[providerOrderId];
+  if (direct && typeof direct === "object") return direct as StatusResponse;
+
+  if ("status" in record || "start_count" in record || "remains" in record || "charge" in record) {
+    return record as StatusResponse;
+  }
+
+  const nestedKeys = ["data", "result", "response", "orders", "statuses"] as const;
+  for (const key of nestedKeys) {
+    const nested = statusResponseForOrder(record[key], providerOrderId);
+    if (nested) return nested;
+  }
+
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const authError = await requireCronOrAdmin(request);
@@ -29,15 +56,28 @@ export async function GET(request: NextRequest) {
 
   try {
     await dbConnect();
+    const syncableStatuses = ["Pending", "Processing", "In Progress", "Partial", "Completed"];
     const activeOrders = await Order.find({
-      status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
+      status: { $in: syncableStatuses },
       providerOrderId: { $exists: true },
     })
       .populate("provider")
       .limit(100);
 
     const ordersByProvider = new Map<string, typeof activeOrders>();
+    let ordersSkipped = 0;
     for (const order of activeOrders) {
+      if (!order.provider || !("_id" in order.provider)) {
+        ordersSkipped += 1;
+        await logProviderEvent({
+          level: "warning",
+          scope: "status_sync",
+          action: "status",
+          message: "Skipping order because provider record is missing",
+          details: { orderId: String(order._id), providerOrderId: order.providerOrderId, provider: order.provider },
+        });
+        continue;
+      }
       const providerId = String(order.provider._id);
       ordersByProvider.set(providerId, [...(ordersByProvider.get(providerId) ?? []), order]);
     }
@@ -51,26 +91,26 @@ export async function GET(request: NextRequest) {
           orders.map((order) => String(order.providerOrderId)),
         );
         for (const order of orders) {
-          const status = statuses[String(order.providerOrderId)] as StatusResponse | undefined;
+          const status = statusResponseForOrder(statuses, String(order.providerOrderId));
           if (!status) continue;
           const normalizedStatus = normalizeProviderOrderStatus(status.status);
           if (normalizedStatus) order.status = normalizedStatus;
-          const startCountValue = status.start_count ?? status.startCount;
+          const startCountValue = status.start_count ?? status.startCount ?? status.start ?? status.start_count_number;
           if (startCountValue !== undefined) {
-            const startCount = Number(startCountValue);
-            if (Number.isFinite(startCount)) order.startCount = startCount;
+            const startCount = asFiniteNumber(startCountValue);
+            if (startCount !== null) order.startCount = startCount;
           }
 
-          const remainsValue = status.remains ?? status.remains_count ?? status.remaining;
+          const remainsValue = status.remains ?? status.remains_count ?? status.remaining ?? status.remains_number;
           if (remainsValue !== undefined) {
-            const remains = Number(remainsValue);
-            if (Number.isFinite(remains)) order.remains = remains;
+            const remains = asFiniteNumber(remainsValue);
+            if (remains !== null) order.remains = remains;
           }
 
           const providerChargeValue = status.charge ?? status.providerCharge ?? status.provider_charge;
           if (providerChargeValue !== undefined) {
-            const providerCharge = Number(providerChargeValue);
-            if (Number.isFinite(providerCharge)) {
+            const providerCharge = asFiniteNumber(providerChargeValue);
+            if (providerCharge !== null) {
               order.providerCharge = providerCharge;
               order.providerCost = providerCharge;
               order.profit = order.sellingPrice - providerCharge;
@@ -126,10 +166,10 @@ export async function GET(request: NextRequest) {
       scope: "status_sync",
       action: "status",
       message: `Synced ${ordersSynced} orders and ${refillsSynced} refills`,
-      details: { ordersSynced, refillsSynced },
+      details: { ordersSynced, refillsSynced, ordersSkipped },
     });
 
-    return ok({ ordersSynced, refillsSynced });
+    return ok({ ordersSynced, refillsSynced, ordersSkipped });
   } catch (error) {
     await logProviderEvent({
       level: "error",

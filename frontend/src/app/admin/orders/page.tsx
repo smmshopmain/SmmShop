@@ -1,30 +1,47 @@
+"use client";
+
 import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { serverApiJson } from "@/lib/server-api";
+import { apiJson } from "@/lib/client-api";
+import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export default async function AdminOrdersPage({ searchParams }: { searchParams?: Promise<{ q?: string; status?: string }> }) {
-  const params = await searchParams;
-  const q = params?.q?.trim() ?? "";
-  const status = params?.status?.trim() ?? "";
-  let orders: Array<{
+type AdminOrder = {
     _id: string;
     link: string;
     quantity: number;
     status: string;
     sellingPrice: number;
+    startCount?: number;
+    remains?: number;
     providerOrderId?: string;
     user?: { email?: string };
     service?: { name?: string; cancel?: boolean };
     createdAt: Date;
-  }> = [];
+};
 
-  try {
-    const data = await serverApiJson(`/api/admin/orders?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}`);
-    orders = data.orders ?? [];
-  } catch {
-    orders = [];
-  }
+export default function AdminOrdersPage() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get("q")?.trim() ?? "";
+  const status = searchParams.get("status")?.trim() ?? "";
+  const [orders, setOrders] = useState<AdminOrder[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    apiJson(`/api/admin/orders?q=${encodeURIComponent(q)}&status=${encodeURIComponent(status)}`)
+      .then((data) => {
+        if (!mounted) return;
+        setOrders(Array.isArray(data.orders) ? data.orders : []);
+      })
+      .catch((error) => {
+        console.error("Unable to load admin orders", error);
+        if (mounted) setOrders([]);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [q, status]);
 
   return (
     <AppShell>
@@ -52,6 +69,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
             <div>
               <p className="font-medium">{order.service?.name ?? "Service"}</p>
               <p className="text-neutral-500">{order.user?.email ?? "User"} / {order.providerOrderId ?? "-"}</p>
+              <p className="text-neutral-500">Start {order.startCount ?? "-"} / Remains {order.remains ?? "-"}</p>
               <p className="truncate text-neutral-500">{order.link}</p>
             </div>
             <span>{new Date(order.createdAt).toLocaleString()}</span>
