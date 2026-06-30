@@ -8,7 +8,6 @@ import { User } from "@/models";
 
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
-  phone: z.string().trim().max(25).optional(),
 });
 
 export async function GET() {
@@ -39,15 +38,8 @@ export async function PATCH(request: NextRequest) {
   try {
     const input = await parseBody(request, schema);
     const { auth, dbUser } = await requireUser();
-    const phone = input.phone || undefined;
-
-    if (phone) {
-      const existing = await User.findOne({ phone, _id: { $ne: dbUser._id } });
-      if (existing) return fail("Phone number is already in use", 409);
-    }
 
     dbUser.name = input.name;
-    dbUser.phone = phone;
     await dbUser.save();
 
     await setSessionCookie({

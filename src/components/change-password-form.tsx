@@ -1,9 +1,9 @@
 "use client";
 
-import { KeyRound, Mail, Save, UserRound } from "lucide-react";
+import { KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "@/lib/client-api";
-import { isAdminRole, UserRole } from "@/lib/roles";
+import { UserRole } from "@/lib/roles";
 
 export function ProfileSettingsForm({
   profile,
@@ -23,7 +23,6 @@ export function ProfileSettingsForm({
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         name: form.get("name"),
-        phone: form.get("phone"),
       }),
     });
     const result = await response.json();
@@ -57,9 +56,9 @@ export function ProfileSettingsForm({
           <label className="grid gap-2 font-semibold text-neutral-800">
             Phone
             <input
-              name="phone"
-              defaultValue={profile.phone}
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+              value={profile.phone || "Not set"}
+              readOnly
+              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
             />
           </label>
           <label className="grid gap-2 font-semibold text-neutral-800">
@@ -90,12 +89,13 @@ export function ProfileSettingsForm({
           {message && <p className="rounded-md bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-600">{message}</p>}
         </div>
       </form>
-      {isAdminRole(profile.role) && <AdminEmailChangeForm currentEmail={profile.email} />}
+      <EmailChangeForm currentEmail={profile.email} />
+      <PhoneChangeForm currentPhone={profile.phone} />
     </div>
   );
 }
 
-function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
+function EmailChangeForm({ currentEmail }: { currentEmail: string }) {
   const [email, setEmail] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -140,7 +140,7 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
     <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2">
         <Mail className="size-5 text-teal-700" />
-        <h2 className="text-lg font-bold text-neutral-950">Change admin email</h2>
+        <h2 className="text-lg font-bold text-neutral-950">Change email</h2>
       </div>
       <form onSubmit={requestOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[1fr_auto] md:items-end">
         <label className="grid gap-2 font-semibold text-neutral-800">
@@ -187,7 +187,109 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
   );
 }
 
+function PhoneChangeForm({ currentPhone }: { currentPhone: string }) {
+  const [phone, setPhone] = useState("");
+  const [pendingPhone, setPendingPhone] = useState("");
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function requestOtp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const nextPhone = phone.trim();
+    setLoading(true);
+    setMessage("");
+    const response = await apiFetch("/api/auth/change-phone/request", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ phone: nextPhone }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? (result.data?.message ?? "OTP sent.") : (result.message ?? "Unable to send OTP"));
+    if (response.ok) setPendingPhone(nextPhone);
+  }
+
+  async function verifyOtp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setLoading(true);
+    setMessage("");
+    const response = await apiFetch("/api/auth/change-phone/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        phone: pendingPhone,
+        otp: form.get("otp"),
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? "Phone changed successfully." : (result.message ?? "Unable to change phone"));
+    if (response.ok) window.location.reload();
+  }
+
+  return (
+    <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-2">
+        <Phone className="size-5 text-teal-700" />
+        <h2 className="text-lg font-bold text-neutral-950">Change phone</h2>
+      </div>
+      <form onSubmit={requestOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[1fr_auto] md:items-end">
+        <label className="grid gap-2 font-semibold text-neutral-800">
+          New phone
+          <input
+            value={phone}
+            onChange={(event) => setPhone(event.target.value)}
+            required
+            minLength={6}
+            maxLength={25}
+            placeholder={currentPhone || "Phone number"}
+            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
+        </label>
+        <button
+          disabled={loading}
+          className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+        >
+          {loading ? "Sending..." : "Send OTP"}
+        </button>
+      </form>
+      {pendingPhone && (
+        <form onSubmit={verifyOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[180px_auto] md:items-end">
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            OTP
+            <input
+              name="otp"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+          <button
+            disabled={loading}
+            className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+          >
+            {loading ? "Verifying..." : "Verify and change"}
+          </button>
+        </form>
+      )}
+      {message && <p className="mt-4 rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">{message}</p>}
+    </section>
+  );
+}
+
 export function ChangePasswordForm() {
+  return (
+    <div className="grid max-w-xl gap-4">
+      <CurrentPasswordChangeForm />
+      <PasswordOtpChangeForm />
+    </div>
+  );
+}
+
+function CurrentPasswordChangeForm() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -219,12 +321,12 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid max-w-xl gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+    <form onSubmit={submit} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2">
         <KeyRound className="size-5 text-teal-700" />
         <div>
           <h2 className="text-lg font-bold text-neutral-950">Change password</h2>
-          <p className="text-sm text-neutral-500">Use at least 8 characters</p>
+          <p className="text-sm text-neutral-500">Use current password</p>
         </div>
       </div>
       <label className="grid gap-2 text-sm font-semibold text-neutral-800">
@@ -264,5 +366,113 @@ export function ChangePasswordForm() {
         {loading ? "Saving..." : "Save password"}
       </button>
     </form>
+  );
+}
+
+function PasswordOtpChangeForm() {
+  const [pending, setPending] = useState(false);
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function requestOtp() {
+    setLoading(true);
+    setMessage("");
+    const response = await apiFetch("/api/auth/change-password/request", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? (result.data?.message ?? "OTP sent.") : (result.message ?? "Unable to send OTP"));
+    if (response.ok) setPending(true);
+  }
+
+  async function verifyOtp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const newPassword = String(form.get("otpNewPassword") ?? "");
+    const confirmPassword = String(form.get("otpConfirmPassword") ?? "");
+
+    if (newPassword !== confirmPassword) {
+      setMessage("New password and confirmation do not match.");
+      return;
+    }
+
+    setLoading(true);
+    setMessage("");
+    const response = await apiFetch("/api/auth/change-password/verify", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        otp: form.get("otp"),
+        newPassword,
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? "Password changed successfully." : (result.message ?? "Unable to change password"));
+    if (response.ok) event.currentTarget.reset();
+  }
+
+  return (
+    <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-center gap-2">
+        <Mail className="size-5 text-teal-700" />
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">Change password with OTP</h2>
+          <p className="text-sm text-neutral-500">OTP goes to current email</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={requestOtp}
+        disabled={loading}
+        className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+      >
+        {loading ? "Sending..." : "Send OTP"}
+      </button>
+      {pending && (
+        <form onSubmit={verifyOtp} className="grid gap-4 text-sm">
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            OTP
+            <input
+              name="otp"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              required
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            New password
+            <input
+              name="otpNewPassword"
+              type="password"
+              minLength={8}
+              required
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            Confirm new password
+            <input
+              name="otpConfirmPassword"
+              type="password"
+              minLength={8}
+              required
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+          <button
+            disabled={loading}
+            className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
+          >
+            {loading ? "Verifying..." : "Verify and change"}
+          </button>
+        </form>
+      )}
+      {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+    </section>
   );
 }

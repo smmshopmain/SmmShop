@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
+import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { buildEmailChangeOtpEmail, sendMail } from "@/lib/email";
 import { createPasswordResetOtp, hashEmailChangeOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
@@ -12,13 +12,13 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "local";
-  if (!(await rateLimit(`admin-email-change-request:${ip}`, 5))) {
+  if (!(await rateLimit(`email-change-request:${ip}`, 5))) {
     return fail("Too many email change requests", 429);
   }
 
   try {
     const { email } = await parseBody(request, schema);
-    const { auth, dbUser } = await requireAdmin();
+    const { auth, dbUser } = await requireUser();
     const nextEmail = email.toLowerCase();
 
     if (nextEmail === dbUser.email) return fail("Enter a different email address", 400);

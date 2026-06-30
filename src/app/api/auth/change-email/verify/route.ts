@@ -1,6 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
+import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { hashEmailChangeOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { setSessionCookie } from "@/lib/auth";
@@ -13,13 +13,13 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") ?? "local";
-  if (!(await rateLimit(`admin-email-change-verify:${ip}`, 10))) {
+  if (!(await rateLimit(`email-change-verify:${ip}`, 10))) {
     return fail("Too many email change attempts", 429);
   }
 
   try {
     const input = await parseBody(request, schema);
-    const { auth, dbUser } = await requireAdmin();
+    const { auth, dbUser } = await requireUser();
     const nextEmail = input.email.toLowerCase();
 
     if (
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
     await AuditLog.create({
       actor: auth.id,
-      action: "admin.email_change",
+      action: "user.email_change",
       entity: "User",
       entityId: auth.id,
       before: { email: previousEmail },

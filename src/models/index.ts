@@ -29,6 +29,13 @@ const UserSchema = new Schema(
     emailChangeTokenHash: String,
     emailChangeExpiresAt: Date,
     emailChangeAttempts: { type: Number, default: 0 },
+    phoneChangeNewPhone: { type: String, trim: true },
+    phoneChangeTokenHash: String,
+    phoneChangeExpiresAt: Date,
+    phoneChangeAttempts: { type: Number, default: 0 },
+    passwordChangeTokenHash: String,
+    passwordChangeExpiresAt: Date,
+    passwordChangeAttempts: { type: Number, default: 0 },
   },
   { timestamps: true },
 );
