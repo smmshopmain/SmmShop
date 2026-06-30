@@ -583,10 +583,86 @@ export function ServiceMarginForm({ serviceId, currentMargin }: { serviceId: str
   );
 }
 
-export function SettingsForm({
+export function PricingMarginsForm({
   globalMargin,
   categoryMargins,
   categories,
+}: {
+  globalMargin: number;
+  categoryMargins: Record<string, number>;
+  categories: string[];
+}) {
+  const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setLoading(true);
+    setMessage("");
+
+    const nextCategoryMargins: Record<string, number> = {};
+    for (const category of categories) {
+      const value = form.get(`categoryMargin:${category}`);
+      if (value !== null && String(value).trim() !== "") {
+        nextCategoryMargins[category] = Number(value);
+      }
+    }
+
+    const response = await apiFetch("/api/admin/settings", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        key: "pricing",
+        value: {
+          globalMarginPercent: Number(form.get("globalMarginPercent")),
+          categoryMargins: nextCategoryMargins,
+        },
+      }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setLoading(false);
+    setMessage(response.ok ? "Margins saved." : (result.message ?? "Unable to save margins."));
+  }
+
+  return (
+    <form onSubmit={submit} className="grid gap-4 rounded-md border border-neutral-200 bg-white p-4 md:grid-cols-2">
+      <label className="grid gap-2 text-sm font-medium">
+        Global margin %
+        <input name="globalMarginPercent" type="number" min={0} step="0.01" defaultValue={globalMargin} className="rounded-md border border-neutral-300 px-3 py-2" />
+      </label>
+      <div className="grid gap-2 md:col-span-2">
+        <h2 className="text-sm font-semibold">Category margins</h2>
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+          {categories.map((category) => (
+            <label key={category} className="grid gap-1 text-xs font-medium">
+              {category}
+              <input
+                name={`categoryMargin:${category}`}
+                type="number"
+                min={0}
+                max={500}
+                step="0.01"
+                defaultValue={categoryMargins[category] ?? ""}
+                placeholder={`${globalMargin}% global`}
+                className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              />
+            </label>
+          ))}
+          {categories.length === 0 && <p className="text-sm text-neutral-500">Import services to manage category margins.</p>}
+        </div>
+      </div>
+      <div className="flex items-end gap-3 md:col-span-2">
+        <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+          {loading ? "Saving..." : "Save margins"}
+        </button>
+        {message && <p className="text-sm text-neutral-600">{message}</p>}
+      </div>
+    </form>
+  );
+}
+
+export function SettingsForm({
   startTime,
   endTime,
   mode,
@@ -594,9 +670,6 @@ export function SettingsForm({
   lowBalanceThreshold,
   referralCommissionPercent,
 }: {
-  globalMargin: number;
-  categoryMargins: Record<string, number>;
-  categories: string[];
   startTime: string;
   endTime: string;
   mode: string;
@@ -639,25 +712,7 @@ export function SettingsForm({
       qrImageUrl = uploadResult.data.url;
     }
 
-    const nextCategoryMargins: Record<string, number> = {};
-    for (const category of categories) {
-      const value = form.get(`categoryMargin:${category}`);
-      if (value !== null && String(value).trim() !== "") {
-        nextCategoryMargins[category] = Number(value);
-      }
-    }
     const requests = [
-      apiFetch("/api/admin/settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          key: "pricing",
-          value: {
-            globalMarginPercent: Number(form.get("globalMarginPercent")),
-            categoryMargins: nextCategoryMargins,
-          },
-        }),
-      }),
       apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -703,31 +758,6 @@ export function SettingsForm({
 
   return (
     <form onSubmit={submit} className="grid gap-4 rounded-md border border-neutral-200 bg-white p-4 md:grid-cols-2">
-      <label className="grid gap-2 text-sm font-medium">
-        Global margin %
-        <input name="globalMarginPercent" type="number" min={0} step="0.01" defaultValue={globalMargin} className="rounded-md border border-neutral-300 px-3 py-2" />
-      </label>
-      <div className="grid gap-2 md:col-span-2">
-        <h2 className="text-sm font-semibold">Category margins</h2>
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-          {categories.map((category) => (
-            <label key={category} className="grid gap-1 text-xs font-medium">
-              {category}
-              <input
-                name={`categoryMargin:${category}`}
-                type="number"
-                min={0}
-                max={500}
-                step="0.01"
-                defaultValue={categoryMargins[category] ?? ""}
-                placeholder={`${globalMargin}% global`}
-                className="rounded-md border border-neutral-300 px-3 py-2 text-sm"
-              />
-            </label>
-          ))}
-          {categories.length === 0 && <p className="text-sm text-neutral-500">Import services to manage category margins.</p>}
-        </div>
-      </div>
       <label className="grid gap-2 text-sm font-medium">
         Deposit mode
         <select name="verificationMode" defaultValue={mode} className="rounded-md border border-neutral-300 px-3 py-2">

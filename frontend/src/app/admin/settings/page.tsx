@@ -7,7 +7,6 @@ import { AppShell } from "@/components/app-shell";
 import { apiJson } from "@/lib/client-api";
 
 type PlatformSettings = {
-  pricing: { globalMarginPercent: number; categoryMargins: Record<string, number>; serviceMargins: Record<string, number> };
   deposits: {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
@@ -27,7 +26,6 @@ type PlatformSettings = {
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
-  pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
   deposits: {
     verificationMode: "manual",
     verificationStartTime: "10:00",
@@ -48,21 +46,18 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
-  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     let mounted = true;
 
-    Promise.all([apiJson("/api/admin/settings"), apiJson("/api/admin/services")])
-      .then(([nextSettings, servicesData]) => {
+    apiJson("/api/admin/settings")
+      .then((nextSettings) => {
         if (!mounted) return;
         setSettings(nextSettings);
-        setCategories(servicesData.categories ?? []);
       })
       .catch(() => {
         if (mounted) {
           setSettings(DEFAULT_SETTINGS);
-          setCategories([]);
         }
       });
 
@@ -76,12 +71,9 @@ export default function SettingsPage() {
       <AdminHeader
         eyebrow="Platform controls"
         title="Platform settings"
-        description="Pricing margins, deposit verification mode, payment details, referral commission, and provider balance alerts."
+        description="Deposit verification, payment details, referral commission, and provider balance alerts."
       />
       <SettingsForm
-        globalMargin={settings.pricing.globalMarginPercent}
-        categoryMargins={settings.pricing.categoryMargins ?? {}}
-        categories={categories}
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}

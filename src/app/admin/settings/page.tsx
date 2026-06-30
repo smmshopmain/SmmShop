@@ -2,11 +2,12 @@ import { SettingsForm } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
-import { Category, getSettings, Service, type PlatformSettings } from "@/models";
+import { getSettings, type PlatformSettings } from "@/models";
+
+type SettingsPageSettings = Pick<PlatformSettings, "deposits" | "provider" | "referrals">;
 
 export default async function SettingsPage() {
-  let settings: PlatformSettings = {
-    pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
+  let settings: SettingsPageSettings = {
     deposits: {
       verificationMode: "manual",
       verificationStartTime: "10:00",
@@ -24,17 +25,11 @@ export default async function SettingsPage() {
     provider: { lowBalanceThreshold: 100 },
     referrals: { commissionPercent: 2 },
   };
-  let categories: string[] = [];
 
   try {
     await requireAdmin();
-    const [nextSettings, syncedCategories] = await Promise.all([
-      getSettings(),
-      Category.find({ active: true }).sort({ name: 1 }).select("name").lean(),
-    ]);
+    const nextSettings = await getSettings();
     settings = nextSettings;
-    categories = [...new Set(syncedCategories.map((category) => category.name))];
-    if (categories.length === 0) categories = await Service.distinct("category");
   } catch {
     settings = { ...settings };
   }
@@ -44,12 +39,9 @@ export default async function SettingsPage() {
       <AdminHeader
         eyebrow="Platform controls"
         title="Platform settings"
-        description="Pricing margins, deposit verification mode, payment details, referral commission, and provider balance alerts."
+        description="Deposit verification, payment details, referral commission, and provider balance alerts."
       />
       <SettingsForm
-        globalMargin={settings.pricing.globalMarginPercent}
-        categoryMargins={settings.pricing.categoryMargins ?? {}}
-        categories={categories}
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}

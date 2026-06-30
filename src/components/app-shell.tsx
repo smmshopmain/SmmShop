@@ -51,6 +51,7 @@ const adminLinks: NavItem[] = [
   { href: "/dashboard/profile", label: "My Profile", icon: UserRound },
   { href: "/admin/providers", label: "Providers", icon: Layers3 },
   { href: "/admin/services", label: "Service Admin", icon: Layers3 },
+  { href: "/admin/pricing" as Route, label: "Margins", icon: BadgeIndianRupee },
   { href: "/admin/orders", label: "Orders", icon: History },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/deposits", label: "Deposits", icon: CircleHelp },
