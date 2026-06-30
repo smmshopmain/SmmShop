@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
+import { CheckCircle2, Clipboard, CreditCard, UploadCloud, WalletCards } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 
 type PaymentDetails = {
@@ -16,6 +17,7 @@ type PaymentDetails = {
 
 export function DepositForm({ payment }: { payment: PaymentDetails }) {
   const [message, setMessage] = useState("");
+  const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const hasPaymentDetails = Boolean(
@@ -66,6 +68,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
 
     if (!(proofFile instanceof File && proofFile.size > 0) && !proofUrl) {
       setLoading(false);
+      setMessageTone("warning");
       setMessage("Payment screenshot is required.");
       return;
     }
@@ -78,6 +81,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
         if (!uploadResult.ok || !parsed.data?.url) {
           setLoading(false);
           setUploadProgress(null);
+          setMessageTone("warning");
           setMessage(parsed.message ?? "Proof upload failed");
           return;
         }
@@ -85,6 +89,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
       } catch (error) {
         setLoading(false);
         setUploadProgress(null);
+        setMessageTone("warning");
         setMessage(error instanceof Error ? error.message : "Proof upload failed");
         return;
       }
@@ -101,6 +106,8 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     });
     const result = await response.json();
     setLoading(false);
+    setUploadProgress(null);
+    setMessageTone(response.ok ? "success" : "warning");
     setMessage(
       response.ok
         ? `Deposit submitted. ID: ${result.data.deposit.depositId}. Verification window: ${result.data.schedule.start} - ${result.data.schedule.end}.`
@@ -110,17 +117,38 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-md border border-neutral-200 bg-white p-4">
-      <h2 className="text-lg font-semibold">Manual deposit request</h2>
-      <div className="grid gap-3 rounded-md bg-neutral-50 p-3 text-sm">
-        <h3 className="font-semibold">Pay using these details</h3>
+    <form onSubmit={submit} className="grid gap-5 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-11 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
+          <WalletCards className="size-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">Add funds</h2>
+          <p className="mt-1 text-sm leading-6 text-neutral-600">Payment karein, UTR enter karein, proof upload karein. Admin verification ke baad wallet update hoga.</p>
+        </div>
+      </div>
+
+      <div className="grid gap-2 rounded-md border border-teal-100 bg-teal-50 p-3 text-sm text-teal-950">
+        {["Pay using QR/UPI or bank details", "Enter exact amount and UTR/reference number", "Upload payment screenshot for verification"].map((step, index) => (
+          <div key={step} className="flex items-center gap-2">
+            <span className="grid size-6 place-items-center rounded-full bg-white text-xs font-bold text-teal-800">{index + 1}</span>
+            <span className="font-medium">{step}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-3 rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm">
+        <div className="flex items-center gap-2">
+          <CreditCard className="size-4 text-teal-700" />
+          <h3 className="font-semibold text-neutral-950">Payment details</h3>
+        </div>
         {hasPaymentDetails ? (
           <>
             {payment.qrImageUrl && (
               <img
                 src={payment.qrImageUrl}
                 alt="Payment QR"
-                className="h-52 w-52 rounded-md border border-neutral-200 bg-white object-contain p-2"
+                className="mx-auto h-56 w-56 rounded-md border border-neutral-200 bg-white object-contain p-2 shadow-sm"
               />
             )}
             <div className="grid gap-2">
@@ -130,28 +158,52 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
               {payment.accountNumber && <PaymentRow label="Account number" value={payment.accountNumber} />}
               {payment.ifsc && <PaymentRow label="IFSC" value={payment.ifsc} />}
             </div>
-            {payment.instructions && <p className="whitespace-pre-line rounded-md bg-white p-3 text-neutral-700">{payment.instructions}</p>}
+            {payment.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{payment.instructions}</p>}
           </>
         ) : (
-          <p className="text-neutral-600">Payment details are not configured yet. Contact support before submitting a deposit.</p>
+          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">Payment details are not configured yet. Contact support before submitting a deposit.</p>
         )}
       </div>
-      <label className="grid gap-2 text-sm font-medium">
-        Amount
-        <input name="amount" type="number" min={1} required className="rounded-md border border-neutral-300 px-3 py-2" />
-      </label>
-      <label className="grid gap-2 text-sm font-medium">
-        UTR
-        <input name="utr" required className="rounded-md border border-neutral-300 px-3 py-2" />
-      </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Payment screenshot
-        <input name="proofFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
-      </label>
-      <label className="grid gap-2 text-sm font-medium">
-        Screenshot URL
-        <input name="proofUrl" type="url" className="rounded-md border border-neutral-300 px-3 py-2" />
-      </label>
+
+      <div className="grid gap-4">
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          Amount
+          <input
+            name="amount"
+            type="number"
+            min={1}
+            required
+            placeholder="Enter amount in Rs."
+            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          UTR / Reference number
+          <input
+            name="utr"
+            required
+            placeholder="Enter UTR after payment"
+            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          Payment screenshot
+          <span className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
+            <UploadCloud className="size-6 text-teal-700" />
+            <span className="font-medium">Upload screenshot or PDF</span>
+            <input name="proofFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="sr-only" />
+          </span>
+        </label>
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          Screenshot URL <span className="text-xs font-medium text-neutral-500">Optional if file uploaded</span>
+          <input
+            name="proofUrl"
+            type="url"
+            placeholder="https://..."
+            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
+        </label>
+      </div>
       {uploadProgress !== null && (
         <div className="rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">
           Uploading proof: {uploadProgress}%
@@ -160,8 +212,19 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
           </div>
         </div>
       )}
-      {message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{message}</p>}
-      <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+      {message && (
+        <p
+          className={`rounded-md border px-3 py-2 text-sm font-medium ${
+            messageTone === "success"
+              ? "border-teal-200 bg-teal-50 text-teal-900"
+              : "border-amber-200 bg-amber-50 text-amber-900"
+          }`}
+        >
+          {messageTone === "success" && <CheckCircle2 className="mr-2 inline size-4" />}
+          {message}
+        </p>
+      )}
+      <button disabled={loading || !hasPaymentDetails} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60">
         {loading ? "Submitting..." : "Submit deposit"}
       </button>
     </form>
@@ -169,10 +232,19 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
 }
 
 function PaymentRow({ label, value }: { label: string; value: string }) {
+  async function copyValue() {
+    await navigator.clipboard?.writeText(value);
+  }
+
   return (
-    <div className="grid gap-1 rounded-md bg-white p-3">
-      <span className="text-xs font-semibold uppercase text-neutral-500">{label}</span>
-      <span className="break-words font-medium text-neutral-900">{value}</span>
+    <div className="grid gap-2 rounded-md border border-neutral-200 bg-white p-3">
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-xs font-semibold uppercase text-neutral-500">{label}</span>
+        <button type="button" onClick={copyValue} className="grid size-8 place-items-center rounded-md border border-neutral-200 text-neutral-500 hover:bg-neutral-100" aria-label={`Copy ${label}`}>
+          <Clipboard className="size-4" />
+        </button>
+      </div>
+      <span className="break-words font-semibold text-neutral-900">{value}</span>
     </div>
   );
 }

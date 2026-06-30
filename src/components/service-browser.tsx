@@ -102,8 +102,6 @@ export function ServiceBrowser() {
 
   useEffect(() => {
     let active = true;
-    setServiceLoading(true);
-    setMessage("Loading services...");
     const params = new URLSearchParams();
     if (query) params.set("q", query);
     if (category) params.set("category", category);
@@ -201,9 +199,9 @@ export function ServiceBrowser() {
 
   return (
     <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
-      <section className="min-w-0 overflow-hidden rounded-md border border-neutral-200 bg-white">
+      <section className="min-w-0 overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
         <div className="border-b border-neutral-200 p-3 sm:p-4">
-          <div className="grid grid-cols-4 gap-2 sm:grid-cols-5 sm:gap-3 lg:grid-cols-6">
+          <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:overflow-visible lg:grid-cols-6">
             {PLATFORM_OPTIONS.map((item) => {
               const Icon = item.Icon;
               const active = platform === item.id;
@@ -219,7 +217,7 @@ export function ServiceBrowser() {
                     setCategory("");
                     resetSelection();
                   }}
-                  className={`flex h-11 min-w-0 items-center justify-center rounded-md border text-lg transition sm:h-12 sm:text-xl ${
+                  className={`flex h-11 w-12 shrink-0 items-center justify-center rounded-md border text-lg transition md:w-auto ${
                     active
                       ? "border-teal-700 bg-teal-50 shadow-sm ring-1 ring-teal-700/10"
                       : "border-neutral-200 bg-white hover:border-teal-300 hover:bg-neutral-50"
@@ -241,7 +239,7 @@ export function ServiceBrowser() {
                 resetSelection();
               }}
               placeholder="Search services"
-              className="w-full rounded-md border border-neutral-300 py-2.5 pl-9 pr-3 text-sm"
+              className="w-full rounded-md border border-neutral-300 py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
           <select
@@ -250,7 +248,7 @@ export function ServiceBrowser() {
               setCategory(event.target.value);
               resetSelection();
             }}
-            className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm"
+            className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           >
             <option value="">{platform ? `${activePlatform.label} categories` : "All categories"}</option>
             {categories.map((item) => (
@@ -272,7 +270,7 @@ export function ServiceBrowser() {
                 setPromoPreview(null);
                 setMessage("");
               }}
-              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm font-normal"
+              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm font-normal shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             >
               <option value="">{services.length ? "Select service" : "No services found"}</option>
               {services.map((service) => (
@@ -347,7 +345,7 @@ export function ServiceBrowser() {
         </div>
       </section>
 
-      <section className="min-w-0 rounded-md border border-neutral-200 bg-white p-3 sm:p-4 xl:sticky xl:top-20">
+      <section className="min-w-0 rounded-md border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 xl:sticky xl:top-20">
         <div className="flex items-center gap-2">
           <ShoppingCart className="size-5 text-teal-700" />
           <h2 className="text-lg font-semibold">Place order</h2>
@@ -358,7 +356,12 @@ export function ServiceBrowser() {
         <form onSubmit={order} className="mt-5 grid gap-4">
           <label className="grid gap-2 text-sm font-medium">
             Link
-            <input name="link" type="url" required className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5" />
+            <input
+              name="link"
+              type="url"
+              required
+              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
           </label>
           <label className="grid gap-2 text-sm font-medium">
             Quantity
@@ -373,7 +376,7 @@ export function ServiceBrowser() {
                 setPromoPreview(null);
               }}
               required
-              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5"
+              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
           <div className="grid gap-2 text-sm font-medium">
@@ -385,7 +388,7 @@ export function ServiceBrowser() {
                   setPromoCode(event.target.value);
                   setPromoPreview(null);
                 }}
-                className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5"
+                className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
               />
               <button
                 type="button"

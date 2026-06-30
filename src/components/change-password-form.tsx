@@ -1,6 +1,6 @@
 "use client";
 
-import { KeyRound, Mail } from "lucide-react";
+import { KeyRound, Mail, Save, UserRound } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "@/lib/client-api";
 
@@ -33,51 +33,60 @@ export function ProfileSettingsForm({
 
   return (
     <div className="grid gap-6">
-      <form onSubmit={submit} className="rounded-md border border-neutral-200 bg-white p-4">
-        <h2 className="text-lg font-semibold">Account settings</h2>
+      <form onSubmit={submit} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
+            <UserRound className="size-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-neutral-950">Account settings</h2>
+            <p className="text-sm text-neutral-500">Basic profile information</p>
+          </div>
+        </div>
         <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-          <label className="grid gap-2 font-medium">
+          <label className="grid gap-2 font-semibold text-neutral-800">
             Name
             <input
               name="name"
               defaultValue={profile.name}
               required
-              className="rounded-md border border-neutral-300 px-3 py-2"
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
-          <label className="grid gap-2 font-medium">
+          <label className="grid gap-2 font-semibold text-neutral-800">
             Phone
             <input
               name="phone"
               defaultValue={profile.phone}
-              className="rounded-md border border-neutral-300 px-3 py-2"
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
-          <label className="grid gap-2 font-medium">
+          <label className="grid gap-2 font-semibold text-neutral-800">
             Email
             <input
               value={profile.email}
               readOnly
-              className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-600"
+              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
             />
           </label>
-          <label className="grid gap-2 font-medium">
+          <label className="grid gap-2 font-semibold text-neutral-800">
             Referral code
             <input
               value={profile.referralCode}
               readOnly
-              className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-neutral-600"
+              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
             />
           </label>
         </div>
         <div className="mt-4 flex items-center gap-3">
           <button
             disabled={loading}
-            className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
           >
+            <Save className="size-4" />
             {loading ? "Saving..." : "Save profile"}
           </button>
-          {message && <p className="text-sm text-neutral-600">{message}</p>}
+          {message && <p className="rounded-md bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-600">{message}</p>}
         </div>
       </form>
       {profile.role === "admin" && <AdminEmailChangeForm currentEmail={profile.email} />}
@@ -127,13 +136,13 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
   }
 
   return (
-    <section className="rounded-md border border-neutral-200 bg-white p-4">
+    <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2">
         <Mail className="size-5 text-teal-700" />
-        <h2 className="text-lg font-semibold">Change admin email</h2>
+        <h2 className="text-lg font-bold text-neutral-950">Change admin email</h2>
       </div>
       <form onSubmit={requestOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[1fr_auto] md:items-end">
-        <label className="grid gap-2 font-medium">
+        <label className="grid gap-2 font-semibold text-neutral-800">
           New email
           <input
             value={email}
@@ -141,19 +150,19 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
             type="email"
             required
             placeholder={currentEmail}
-            className="rounded-md border border-neutral-300 px-3 py-2"
+            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>
         <button
           disabled={loading}
-          className="rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
+          className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
         >
           {loading ? "Sending..." : "Send OTP"}
         </button>
       </form>
       {pendingEmail && (
         <form onSubmit={verifyOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[180px_auto] md:items-end">
-          <label className="grid gap-2 font-medium">
+          <label className="grid gap-2 font-semibold text-neutral-800">
             OTP
             <input
               name="otp"
@@ -161,12 +170,12 @@ function AdminEmailChangeForm({ currentEmail }: { currentEmail: string }) {
               pattern="[0-9]{6}"
               maxLength={6}
               required
-              className="rounded-md border border-neutral-300 px-3 py-2"
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
           <button
             disabled={loading}
-            className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+            className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
           >
             {loading ? "Verifying..." : "Verify and change"}
           </button>
@@ -209,44 +218,47 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid max-w-xl gap-4 rounded-md border border-neutral-200 bg-white p-4">
+    <form onSubmit={submit} className="grid max-w-xl gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-center gap-2">
         <KeyRound className="size-5 text-teal-700" />
-        <h2 className="text-lg font-semibold">Change password</h2>
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">Change password</h2>
+          <p className="text-sm text-neutral-500">Use at least 8 characters</p>
+        </div>
       </div>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
         Current password
         <input
           name="currentPassword"
           type="password"
           required
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
         New password
         <input
           name="newPassword"
           type="password"
           minLength={8}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
         Confirm new password
         <input
           name="confirmPassword"
           type="password"
           minLength={8}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
-      {message && <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
+      {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
       <button
         disabled={loading}
-        className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+        className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
       >
         {loading ? "Saving..." : "Save password"}
       </button>

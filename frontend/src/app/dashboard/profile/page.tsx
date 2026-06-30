@@ -1,41 +1,43 @@
-"use client";
-
-import React, { useEffect, useState } from "react";
 import { ChangePasswordForm, ProfileSettingsForm } from "@/components/change-password-form";
 import { AppShell } from "@/components/app-shell";
-import { apiJson } from "@/lib/client-api";
+import { requireUser } from "@/lib/auth";
+import { ShieldCheck, UserRound } from "lucide-react";
 
-export default function ProfilePage() {
-  const [profile, setProfile] = useState({ name: "", email: "", phone: "", referralCode: "", role: "user" as "user" | "admin" });
-  const [loading, setLoading] = useState(true);
+export default async function ProfilePage() {
+  let profile = { name: "", email: "", phone: "", referralCode: "", role: "user" as "user" | "admin" };
 
-  useEffect(() => {
-    let mounted = true;
-    async function load() {
-      try {
-        const res = await apiJson("/api/auth/me");
-        if (!mounted) return;
-        const user = res?.user ?? res ?? null;
-        if (user) {
-          setProfile({ name: user.name ?? "", email: user.email ?? "", phone: user.phone ?? "", referralCode: user.referralCode ?? "", role: user.role ?? "user" });
-        }
-      } catch {
-        if (mounted) setProfile({ name: "", email: "", phone: "", referralCode: "", role: "user" });
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    }
-    load();
-    return () => {
-      mounted = false;
+  try {
+    const { auth, dbUser } = await requireUser();
+    profile = {
+      name: dbUser.name,
+      email: dbUser.email,
+      phone: dbUser.phone ?? "",
+      referralCode: dbUser.referralCode ?? "",
+      role: auth.role,
     };
-  }, []);
+  } catch {
+    profile = { name: "", email: "", phone: "", referralCode: "", role: "user" };
+  }
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Profile</h1>
-        <p className="mt-1 text-sm text-neutral-600">Account details and password security.</p>
+      <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Account settings</p>
+            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Profile</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Account details, contact information aur password security manage karein.</p>
+          </div>
+          <div className="flex items-center gap-3 rounded-md bg-neutral-950 p-4 text-white">
+            <span className="grid size-11 place-items-center rounded-md bg-white/10">
+              {profile.role === "admin" ? <ShieldCheck className="size-5" /> : <UserRound className="size-5" />}
+            </span>
+            <span>
+              <span className="block text-sm text-neutral-300">Signed in as</span>
+              <span className="block truncate font-semibold capitalize">{profile.role}</span>
+            </span>
+          </div>
+        </div>
       </div>
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_420px]">
         <ProfileSettingsForm profile={profile} />

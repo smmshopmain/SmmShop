@@ -47,7 +47,7 @@ export function ActionButton({
         type="button"
         onClick={run}
         disabled={loading}
-        className={`rounded-md px-3 py-2 text-xs font-semibold text-white disabled:opacity-60 ${
+        className={`rounded-md px-3 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-60 ${
           danger ? "bg-rose-700 hover:bg-rose-800" : "bg-teal-700 hover:bg-teal-800"
         }`}
       >
@@ -780,10 +780,16 @@ export function TicketReplyForm({ ticketId }: { ticketId: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 grid gap-2">
-      <textarea name="message" rows={2} placeholder="Reply" required className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
+    <form onSubmit={submit} className="mt-3 grid gap-2 rounded-md border border-neutral-200 bg-white p-3">
+      <textarea
+        name="message"
+        rows={2}
+        placeholder="Write a reply"
+        required
+        className="rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+      />
       <div className="flex items-center gap-2">
-        <button className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white">Reply</button>
+        <button className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-800">Reply</button>
         <ActionButton label="Close" endpoint="/api/tickets" body={{ id: ticketId, action: "close" }} danger />
       </div>
       {message && <p className="text-xs text-neutral-500">{message}</p>}

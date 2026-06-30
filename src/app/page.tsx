@@ -1,42 +1,78 @@
 import Link from "next/link";
-import { ArrowRight, BarChart3, ShieldCheck, WalletCards } from "lucide-react";
+import { ArrowRight, BarChart3, CheckCircle2, Layers3, ShieldCheck, WalletCards } from "lucide-react";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-stone-50">
-      <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_520px] lg:px-8">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-700">SMM reseller platform</p>
-          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-normal text-neutral-950 sm:text-6xl">
+    <main className="min-h-screen bg-[#f7f4ee]">
+      <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:px-8">
+        <div className="py-8">
+          <div className="mb-10 flex items-center gap-3">
+            <span className="grid size-11 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white shadow-sm">SP</span>
+            <span>
+              <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
+              <span className="block text-sm text-neutral-600">Reseller platform</span>
+            </span>
+          </div>
+          <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-800">
+            <CheckCircle2 className="size-3.5" /> Mobile ready workspace
+          </p>
+          <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight text-neutral-950 sm:text-6xl">
             SMM Panel Platform
           </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-600">
-            A full-stack reseller panel with wallet deposits, provider routing, order tracking, refills,
-            promo codes, support tickets, analytics, admin controls, Telegram alerts, and cron-ready sync APIs.
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-700">
+            Services browse karein, wallet manage karein, orders track karein aur support tickets ek clean user-friendly panel me handle karein.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
             <Link
               href="/register"
-              className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-800"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-700 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800"
             >
               Create account <ArrowRight className="size-4" />
             </Link>
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold hover:bg-neutral-100"
+              className="inline-flex items-center justify-center gap-2 rounded-md border border-neutral-300 bg-white px-5 py-3 text-sm font-semibold shadow-sm hover:bg-neutral-100"
             >
               Login
             </Link>
           </div>
+          <div className="mt-10 grid max-w-2xl gap-3 sm:grid-cols-3">
+            {[
+              ["24/7", "Order access"],
+              ["Fast", "Service search"],
+              ["Clean", "Mobile UI"],
+            ].map(([value, label]) => (
+              <div key={label} className="rounded-md border border-white bg-white/75 p-4 shadow-sm">
+                <p className="text-2xl font-bold text-neutral-950">{value}</p>
+                <p className="mt-1 text-sm text-neutral-600">{label}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="rounded-md border border-neutral-200 bg-white p-5 shadow-sm">
+        <div className="rounded-lg border border-white bg-white p-4 shadow-xl shadow-neutral-900/10 sm:p-5">
+          <div className="mb-4 rounded-md bg-neutral-950 p-4 text-white">
+            <p className="text-sm font-semibold text-teal-200">Live panel preview</p>
+            <div className="mt-4 grid grid-cols-3 gap-2">
+              {[
+                ["Wallet", "Rs.0"],
+                ["Orders", "0"],
+                ["Active", "0"],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-md bg-white/10 p-3">
+                  <p className="text-xs text-neutral-300">{label}</p>
+                  <p className="mt-2 text-lg font-bold">{value}</p>
+                </div>
+              ))}
+            </div>
+          </div>
           <div className="grid gap-3">
             {[
-              { icon: WalletCards, title: "Wallet and deposits", text: "Manual UTR verification with automatic mode toggle architecture." },
-              { icon: BarChart3, title: "Provider pricing", text: "Global, category, and service margins with provider cost and profit storage." },
-              { icon: ShieldCheck, title: "Admin controls", text: "RBAC, audit logs, wallet freezes, user bans, and provider failover-ready routing." },
+              { icon: Layers3, title: "Browse services", text: "Platform filters, categories, search aur order form ready." },
+              { icon: WalletCards, title: "Wallet and deposits", text: "Clear balance, deposits aur transaction history." },
+              { icon: BarChart3, title: "Order tracking", text: "Pending, active and completed orders ka quick overview." },
+              { icon: ShieldCheck, title: "Admin controls", text: "Providers, pricing, users and support management." },
             ].map((item) => (
-              <div key={item.title} className="rounded-md border border-neutral-200 p-4">
+              <div key={item.title} className="rounded-md border border-neutral-200 p-4 transition hover:border-teal-200 hover:bg-teal-50">
                 <item.icon className="size-5 text-teal-700" />
                 <h2 className="mt-3 font-semibold">{item.title}</h2>
                 <p className="mt-1 text-sm leading-6 text-neutral-600">{item.text}</p>

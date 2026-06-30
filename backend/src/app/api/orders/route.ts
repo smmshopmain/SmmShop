@@ -3,7 +3,13 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
 import { calculateOrderPrice } from "@/lib/pricing";
-import { addProviderOrder, cancelProviderOrder, logProviderEvent } from "@/lib/provider";
+import {
+  addProviderOrder,
+  cancelProviderOrder,
+  getProviderStatuses,
+  logProviderEvent,
+  normalizeProviderOrderStatus,
+} from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
 import { Order, PromoCode, Referral, Service, User, WalletTransaction, getSettings } from "@/models";
 import { roundMoney } from "@/lib/pricing";
@@ -21,6 +27,38 @@ const patchSchema = z.object({
   action: z.enum(["cancel"]),
 });
 
+type StatusResponse = {
+  status?: string;
+  start_count?: string | number;
+  remains?: string | number;
+  charge?: string | number;
+};
+
+type ProviderRecord = {
+  _id: unknown;
+  name: string;
+  apiUrl: string;
+  apiKey: string;
+  username?: string;
+  priority: number;
+};
+
+type SyncableOrder = {
+  _id: unknown;
+  provider: ProviderRecord;
+  providerOrderId?: string;
+  status: string;
+  startCount?: number;
+  remains?: number;
+  providerCharge?: number;
+  providerCost: number;
+  sellingPrice: number;
+  profit: number;
+  lastStatusSyncAt?: Date;
+  providerResponse?: Record<string, unknown>;
+  save: () => Promise<unknown>;
+};
+
 function isValidOrderLink(value: string) {
   try {
     const url = new URL(value);
@@ -30,15 +68,94 @@ function isValidOrderLink(value: string) {
   }
 }
 
-export async function GET() {
+async function syncOrdersWithProvider(orders: SyncableOrder[]) {
+  const syncable = orders.filter((order) => order.providerOrderId && order.provider);
+  const ordersByProvider = new Map<string, SyncableOrder[]>();
+
+  for (const order of syncable) {
+    const providerId = String(order.provider._id);
+    ordersByProvider.set(providerId, [...(ordersByProvider.get(providerId) ?? []), order]);
+  }
+
+  let synced = 0;
+  for (const providerOrders of ordersByProvider.values()) {
+    const provider = providerOrders[0].provider;
+    try {
+      const statuses = await getProviderStatuses(
+        provider,
+        providerOrders.map((order) => String(order.providerOrderId)),
+      );
+
+      for (const order of providerOrders) {
+        const status = statuses[String(order.providerOrderId)] as StatusResponse | undefined;
+        if (!status) continue;
+
+        const normalizedStatus = normalizeProviderOrderStatus(status.status);
+        if (normalizedStatus) order.status = normalizedStatus;
+
+        if (status.start_count !== undefined) {
+          const startCount = Number(status.start_count);
+          if (Number.isFinite(startCount)) order.startCount = startCount;
+        }
+
+        if (status.remains !== undefined) {
+          const remains = Number(status.remains);
+          if (Number.isFinite(remains)) order.remains = remains;
+        }
+
+        if (status.charge !== undefined) {
+          const providerCharge = Number(status.charge);
+          if (Number.isFinite(providerCharge)) {
+            order.providerCharge = providerCharge;
+            order.providerCost = providerCharge;
+            order.profit = order.sellingPrice - providerCharge;
+          }
+        }
+
+        order.lastStatusSyncAt = new Date();
+        order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
+        await order.save();
+        synced += 1;
+      }
+    } catch (error) {
+      await logProviderEvent({
+        provider,
+        level: "error",
+        scope: "user_status_sync",
+        action: "status",
+        message: error instanceof Error ? error.message : "User order status sync failed",
+        details: { orderCount: providerOrders.length },
+      });
+    }
+  }
+
+  return synced;
+}
+
+export async function GET(request: NextRequest) {
   try {
     const { auth } = await requireUser();
+    const shouldSync = request.nextUrl.searchParams.get("sync") === "1";
+    const filter = { user: auth.id };
+
+    if (shouldSync) {
+      const activeOrders = (await Order.find({
+        ...filter,
+        status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
+        providerOrderId: { $exists: true },
+      })
+        .populate("provider")
+        .sort({ createdAt: -1 })
+        .limit(100)) as unknown as SyncableOrder[];
+      await syncOrdersWithProvider(activeOrders);
+    }
+
     const orders = await Order.find({ user: auth.id })
-      .populate("service", "name category")
+      .populate("service", "name category refill cancel")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
-    return ok({ orders });
+    return ok({ orders, syncedAt: new Date().toISOString() });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load orders", 401);
   }
@@ -164,7 +281,7 @@ export async function POST(request: NextRequest) {
           await Referral.findOneAndUpdate(
             { referrer: referrer._id, referredUser: dbUser._id },
             { $inc: { earnings: commission }, status: "Paid" },
-            { upsert: true, new: true },
+            { upsert: true, returnDocument: "after" },
           );
           await notifyInApp({
             user: referrer._id,

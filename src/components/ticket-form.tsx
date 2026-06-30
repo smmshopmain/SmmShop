@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Send, Ticket } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 
 export function TicketForm() {
@@ -23,17 +24,37 @@ export function TicketForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-md border border-neutral-200 bg-white p-4">
-      <h2 className="text-lg font-semibold">Create ticket</h2>
-      <input name="subject" placeholder="Subject" required className="rounded-md border border-neutral-300 px-3 py-2" />
-      <select name="priority" defaultValue="Medium" className="rounded-md border border-neutral-300 px-3 py-2">
+    <form onSubmit={submit} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex items-start gap-3">
+        <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800">
+          <Ticket className="size-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-bold text-neutral-950">Create ticket</h2>
+          <p className="mt-1 text-sm text-neutral-600">Order, payment ya account issue clearly describe karein.</p>
+        </div>
+      </div>
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+        Subject
+        <input name="subject" placeholder="Short issue title" required className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10" />
+      </label>
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+        Priority
+        <select name="priority" defaultValue="Medium" className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10">
         <option>Low</option>
         <option>Medium</option>
         <option>High</option>
       </select>
-      <textarea name="message" placeholder="Message" required rows={5} className="rounded-md border border-neutral-300 px-3 py-2" />
-      {message && <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
-      <button className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white">Submit ticket</button>
+      </label>
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+        Message
+        <textarea name="message" placeholder="Write full details here" required rows={5} className="rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10" />
+      </label>
+      {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+      <button className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800">
+        <Send className="size-4" />
+        Submit ticket
+      </button>
     </form>
   );
 }

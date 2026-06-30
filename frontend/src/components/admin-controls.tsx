@@ -1,9 +1,9 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
-import { apiFetch, backendAssetUrl } from "@/lib/client-api";
+import { apiFetch } from "@/lib/client-api";
 
 export function ActionButton({
   label,
@@ -34,8 +34,11 @@ export function ActionButton({
     });
     const result = await response.json().catch(() => ({}));
     setLoading(false);
-    setMessage(response.ok ? "Done" : result.message ?? "Failed");
-    if (response.ok) window.location.reload();
+    const errors = Array.isArray(result.errors) ? result.errors : undefined;
+    const successMessage = result.message || "Done";
+    const errorMessage = errors?.length ? errors.join("; ") : result.message;
+    setMessage(response.ok ? successMessage : errorMessage ?? "Failed");
+    if (response.ok && !errors?.length) window.location.reload();
   }
 
   return (
@@ -44,7 +47,7 @@ export function ActionButton({
         type="button"
         onClick={run}
         disabled={loading}
-        className={`rounded-md px-3 py-2 text-xs font-semibold text-white disabled:opacity-60 ${
+        className={`rounded-md px-3 py-2 text-xs font-semibold text-white shadow-sm disabled:opacity-60 ${
           danger ? "bg-rose-700 hover:bg-rose-800" : "bg-teal-700 hover:bg-teal-800"
         }`}
       >
@@ -52,6 +55,83 @@ export function ActionButton({
       </button>
       {message && <span className="text-xs text-neutral-500">{message}</span>}
     </span>
+  );
+}
+
+export function SyncStatusPanel() {
+  const [statuses, setStatuses] = useState<Array<{
+    taskType: string;
+    status: string;
+    message?: string;
+    total?: number;
+    processed?: number;
+    startedAt?: string;
+    finishedAt?: string;
+  }>>([]);
+
+  useEffect(() => {
+    let active = true;
+
+    async function fetchStatuses() {
+      try {
+        const response = await apiFetch("/api/admin/sync-status");
+        const result = await response.json();
+        if (!active || !response.ok) return;
+        setStatuses(Array.isArray(result.data?.statuses) ? result.data.statuses : []);
+      } catch {
+        if (active) setStatuses([]);
+      }
+    }
+
+    fetchStatuses();
+    const interval = setInterval(fetchStatuses, 2000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (statuses.length === 0) {
+    return null;
+  }
+
+  function formatLabel(taskType: string) {
+    switch (taskType) {
+      case "service_sync":
+        return "Service import";
+      case "price_sync":
+        return "Price recalculation";
+      default:
+        return taskType.replace(/_/g, " ");
+    }
+  }
+
+  return (
+    <section className="rounded-md border border-neutral-200 bg-white p-4 text-sm">
+      <h2 className="text-lg font-semibold">Sync progress</h2>
+      <div className="mt-3 grid gap-4">
+        {statuses.map((status) => {
+          const total = status.total ?? 0;
+          const processed = status.processed ?? 0;
+          const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+          return (
+            <div key={status.taskType} className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
+              <div className="flex items-center justify-between gap-4 text-sm font-medium text-neutral-900">
+                <span>{formatLabel(status.taskType)}</span>
+                <span className="rounded-full bg-white px-2 py-1 text-xs text-neutral-600">{status.status}</span>
+              </div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-neutral-200">
+                <div className="h-2 rounded-full bg-teal-700" style={{ width: `${percent}%` }} />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
+                <span>{status.message ?? `${processed}/${total} completed`}</span>
+                {total > 0 && <span>{percent}%</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -489,7 +569,6 @@ export function SettingsForm({
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const currentQrImageUrl = backendAssetUrl(payment.qrImageUrl);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -655,11 +734,11 @@ export function SettingsForm({
             <textarea name="instructions" rows={3} defaultValue={payment.instructions} className="rounded-md border border-neutral-300 px-3 py-2" />
           </label>
         </div>
-        {currentQrImageUrl && (
+        {payment.qrImageUrl && (
           <div className="grid gap-2 text-sm">
             <span className="font-medium">Current QR</span>
             <img
-              src={currentQrImageUrl}
+              src={payment.qrImageUrl}
               alt="Payment QR"
               className="h-44 w-44 rounded-md border border-neutral-200 bg-white object-contain p-2"
             />
@@ -701,10 +780,16 @@ export function TicketReplyForm({ ticketId }: { ticketId: string }) {
   }
 
   return (
-    <form onSubmit={submit} className="mt-3 grid gap-2">
-      <textarea name="message" rows={2} placeholder="Reply" required className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
+    <form onSubmit={submit} className="mt-3 grid gap-2 rounded-md border border-neutral-200 bg-white p-3">
+      <textarea
+        name="message"
+        rows={2}
+        placeholder="Write a reply"
+        required
+        className="rounded-md border border-neutral-300 px-3 py-2 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+      />
       <div className="flex items-center gap-2">
-        <button className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white">Reply</button>
+        <button className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-800">Reply</button>
         <ActionButton label="Close" endpoint="/api/tickets" body={{ id: ticketId, action: "close" }} danger />
       </div>
       {message && <p className="text-xs text-neutral-500">{message}</p>}

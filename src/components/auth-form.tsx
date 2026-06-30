@@ -1,7 +1,9 @@
 "use client";
 
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
@@ -35,49 +37,62 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       setError(result.message ?? "Something went wrong");
       return;
     }
-    router.push((searchParams.get("next") ?? "/dashboard") as any);
+    const nextPath = searchParams.get("next");
+    router.push((nextPath?.startsWith("/") ? nextPath : "/dashboard/services") as Route);
     router.refresh();
   }
 
   return (
     <form onSubmit={submit} className="grid gap-4">
       {mode === "register" && (
-        <label className="grid gap-2 text-sm font-medium">
-          Name
-          <input name="name" required className="rounded-md border border-neutral-300 px-3 py-2" />
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          Full name
+          <input
+            name="name"
+            required
+            placeholder="Enter your name"
+            className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
         </label>
       )}
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
         {mode === "login" ? "Email or mobile" : "Email"}
         <input
           name="email"
           type={mode === "login" ? "text" : "email"}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          placeholder={mode === "login" ? "Email address or mobile number" : "you@example.com"}
+          className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
-      <label className="grid gap-2 text-sm font-medium">
+      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
         Password
         <input
           name="password"
           type="password"
           minLength={8}
           required
-          className="rounded-md border border-neutral-300 px-3 py-2"
+          placeholder="Minimum 8 characters"
+          className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
       {mode === "register" && (
-        <label className="grid gap-2 text-sm font-medium">
-          Referral code
-          <input name="referralCode" className="rounded-md border border-neutral-300 px-3 py-2" />
+        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+          Referral code <span className="text-xs font-medium text-neutral-500">Optional</span>
+          <input
+            name="referralCode"
+            placeholder="Enter code if you have one"
+            className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+          />
         </label>
       )}
-      {error && <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
+      {error && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
       <button
         disabled={loading}
-        className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
+        className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:opacity-60"
       >
         {loading ? "Please wait..." : mode === "login" ? "Login" : "Create account"}
+        {!loading && <ArrowRight className="size-4" />}
       </button>
     </form>
   );
