@@ -8,6 +8,16 @@ export function apiUrl(path: string) {
   return `${baseUrl}${cleanPath}`;
 }
 
+export function backendAssetUrl(value?: string) {
+  if (!value) return "";
+  if (/^(https?:|data:|blob:)/i.test(value)) return value;
+  return value.startsWith("/") ? apiUrl(value) : value;
+}
+
+export function isLegacyUploadPath(value?: string) {
+  return Boolean(value?.startsWith("/uploads/"));
+}
+
 export async function apiFetch(path: string, init?: RequestInit) {
   return fetch(apiUrl(path), {
     ...init,

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useState } from "react";
 import { CheckCircle2, Clipboard, CreditCard, UploadCloud, WalletCards } from "lucide-react";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiUrl, backendAssetUrl } from "@/lib/client-api";
 
 type PaymentDetails = {
   qrImageUrl: string;
@@ -33,7 +33,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
   function uploadFile(file: File) {
     return new Promise<{ ok: boolean; response: unknown }>((resolve, reject) => {
       const xhr = new XMLHttpRequest();
-      xhr.open("POST", "/api/uploads/deposit-proof");
+      xhr.open("POST", apiUrl("/api/uploads/deposit-proof"));
       xhr.withCredentials = true;
 
       xhr.upload.onprogress = (event) => {
@@ -146,7 +146,7 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
           <>
             {payment.qrImageUrl && (
               <img
-                src={payment.qrImageUrl}
+                src={backendAssetUrl(payment.qrImageUrl)}
                 alt="Payment QR"
                 className="mx-auto h-56 w-56 rounded-md border border-neutral-200 bg-white object-contain p-2 shadow-sm"
               />

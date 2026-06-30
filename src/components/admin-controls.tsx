@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, backendAssetUrl } from "@/lib/client-api";
 
 export function ActionButton({
   label,
@@ -738,7 +738,7 @@ export function SettingsForm({
           <div className="grid gap-2 text-sm">
             <span className="font-medium">Current QR</span>
             <img
-              src={payment.qrImageUrl}
+              src={backendAssetUrl(payment.qrImageUrl)}
               alt="Payment QR"
               className="h-44 w-44 rounded-md border border-neutral-200 bg-white object-contain p-2"
             />

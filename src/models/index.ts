@@ -216,6 +216,19 @@ const SettingsSchema = new Schema(
   { timestamps: true },
 );
 
+const UploadedFileSchema = new Schema(
+  {
+    folder: { type: String, enum: ["deposit-proofs", "payment-qr"], required: true, index: true },
+    fileName: { type: String, required: true, trim: true },
+    contentType: { type: String, required: true },
+    data: { type: Buffer, required: true },
+    size: { type: Number, required: true, min: 0 },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User" },
+  },
+  { timestamps: true },
+);
+UploadedFileSchema.index({ folder: 1, fileName: 1 }, { unique: true });
+
 const AuditLogSchema = new Schema(
   {
     actor: { type: Schema.Types.ObjectId, ref: "User" },
@@ -290,6 +303,7 @@ export const Ticket = models.Ticket || model("Ticket", TicketSchema);
 export const PromoCode = models.PromoCode || model("PromoCode", PromoCodeSchema);
 export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
+export const UploadedFile = models.UploadedFile || model("UploadedFile", UploadedFileSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
 export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSchema);
@@ -344,7 +358,17 @@ export async function getSettings() {
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
     if (record.key === "pricing") settings.pricing = { ...settings.pricing, ...(record.value as Partial<PlatformSettings["pricing"]>) };
-    if (record.key === "deposits") settings.deposits = { ...settings.deposits, ...(record.value as Partial<PlatformSettings["deposits"]>) };
+    if (record.key === "deposits") {
+      const value = record.value as Partial<PlatformSettings["deposits"]>;
+      settings.deposits = {
+        ...settings.deposits,
+        ...value,
+        payment: {
+          ...settings.deposits.payment,
+          ...(value.payment ?? {}),
+        },
+      };
+    }
     if (record.key === "provider") settings.provider = { ...settings.provider, ...(record.value as Partial<PlatformSettings["provider"]>) };
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
   }

@@ -1,8 +1,7 @@
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextRequest } from "next/server";
 import { fail, ok, requireUser } from "@/lib/api";
+import { UploadedFile } from "@/models";
 
 const allowedTypes = new Map([
   ["image/jpeg", "jpg"],
@@ -13,7 +12,7 @@ const allowedTypes = new Map([
 
 export async function POST(request: NextRequest) {
   try {
-    await requireUser();
+    const { auth } = await requireUser();
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return fail("Proof file is required");
@@ -22,9 +21,15 @@ export async function POST(request: NextRequest) {
 
     const ext = allowedTypes.get(file.type);
     const fileName = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "uploads", "deposit-proofs");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
+    const data = Buffer.from(await file.arrayBuffer());
+    await UploadedFile.create({
+      folder: "deposit-proofs",
+      fileName,
+      contentType: file.type,
+      data,
+      size: file.size,
+      createdBy: auth.id,
+    });
 
     return ok({ url: `/api/uploads/file/deposit-proofs/${fileName}` });
   } catch (error) {

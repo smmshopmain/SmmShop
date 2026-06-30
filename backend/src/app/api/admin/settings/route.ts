@@ -8,6 +8,31 @@ const schema = z.object({
   value: z.record(z.string(), z.unknown()),
 });
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+}
+
+function hasPaymentDetail(value: unknown) {
+  return isRecord(value) && Object.values(value).some((entry) => String(entry ?? "").trim() !== "");
+}
+
+function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Record<string, unknown>) {
+  if (!isRecord(existingValue)) return nextValue;
+
+  const merged: Record<string, unknown> = { ...existingValue, ...nextValue };
+  if (key !== "deposits") return merged;
+
+  const existingPayment = isRecord(existingValue.payment) ? existingValue.payment : {};
+  const nextPayment = isRecord(nextValue.payment) ? nextValue.payment : null;
+  if (!nextPayment) return merged;
+
+  merged.payment =
+    hasPaymentDetail(existingPayment) && !hasPaymentDetail(nextPayment)
+      ? existingPayment
+      : { ...existingPayment, ...nextPayment };
+  return merged;
+}
+
 export async function GET() {
   try {
     await requireAdmin();
@@ -22,10 +47,7 @@ export async function PATCH(request: NextRequest) {
     await requireAdmin();
     const input = schema.parse(await request.json());
     const existing = await Setting.findOne({ key: input.key }).lean();
-    const value =
-      existing?.value && typeof existing.value === "object" && !Array.isArray(existing.value)
-        ? { ...(existing.value as Record<string, unknown>), ...input.value }
-        : input.value;
+    const value = mergeSettingsValue(input.key, existing?.value, input.value);
     const setting = await Setting.findOneAndUpdate(
       { key: input.key },
       { value },

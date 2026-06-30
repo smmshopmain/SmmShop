@@ -1,8 +1,7 @@
 import { randomUUID } from "crypto";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
 import { NextRequest } from "next/server";
 import { fail, ok, requireAdmin } from "@/lib/api";
+import { UploadedFile } from "@/models";
 
 const allowedTypes = new Map([
   ["image/jpeg", "jpg"],
@@ -12,7 +11,7 @@ const allowedTypes = new Map([
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    const { auth } = await requireAdmin();
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return fail("QR image is required");
@@ -21,9 +20,15 @@ export async function POST(request: NextRequest) {
 
     const ext = allowedTypes.get(file.type);
     const fileName = `${randomUUID()}.${ext}`;
-    const uploadDir = path.join(process.cwd(), "uploads", "payment-qr");
-    await mkdir(uploadDir, { recursive: true });
-    await writeFile(path.join(uploadDir, fileName), Buffer.from(await file.arrayBuffer()));
+    const data = Buffer.from(await file.arrayBuffer());
+    await UploadedFile.create({
+      folder: "payment-qr",
+      fileName,
+      contentType: file.type,
+      data,
+      size: file.size,
+      createdBy: auth.id,
+    });
 
     return ok({ url: `/api/uploads/file/payment-qr/${fileName}` });
   } catch (error) {
