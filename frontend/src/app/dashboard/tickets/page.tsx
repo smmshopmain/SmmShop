@@ -2,8 +2,7 @@ import { TicketReplyForm } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
 import { TicketForm } from "@/components/ticket-form";
 import { StatusBadge } from "@/components/status-badge";
-import { requireUser } from "@/lib/auth";
-import { Ticket } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { Headphones, MessageSquareText } from "lucide-react";
 
 export default async function TicketsPage() {
@@ -12,13 +11,13 @@ export default async function TicketsPage() {
     subject: string;
     status: string;
     priority: string;
-    createdAt: Date;
-    messages: Array<{ body: string; isAdmin: boolean; createdAt: Date }>;
+    createdAt: string;
+    messages: Array<{ body: string; isAdmin: boolean; createdAt: string }>;
   }> = [];
 
   try {
-    const { auth } = await requireUser();
-    tickets = (await Ticket.find({ user: auth.id }).sort({ createdAt: -1 }).lean()) as typeof tickets;
+    const result = await serverApiJson("/api/tickets");
+    tickets = Array.isArray(result.tickets) ? result.tickets : [];
   } catch {
     tickets = [];
   }

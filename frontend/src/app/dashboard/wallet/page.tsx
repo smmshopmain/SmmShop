@@ -1,15 +1,24 @@
 import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { requireUser } from "@/lib/auth";
-import { Deposit, getSettings, WalletTransaction, type PlatformSettings } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { ArrowDownToLine, History, WalletCards } from "lucide-react";
+
+type PaymentDetails = {
+  qrImageUrl: string;
+  upiId: string;
+  accountNumber: string;
+  ifsc: string;
+  accountName: string;
+  bankName: string;
+  instructions: string;
+};
 
 export default async function WalletPage() {
   let balance = 0;
-  let transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }> = [];
-  let deposits: Array<{ _id: string; depositId?: string; amount: number; utr: string; status: string; createdAt: Date }> = [];
-  let payment: PlatformSettings["deposits"]["payment"] = {
+  let transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }> = [];
+  let deposits: Array<{ _id: string; depositId?: string; amount: number; utr: string; status: string; createdAt: string }> = [];
+  let payment: PaymentDetails = {
     qrImageUrl: "",
     upiId: "",
     accountNumber: "",
@@ -20,16 +29,15 @@ export default async function WalletPage() {
   };
 
   try {
-    const { auth, dbUser } = await requireUser();
-    balance = dbUser.walletBalance;
-    const [nextTransactions, nextDeposits, settings] = await Promise.all([
-      WalletTransaction.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
-      Deposit.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
-      getSettings(),
+    const [walletResult, depositResult, paymentResult] = await Promise.all([
+      serverApiJson("/api/wallet"),
+      serverApiJson("/api/deposits"),
+      serverApiJson("/api/payment-details"),
     ]);
-    transactions = nextTransactions as typeof transactions;
-    deposits = nextDeposits as typeof deposits;
-    payment = settings.deposits.payment;
+    balance = Number(walletResult.balance ?? 0);
+    transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 20) : [];
+    deposits = Array.isArray(depositResult.deposits) ? depositResult.deposits.slice(0, 20) : [];
+    payment = { ...payment, ...(paymentResult.payment ?? {}) };
   } catch {
     transactions = [];
   }

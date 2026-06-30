@@ -4,9 +4,7 @@ import { ArrowRight, CheckCircle2, Clock3, Headphones, PlusCircle, ShoppingBag, 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
-import { requireUser } from "@/lib/auth";
-import { dbConnect } from "@/lib/db";
-import { Order, WalletTransaction } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 
 const quickActions: Array<{
   href: Route;
@@ -26,26 +24,24 @@ export default async function DashboardPage() {
         totalOrders: number;
         activeOrders: number;
         completedOrders: number;
-        transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }>;
+        transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }>;
       }
     | null = null;
   let setupError = "";
 
   try {
-    const { auth, dbUser } = await requireUser();
-    await dbConnect();
-    const [totalOrders, activeOrders, completedOrders, transactions] = await Promise.all([
-      Order.countDocuments({ user: auth.id }),
-      Order.countDocuments({ user: auth.id, status: { $in: ["Pending", "Processing", "In Progress"] } }),
-      Order.countDocuments({ user: auth.id, status: "Completed" }),
-      WalletTransaction.find({ user: auth.id }).sort({ createdAt: -1 }).limit(5).lean(),
+    const [walletResult, orderResult] = await Promise.all([
+      serverApiJson("/api/wallet"),
+      serverApiJson("/api/orders?sync=1"),
     ]);
+    const orders = Array.isArray(orderResult.orders) ? orderResult.orders : [];
+    const transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 5) : [];
     data = {
-      balance: dbUser.walletBalance,
-      totalOrders,
-      activeOrders,
-      completedOrders,
-      transactions: transactions as Array<{ _id: string; type: string; amount: number; createdAt: Date }>,
+      balance: Number(walletResult.balance ?? 0),
+      totalOrders: orders.length,
+      activeOrders: orders.filter((order: { status?: string }) => ["Pending", "Processing", "In Progress"].includes(order.status ?? "")).length,
+      completedOrders: orders.filter((order: { status?: string }) => order.status === "Completed").length,
+      transactions,
     };
   } catch (error) {
     setupError = error instanceof Error ? error.message : "Dashboard unavailable";

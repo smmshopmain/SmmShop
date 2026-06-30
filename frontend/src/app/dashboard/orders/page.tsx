@@ -1,12 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { OrderLiveList, type LiveOrder } from "@/components/order-live-list";
-import { requireUser } from "@/lib/auth";
-import { Order } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { Search, SlidersHorizontal } from "lucide-react";
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 export default async function OrdersPage({ searchParams }: { searchParams?: Promise<{ q?: string; status?: string }> }) {
   const params = await searchParams;
@@ -20,23 +15,17 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     sellingPrice: number;
     startCount?: number;
     remains?: number;
-    createdAt: Date;
-    updatedAt: Date;
-    lastStatusSyncAt?: Date;
+    createdAt: string;
+    updatedAt: string;
+    lastStatusSyncAt?: string;
     providerOrderId?: string;
     providerResponse?: { lastStatus?: { status?: string; start_count?: string | number; remains?: string | number; charge?: string | number } };
     service?: { name?: string; refill?: boolean; cancel?: boolean };
   }> = [];
 
   try {
-    const { auth } = await requireUser();
-    const filter: Record<string, unknown> = { user: auth.id };
-    if (status) filter.status = status;
-    if (q) filter.$or = [{ link: new RegExp(escapeRegExp(q), "i") }, { providerOrderId: new RegExp(escapeRegExp(q), "i") }];
-    orders = (await Order.find(filter)
-      .populate("service", "name refill cancel")
-      .sort({ createdAt: -1 })
-      .lean()) as typeof orders;
+    const result = await serverApiJson("/api/orders?sync=1");
+    orders = Array.isArray(result.orders) ? result.orders : [];
   } catch {
       orders = [];
   }

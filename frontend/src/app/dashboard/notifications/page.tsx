@@ -1,7 +1,6 @@
 import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
-import { requireUser } from "@/lib/auth";
-import { Notification } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { Bell, CheckCircle2 } from "lucide-react";
 
 export default async function NotificationsPage() {
@@ -9,16 +8,13 @@ export default async function NotificationsPage() {
     _id: string;
     title: string;
     body?: string;
-    readAt?: Date;
-    createdAt: Date;
+    readAt?: string;
+    createdAt: string;
   }> = [];
 
   try {
-    const { auth } = await requireUser();
-    notifications = (await Notification.find({ user: auth.id })
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean()) as typeof notifications;
+    const result = await serverApiJson("/api/notifications");
+    notifications = Array.isArray(result.notifications) ? result.notifications : [];
   } catch {
     notifications = [];
   }

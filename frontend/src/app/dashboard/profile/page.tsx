@@ -1,19 +1,19 @@
 import { ChangePasswordForm, ProfileSettingsForm } from "@/components/change-password-form";
 import { AppShell } from "@/components/app-shell";
-import { requireUser } from "@/lib/auth";
+import { serverApiJson } from "@/lib/server-api";
 import { ShieldCheck, UserRound } from "lucide-react";
 
 export default async function ProfilePage() {
   let profile = { name: "", email: "", phone: "", referralCode: "", role: "user" as "user" | "admin" };
 
   try {
-    const { auth, dbUser } = await requireUser();
+    const user = await serverApiJson("/api/auth/me");
     profile = {
-      name: dbUser.name,
-      email: dbUser.email,
-      phone: dbUser.phone ?? "",
-      referralCode: dbUser.referralCode ?? "",
-      role: auth.role,
+      name: user.name ?? "",
+      email: user.email ?? "",
+      phone: user.phone ?? "",
+      referralCode: user.referralCode ?? "",
+      role: user.role === "admin" ? "admin" : "user",
     };
   } catch {
     profile = { name: "", email: "", phone: "", referralCode: "", role: "user" };

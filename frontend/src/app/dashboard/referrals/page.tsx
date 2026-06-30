@@ -1,25 +1,27 @@
 import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
-import { requireUser } from "@/lib/auth";
-import { Referral } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { BadgeIndianRupee, Link2, Users } from "lucide-react";
 
 export default async function ReferralsPage() {
   let referralCode = "";
   let referralLink = "";
   let earnings = 0;
-  let history: Array<{ _id: string; earnings: number; status: string; createdAt: Date }> = [];
+  let history: Array<{ _id: string; earnings: number; status: string; createdAt: string }> = [];
 
   try {
-    const { auth, dbUser } = await requireUser();
+    const [user, referrals] = await Promise.all([
+      serverApiJson("/api/auth/me"),
+      serverApiJson("/api/referrals"),
+    ]);
     const headerStore = await headers();
     const origin = headerStore.get("x-forwarded-host")
       ? `${headerStore.get("x-forwarded-proto") ?? "https"}://${headerStore.get("x-forwarded-host")}`
       : "";
-    referralCode = dbUser.referralCode;
+    referralCode = user.referralCode ?? "";
     referralLink = `${origin}/register?ref=${referralCode}`;
-    earnings = dbUser.referralEarnings;
-    history = (await Referral.find({ referrer: auth.id }).sort({ createdAt: -1 }).lean()) as typeof history;
+    earnings = Number(user.referralEarnings ?? 0);
+    history = Array.isArray(referrals.history) ? referrals.history : [];
   } catch {
     history = [];
   }

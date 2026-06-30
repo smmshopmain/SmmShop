@@ -1,7 +1,6 @@
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { requireUser } from "@/lib/auth";
-import { Refill } from "@/models";
+import { serverApiJson } from "@/lib/server-api";
 import { RefreshCcw } from "lucide-react";
 
 export default async function RefillsPage() {
@@ -9,17 +8,13 @@ export default async function RefillsPage() {
     _id: string;
     providerRefillId?: string;
     status: string;
-    createdAt: Date;
+    createdAt: string;
     order?: { providerOrderId?: string; link?: string; status?: string };
   }> = [];
 
   try {
-    const { auth } = await requireUser();
-    refills = (await Refill.find({ user: auth.id })
-      .populate("order", "providerOrderId link status")
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .lean()) as typeof refills;
+    const result = await serverApiJson("/api/refills");
+    refills = Array.isArray(result.refills) ? result.refills : [];
   } catch {
     refills = [];
   }
