@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { dbConnect } from "@/lib/db";
+import { isAdminRole, normalizeRole, UserRole } from "@/lib/roles";
 import { User } from "@/models";
 
 const COOKIE_NAME = "smm_token";
@@ -17,7 +18,7 @@ export type AuthUser = {
   id: string;
   email: string;
   name: string;
-  role: "user" | "admin";
+  role: UserRole;
 };
 
 function jwtSecret() {
@@ -50,7 +51,7 @@ export async function verifySession(token?: string): Promise<AuthUser | null> {
       id: String(payload.sub),
       email: String(payload.email),
       name: String(payload.name),
-      role: payload.role === "admin" ? "admin" : "user",
+      role: normalizeRole(payload.role),
     };
   } catch {
     return null;
@@ -68,12 +69,20 @@ export async function requireUser() {
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) throw new Error("Unauthorized");
-  return { auth: user, dbUser };
+  return {
+    auth: {
+      ...user,
+      email: dbUser.email,
+      name: dbUser.name,
+      role: normalizeRole(dbUser.role),
+    },
+    dbUser,
+  };
 }
 
 export async function requireAdmin() {
   const result = await requireUser();
-  if (result.auth.role !== "admin") throw new Error("Forbidden");
+  if (!isAdminRole(result.auth.role)) throw new Error("Forbidden");
   return result;
 }
 

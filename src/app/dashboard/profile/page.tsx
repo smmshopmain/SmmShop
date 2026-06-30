@@ -1,10 +1,11 @@
 import { ChangePasswordForm, ProfileSettingsForm } from "@/components/change-password-form";
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
+import { roleLabel, UserRole } from "@/lib/roles";
 import { ShieldCheck, UserRound } from "lucide-react";
 
 export default async function ProfilePage() {
-  let profile = { name: "", email: "", phone: "", referralCode: "", role: "user" as "user" | "admin" };
+  let profile = { name: "", email: "", phone: "", referralCode: "", role: "user" as UserRole };
 
   try {
     const { auth, dbUser } = await requireUser();
@@ -30,11 +31,11 @@ export default async function ProfilePage() {
           </div>
           <div className="flex items-center gap-3 rounded-md bg-neutral-950 p-4 text-white">
             <span className="grid size-11 place-items-center rounded-md bg-white/10">
-              {profile.role === "admin" ? <ShieldCheck className="size-5" /> : <UserRound className="size-5" />}
+              {profile.role !== "user" ? <ShieldCheck className="size-5" /> : <UserRound className="size-5" />}
             </span>
             <span>
               <span className="block text-sm text-neutral-300">Signed in as</span>
-              <span className="block truncate font-semibold capitalize">{profile.role}</span>
+              <span className="block truncate font-semibold">{roleLabel(profile.role)}</span>
             </span>
           </div>
         </div>

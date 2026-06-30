@@ -14,7 +14,7 @@ const UserSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, unique: true, sparse: true, trim: true },
     passwordHash: { type: String, required: true },
-    role: { type: String, enum: ["user", "admin"], default: "user", index: true },
+    role: { type: String, enum: ["user", "staff", "secondary_admin", "admin"], default: "user", index: true },
     walletBalance: money,
     referralCode: { type: String, unique: true, sparse: true, index: true },
     referredBy: { type: Schema.Types.ObjectId, ref: "User" },

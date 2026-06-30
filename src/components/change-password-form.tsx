@@ -3,11 +3,12 @@
 import { KeyRound, Mail, Save, UserRound } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "@/lib/client-api";
+import { isAdminRole, UserRole } from "@/lib/roles";
 
 export function ProfileSettingsForm({
   profile,
 }: {
-  profile: { name: string; email: string; phone: string; referralCode: string; role: "user" | "admin" };
+  profile: { name: string; email: string; phone: string; referralCode: string; role: UserRole };
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -89,7 +90,7 @@ export function ProfileSettingsForm({
           {message && <p className="rounded-md bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-600">{message}</p>}
         </div>
       </form>
-      {profile.role === "admin" && <AdminEmailChangeForm currentEmail={profile.email} />}
+      {isAdminRole(profile.role) && <AdminEmailChangeForm currentEmail={profile.email} />}
     </div>
   );
 }

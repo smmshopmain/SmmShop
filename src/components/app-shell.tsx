@@ -26,6 +26,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiJson, apiUrl } from "@/lib/client-api";
+import { isAdminRole } from "@/lib/roles";
 
 type NavItem = {
   href: Route;
@@ -47,6 +48,7 @@ const userLinks: NavItem[] = [
 
 const adminLinks: NavItem[] = [
   { href: "/admin", label: "Admin", icon: Shield },
+  { href: "/dashboard/profile", label: "My Profile", icon: UserRound },
   { href: "/admin/providers", label: "Providers", icon: Layers3 },
   { href: "/admin/services", label: "Service Admin", icon: Layers3 },
   { href: "/admin/orders", label: "Orders", icon: History },
@@ -90,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminRole(user?.role);
   const links = isAdmin ? adminLinks : userLinks;
   const primaryLinks = links.filter((item) =>
     (isAdmin

@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { currentUser, setSessionCookie } from "@/lib/auth";
+import { dbConnect } from "@/lib/db";
+import { normalizeRole } from "@/lib/roles";
 import { User } from "@/models";
 
 const schema = z.object({
@@ -12,7 +14,25 @@ const schema = z.object({
 export async function GET() {
   const user = await currentUser();
   if (!user) return fail("Unauthorized", 401);
-  return ok(user);
+
+  await dbConnect();
+  const dbUser = await User.findById(user.id);
+  if (!dbUser || dbUser.isBanned) return fail("Unauthorized", 401);
+  const role = normalizeRole(dbUser.role);
+
+  if (role !== user.role || dbUser.email !== user.email || dbUser.name !== user.name) {
+    await setSessionCookie({ id: user.id, email: dbUser.email, name: dbUser.name, role });
+  }
+
+  return ok({
+    id: user.id,
+    name: dbUser.name,
+    email: dbUser.email,
+    phone: dbUser.phone ?? "",
+    role,
+    referralCode: dbUser.referralCode ?? "",
+    referralEarnings: dbUser.referralEarnings ?? 0,
+  });
 }
 
 export async function PATCH(request: NextRequest) {
@@ -32,7 +52,7 @@ export async function PATCH(request: NextRequest) {
 
     await setSessionCookie({
       id: auth.id,
-      email: auth.email,
+      email: dbUser.email,
       name: dbUser.name,
       role: auth.role,
     });

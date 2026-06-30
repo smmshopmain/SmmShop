@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { apiFetch, backendAssetUrl } from "@/lib/client-api";
+import { ASSIGNABLE_USER_ROLES, AssignableUserRole, roleLabel } from "@/lib/roles";
 
 export function ActionButton({
   label,
@@ -372,6 +373,50 @@ export function AdminResetPasswordForm({ userId }: { userId: string }) {
         className="min-w-48 rounded-md border border-neutral-300 px-2 py-2"
       />
       <button className="rounded-md bg-neutral-900 px-3 py-2 font-semibold text-white">Reset password</button>
+      {message && <span className="text-neutral-500">{message}</span>}
+    </form>
+  );
+}
+
+export function UserRoleForm({
+  userId,
+  currentRole,
+}: {
+  userId: string;
+  currentRole: string;
+}) {
+  const [role, setRole] = useState<AssignableUserRole>(
+    ASSIGNABLE_USER_ROLES.includes(currentRole as AssignableUserRole)
+      ? (currentRole as AssignableUserRole)
+      : "user",
+  );
+  const [message, setMessage] = useState("");
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setMessage("");
+    const response = await apiFetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: userId, action: "set_role", role }),
+    });
+    const result = await response.json().catch(() => ({}));
+    setMessage(response.ok ? "Role updated." : (result.message ?? "Unable to update role"));
+    if (response.ok) window.location.reload();
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-center gap-2 rounded-md bg-neutral-50 p-3 text-xs">
+      <select
+        value={role}
+        onChange={(event) => setRole(event.target.value as AssignableUserRole)}
+        className="min-w-44 rounded-md border border-neutral-300 px-2 py-2 font-medium"
+      >
+        {ASSIGNABLE_USER_ROLES.map((item) => (
+          <option key={item} value={item}>{roleLabel(item)}</option>
+        ))}
+      </select>
+      <button className="rounded-md bg-neutral-900 px-3 py-2 font-semibold text-white">Change role</button>
       {message && <span className="text-neutral-500">{message}</span>}
     </form>
   );

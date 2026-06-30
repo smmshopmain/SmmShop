@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
+import { isAdminRole } from "@/lib/roles";
 import { Ticket } from "@/models";
 
 const schema = z.object({
@@ -51,8 +52,9 @@ export async function PATCH(request: NextRequest) {
   try {
     const input = await parseBody(request, patchSchema);
     const { auth } = await requireUser();
+    const isAdmin = isAdminRole(auth.role);
     const filter: Record<string, unknown> = { _id: input.id };
-    if (auth.role !== "admin") filter.user = auth.id;
+    if (!isAdmin) filter.user = auth.id;
 
     const ticket = await Ticket.findOne(filter);
     if (!ticket) return fail("Ticket not found", 404);
@@ -63,12 +65,12 @@ export async function PATCH(request: NextRequest) {
       ticket.messages.push({
         sender: auth.id,
         body: input.message,
-        isAdmin: auth.role === "admin",
+        isAdmin,
       });
-      ticket.status = auth.role === "admin" ? "Answered" : "Open";
+      ticket.status = isAdmin ? "Answered" : "Open";
       await notifyInApp({
         user: ticket.user,
-        title: auth.role === "admin" ? "Admin replied to your ticket" : "Ticket reply added",
+        title: isAdmin ? "Admin replied to your ticket" : "Ticket reply added",
         body: ticket.subject,
       });
     }

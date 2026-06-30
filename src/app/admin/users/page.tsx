@@ -1,8 +1,9 @@
-import { ActionButton, AdminResetPasswordForm, WalletAdjustForm } from "@/components/admin-controls";
+import { ActionButton, AdminResetPasswordForm, UserRoleForm, WalletAdjustForm } from "@/components/admin-controls";
 import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
+import { roleLabel } from "@/lib/roles";
 import { User } from "@/models";
 import { Search, Users } from "lucide-react";
 
@@ -23,10 +24,12 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
     role: string;
   }> = [];
   let currentAdminId = "";
+  let currentAdminRole = "";
 
   try {
     const { auth } = await requireAdmin();
     currentAdminId = auth.id;
+    currentAdminRole = auth.role;
     const filter = q
       ? {
           $or: [
@@ -63,45 +66,58 @@ export default async function UsersPage({ searchParams }: { searchParams?: Promi
         }
       />
       <AdminSection title="User accounts" description="Access controls and wallet tools" icon={Users}>
-        {users.map((user) => (
-          <div key={String(user._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm">
+        {users.map((user) => {
+          const userId = String(user._id);
+          const isSelf = userId === currentAdminId;
+          const isMainAdminTarget = user.role === "admin";
+          const canModify = currentAdminRole !== "staff" && !(currentAdminRole !== "admin" && isMainAdminTarget);
+          const canMainAdminChangeRole = currentAdminRole === "admin" && !isSelf && !isMainAdminTarget;
+
+          return (
+          <div key={userId} className="grid gap-3 border-b border-neutral-100 p-4 text-sm">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_100px_120px_110px] md:items-center">
               <div className="min-w-0">
                 <p className="font-semibold text-neutral-950">{user.name}</p>
                 <p className="text-neutral-500">{user.email}</p>
               </div>
-              <span className="rounded-md bg-neutral-100 px-2 py-1 text-center text-xs font-semibold capitalize text-neutral-700">{user.role}</span>
+              <span className="rounded-md bg-neutral-100 px-2 py-1 text-center text-xs font-semibold text-neutral-700">{roleLabel(user.role)}</span>
               <StatusBadge status={user.isBanned || user.walletFrozen ? "Canceled" : "Approved"} />
               <strong>Rs.{user.walletBalance}</strong>
             </div>
             <div className="flex flex-wrap gap-2">
-              <ActionButton
-                label={user.isBanned ? "Unban" : "Ban"}
-                endpoint="/api/admin/users"
-                body={{ id: String(user._id), action: user.isBanned ? "unban" : "ban" }}
-                danger={!user.isBanned}
-              />
-              <ActionButton
-                label={user.walletFrozen ? "Unfreeze wallet" : "Freeze wallet"}
-                endpoint="/api/admin/users"
-                body={{ id: String(user._id), action: user.walletFrozen ? "unfreeze_wallet" : "freeze_wallet" }}
-                danger={!user.walletFrozen}
-              />
-              {String(user._id) !== currentAdminId && (
+              {canModify && (
+                <>
+                  <ActionButton
+                    label={user.isBanned ? "Unban" : "Ban"}
+                    endpoint="/api/admin/users"
+                    body={{ id: userId, action: user.isBanned ? "unban" : "ban" }}
+                    danger={!user.isBanned}
+                  />
+                  <ActionButton
+                    label={user.walletFrozen ? "Unfreeze wallet" : "Freeze wallet"}
+                    endpoint="/api/admin/users"
+                    body={{ id: userId, action: user.walletFrozen ? "unfreeze_wallet" : "freeze_wallet" }}
+                    danger={!user.walletFrozen}
+                  />
+                </>
+              )}
+              {currentAdminRole === "admin" && !isSelf && !isMainAdminTarget && (
                 <ActionButton
                   label="Delete"
                   endpoint="/api/admin/users"
                   method="DELETE"
-                  body={{ id: String(user._id) }}
+                  body={{ id: userId }}
                   danger
                   confirmMessage={`Delete ${user.name} (${user.email})? This cannot be undone.`}
                 />
               )}
             </div>
-            <AdminResetPasswordForm userId={String(user._id)} />
-            <WalletAdjustForm userId={String(user._id)} />
+            {canMainAdminChangeRole && <UserRoleForm userId={userId} currentRole={user.role ?? "user"} />}
+            {canModify && <AdminResetPasswordForm userId={userId} />}
+            {canModify && <WalletAdjustForm userId={userId} />}
           </div>
-        ))}
+          );
+        })}
         {users.length === 0 && <AdminEmptyState icon={Users} title="No users found" description="Try another search term or check whether users have registered." />}
       </AdminSection>
     </AppShell>
