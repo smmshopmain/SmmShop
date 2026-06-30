@@ -1,10 +1,12 @@
 import { ActionButton, SyncStatusPanel } from "@/components/admin-controls";
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { ProviderEditForm, ProviderForm } from "@/components/provider-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { requireAdmin } from "@/lib/auth";
 import { ensureDefaultProviderFromEnv } from "@/lib/provider";
 import { Provider } from "@/models";
+import { Layers3 } from "lucide-react";
 
 export default async function ProvidersPage() {
   let providers: Array<{
@@ -28,20 +30,26 @@ export default async function ProvidersPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-6 text-2xl font-semibold">Provider management</h1>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
-        <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
-        <ActionButton label="Provider balance" endpoint="/api/cron/provider-balance" method="GET" />
-      </div>
+      <AdminHeader
+        eyebrow="Provider operations"
+        title="Provider management"
+        description="Manage provider credentials, enablement, priority, balance sync, and service imports."
+        actions={
+          <>
+            <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
+            <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
+            <ActionButton label="Provider balance" endpoint="/api/cron/provider-balance" method="GET" />
+          </>
+        }
+      />
       <SyncStatusPanel />
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+      <div className="mt-4 grid gap-6 xl:grid-cols-[420px_1fr]">
         <ProviderForm />
-        <section className="rounded-md border border-neutral-200 bg-white">
+        <AdminSection title="Connected providers" description="Routing, health and balance controls" icon={Layers3}>
           {providers.map((provider) => (
-            <div key={String(provider._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_90px_100px_100px_170px]">
-              <div>
-                <p className="font-medium">{provider.name}</p>
+            <div key={String(provider._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[minmax(0,1fr)_90px_100px_100px_170px] md:items-start">
+              <div className="min-w-0">
+                <p className="font-semibold text-neutral-950">{provider.name}</p>
                 <p className="truncate text-neutral-500">{provider.apiUrl}</p>
                 {provider.username && <p className="truncate text-neutral-500">Username: {provider.username}</p>}
                 {provider.lastError && <p className="text-rose-700">{provider.lastError}</p>}
@@ -82,8 +90,8 @@ export default async function ProvidersPage() {
               />
             </div>
           ))}
-          {providers.length === 0 && <p className="p-4 text-sm text-neutral-500">No providers configured.</p>}
-        </section>
+          {providers.length === 0 && <AdminEmptyState icon={Layers3} title="No providers configured" description="Add a provider to import services and route orders." />}
+        </AdminSection>
       </div>
     </AppShell>
   );

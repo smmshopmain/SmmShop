@@ -1,4 +1,5 @@
 import { SettingsForm } from "@/components/admin-controls";
+import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { requireAdmin } from "@/lib/auth";
 import { Category, getSettings, Service, type PlatformSettings } from "@/models";
@@ -40,10 +41,11 @@ export default async function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Platform settings</h1>
-        <p className="mt-1 text-sm text-neutral-600">Pricing, deposit verification mode, and provider alerts.</p>
-      </div>
+      <AdminHeader
+        eyebrow="Platform controls"
+        title="Platform settings"
+        description="Pricing margins, deposit verification mode, payment details, referral commission, and provider balance alerts."
+      />
       <SettingsForm
         globalMargin={settings.pricing.globalMarginPercent}
         categoryMargins={settings.pricing.categoryMargins ?? {}}

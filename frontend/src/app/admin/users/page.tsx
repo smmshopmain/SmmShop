@@ -3,14 +3,24 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { ActionButton, AdminResetPasswordForm, WalletAdjustForm } from "@/components/admin-controls";
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { apiJson } from "@/lib/client-api";
+import { Search, Users } from "lucide-react";
 
 export default function UsersPage() {
   const searchParams = useSearchParams();
   const q = (searchParams.get("q") ?? "").trim();
-  const [users, setUsers] = useState<Array<any>>([]);
+  const [users, setUsers] = useState<Array<{
+    _id: string;
+    name?: string;
+    email?: string;
+    role?: string;
+    walletBalance?: number;
+    isBanned?: boolean;
+    walletFrozen?: boolean;
+  }>>([]);
   const [currentAdminId, setCurrentAdminId] = useState("");
 
   useEffect(() => {
@@ -37,25 +47,29 @@ export default function UsersPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">User management</h1>
-          <p className="mt-1 text-sm text-neutral-600">Search users, control access, wallet state, and password resets.</p>
-        </div>
+      <AdminHeader
+        eyebrow="Customer operations"
+        title="User management"
+        description="Search users, control access, wallet state, password resets, and manual wallet adjustments."
+        actions={
         <form className="flex gap-2" action="/admin/users">
-          <input name="q" defaultValue={q} placeholder="Search users" className="w-56 rounded-md border border-neutral-300 px-3 py-2 text-sm" />
-          <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">Search</button>
+          <label className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-3 size-4 text-neutral-400" />
+            <input name="q" defaultValue={q} placeholder="Search users" className="h-11 w-64 rounded-md border border-neutral-300 bg-white pl-9 pr-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10" />
+          </label>
+          <button className="rounded-md bg-neutral-950 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800">Search</button>
         </form>
-      </div>
-      <section className="rounded-md border border-neutral-200 bg-white">
+        }
+      />
+      <AdminSection title="User accounts" description="Access controls and wallet tools" icon={Users}>
         {users.map((user) => (
           <div key={String(user._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm">
-            <div className="grid gap-2 md:grid-cols-[1fr_100px_120px_100px]">
-              <div>
-                <p className="font-medium">{user.name}</p>
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_100px_120px_110px] md:items-center">
+              <div className="min-w-0">
+                <p className="font-semibold text-neutral-950">{user.name}</p>
                 <p className="text-neutral-500">{user.email}</p>
               </div>
-              <span>{user.role}</span>
+              <span className="rounded-md bg-neutral-100 px-2 py-1 text-center text-xs font-semibold capitalize text-neutral-700">{user.role}</span>
               <StatusBadge status={user.isBanned || user.walletFrozen ? "Canceled" : "Approved"} />
               <strong>Rs.{user.walletBalance}</strong>
             </div>
@@ -70,8 +84,8 @@ export default function UsersPage() {
             <WalletAdjustForm userId={String(user._id)} />
           </div>
         ))}
-        {users.length === 0 && <p className="p-4 text-sm text-neutral-500">No users found.</p>}
-      </section>
+        {users.length === 0 && <AdminEmptyState icon={Users} title="No users found" description="Try another search term or check whether users have registered." />}
+      </AdminSection>
     </AppShell>
   );
 }

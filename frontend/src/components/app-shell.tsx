@@ -90,9 +90,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
-  const links = user?.role === "admin" ? [...userLinks, ...adminLinks] : userLinks;
-  const primaryLinks = userLinks.filter((item) =>
-    ["/dashboard", "/dashboard/services", "/dashboard/orders", "/dashboard/wallet"].includes(item.href),
+  const isAdmin = user?.role === "admin";
+  const links = isAdmin ? adminLinks : userLinks;
+  const primaryLinks = links.filter((item) =>
+    (isAdmin
+      ? ["/admin", "/admin/orders", "/admin/deposits", "/admin/users"]
+      : ["/dashboard", "/dashboard/services", "/dashboard/orders", "/dashboard/wallet"]
+    ).includes(item.href),
   );
 
   function isActive(href: string) {
@@ -116,13 +120,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f7f4ee]">
       <aside className="fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r border-neutral-200 bg-white px-4 py-5 shadow-sm lg:block">
-        <Link href="/dashboard/services" className="flex items-center gap-3 px-2">
+        <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex items-center gap-3 px-2">
           <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">
             SP
           </span>
           <span>
-            <span className="block text-sm font-semibold">SMM Panel</span>
-            <span className="block text-xs text-neutral-500">Reseller platform</span>
+            <span className="block text-sm font-semibold">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
+            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : "Reseller platform"}</span>
           </span>
         </Link>
         <nav className="mt-8 space-y-1 pb-6">
@@ -147,9 +151,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4">
           <div className="mx-auto max-w-7xl">
             <div className="flex min-w-0 items-center justify-between gap-3">
-              <Link href="/dashboard/services" className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
+              <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
                 <span className="grid size-9 shrink-0 place-items-center rounded-md bg-teal-700 text-xs font-bold text-white">SP</span>
-                <span className="truncate">SMM Panel</span>
+                <span className="truncate">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
               </Link>
               <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
                 <span className="hidden max-w-72 truncate rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-600 sm:block">

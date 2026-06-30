@@ -2,9 +2,29 @@
 
 import { useEffect, useState } from "react";
 import { SettingsForm } from "@/components/admin-controls";
+import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { apiJson } from "@/lib/client-api";
-import type { PlatformSettings } from "@/models";
+
+type PlatformSettings = {
+  pricing: { globalMarginPercent: number; categoryMargins: Record<string, number>; serviceMargins: Record<string, number> };
+  deposits: {
+    verificationMode: "manual" | "automatic";
+    verificationStartTime: string;
+    verificationEndTime: string;
+    payment: {
+      qrImageUrl: string;
+      upiId: string;
+      accountNumber: string;
+      ifsc: string;
+      accountName: string;
+      bankName: string;
+      instructions: string;
+    };
+  };
+  provider: { lowBalanceThreshold: number };
+  referrals: { commissionPercent: number };
+};
 
 const DEFAULT_SETTINGS: PlatformSettings = {
   pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
@@ -53,10 +73,11 @@ export default function SettingsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Platform settings</h1>
-        <p className="mt-1 text-sm text-neutral-600">Pricing, deposit verification mode, and provider alerts.</p>
-      </div>
+      <AdminHeader
+        eyebrow="Platform controls"
+        title="Platform settings"
+        description="Pricing margins, deposit verification mode, payment details, referral commission, and provider balance alerts."
+      />
       <SettingsForm
         globalMargin={settings.pricing.globalMarginPercent}
         categoryMargins={settings.pricing.categoryMargins ?? {}}

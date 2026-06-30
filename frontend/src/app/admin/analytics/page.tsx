@@ -1,4 +1,5 @@
 import { BadgeIndianRupee, Banknote, ShoppingBag } from "lucide-react";
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { apiUrl } from "@/lib/client-api";
@@ -29,31 +30,31 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Analytics</h1>
-        <p className="mt-1 text-sm text-neutral-600">Revenue, profit, top services, and top customers.</p>
-      </div>
-      <form className="mb-4 grid gap-2 rounded-md border border-neutral-200 bg-white p-4 sm:grid-cols-[1fr_1fr_auto_auto]" action="/admin/analytics">
-        <input name="from" type="date" defaultValue={from} className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
-        <input name="to" type="date" defaultValue={to} className="rounded-md border border-neutral-300 px-3 py-2 text-sm" />
-        <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">Apply</button>
+      <AdminHeader
+        eyebrow="Business intelligence"
+        title="Analytics"
+        description="Revenue, profit, top services, and top customers by selected period."
+        actions={
+          <form className="grid gap-2 sm:grid-cols-[150px_150px_auto_auto]" action="/admin/analytics">
+        <input name="from" type="date" defaultValue={from} className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10" />
+        <input name="to" type="date" defaultValue={to} className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10" />
+        <button className="rounded-md bg-neutral-950 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800">Apply</button>
         <a
           href={exportUrl}
-          className="rounded-md border border-neutral-300 px-4 py-2 text-center text-sm font-semibold hover:bg-neutral-50"
+          className="rounded-md border border-neutral-300 bg-white px-4 py-2 text-center text-sm font-semibold hover:bg-neutral-50"
         >
           Export CSV
         </a>
       </form>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Daily revenue" value={`Rs.${daily.revenue}`} icon={Banknote} />
         <StatCard label="Weekly profit" value={`Rs.${weekly.profit}`} icon={BadgeIndianRupee} tone="amber" />
         <StatCard label="Monthly orders" value={monthly.orders} icon={ShoppingBag} tone="neutral" />
       </div>
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
-        <section className="rounded-md border border-neutral-200 bg-white">
-          <div className="border-b border-neutral-200 p-4">
-            <h2 className="font-semibold">Top services</h2>
-          </div>
+        <AdminSection title="Top services" description="Highest order volume in the selected range" icon={ShoppingBag}>
           {topServices.map((service) => (
             <div key={String(service._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_80px_100px]">
               <span>
@@ -66,12 +67,9 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
               <strong>Rs.{service.profit}</strong>
             </div>
           ))}
-          {topServices.length === 0 && <p className="p-4 text-sm text-neutral-500">No service data yet.</p>}
-        </section>
-        <section className="rounded-md border border-neutral-200 bg-white">
-          <div className="border-b border-neutral-200 p-4">
-            <h2 className="font-semibold">Top customers</h2>
-          </div>
+          {topServices.length === 0 && <AdminEmptyState icon={ShoppingBag} title="No service data yet" description="Order activity will populate this report." />}
+        </AdminSection>
+        <AdminSection title="Top customers" description="Highest revenue customers in the selected range" icon={BadgeIndianRupee}>
           {topCustomers.map((customer) => (
             <div key={String(customer._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_80px_100px]">
               <span>
@@ -85,8 +83,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
               <strong>Rs.{customer.revenue}</strong>
             </div>
           ))}
-          {topCustomers.length === 0 && <p className="p-4 text-sm text-neutral-500">No customer data yet.</p>}
-        </section>
+          {topCustomers.length === 0 && <AdminEmptyState icon={BadgeIndianRupee} title="No customer data yet" description="Customer revenue data will appear after orders are placed." />}
+        </AdminSection>
       </div>
     </AppShell>
   );

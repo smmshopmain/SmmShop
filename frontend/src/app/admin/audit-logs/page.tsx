@@ -1,5 +1,7 @@
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { serverApiJson } from "@/lib/server-api";
+import { ClipboardList, Search } from "lucide-react";
 
 function JsonBlock({ value }: { value: unknown }) {
   if (!value) return <span className="text-xs text-neutral-400">None</span>;
@@ -35,28 +37,32 @@ export default async function AuditLogsPage({ searchParams }: { searchParams?: P
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Audit logs</h1>
-          <p className="mt-1 text-sm text-neutral-600">Admin actions, entity changes, and detailed before/after records.</p>
-        </div>
+      <AdminHeader
+        eyebrow="Security trail"
+        title="Audit logs"
+        description="Admin actions, entity changes, and detailed before/after records for accountability."
+        actions={
         <form className="flex gap-2" action="/admin/audit-logs">
+          <label className="relative min-w-0">
+            <Search className="pointer-events-none absolute left-3 top-3 size-4 text-neutral-400" />
           <input
             name="action"
             defaultValue={action}
             placeholder="Filter action"
-            className="w-56 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+            className="h-11 w-64 rounded-md border border-neutral-300 bg-white pl-9 pr-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
-          <button className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">Filter</button>
+          </label>
+          <button className="rounded-md bg-neutral-950 px-4 py-2 text-sm font-semibold text-white hover:bg-neutral-800">Filter</button>
         </form>
-      </div>
-      <section className="rounded-md border border-neutral-200 bg-white">
+        }
+      />
+      <AdminSection title="Audit trail" description="Expandable before/after change details" icon={ClipboardList}>
         {logs.map((log) => (
           <details key={String(log._id)} className="border-b border-neutral-100 p-4 text-sm">
             <summary className="cursor-pointer list-none">
               <div className="grid gap-2 md:grid-cols-[1fr_180px_180px]">
                 <div>
-                  <p className="font-medium">{log.action}</p>
+                  <p className="font-semibold text-neutral-950">{log.action}</p>
                   <p className="text-neutral-500">
                     {log.entity ?? "Entity"} {log.entityId ?? ""}
                   </p>
@@ -77,8 +83,8 @@ export default async function AuditLogsPage({ searchParams }: { searchParams?: P
             </div>
           </details>
         ))}
-        {logs.length === 0 && <p className="p-4 text-sm text-neutral-500">No audit logs found.</p>}
-      </section>
+        {logs.length === 0 && <AdminEmptyState icon={ClipboardList} title="No audit logs found" description="Try a different action filter or wait for admin activity." />}
+      </AdminSection>
     </AppShell>
   );
 }

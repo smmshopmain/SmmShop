@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BadgeIndianRupee, Banknote, ShoppingBag, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { ActionButton } from "@/components/admin-controls";
+import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { apiJson } from "@/lib/client-api";
@@ -39,18 +40,21 @@ export default function AdminPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Admin dashboard</h1>
-        <p className="mt-1 text-sm text-neutral-600">Users, orders, revenue, deposits, profit, and provider health.</p>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <Link href="/admin/settings#payment-details" className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white hover:bg-teal-800">
-          Payment setup
-        </Link>
-        <ActionButton label="Sync order status" endpoint="/api/cron/status-sync" method="GET" />
-        <ActionButton label="Sync refill status" endpoint="/api/cron/refill-sync" method="GET" />
-        <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />
-      </div>
+      <AdminHeader
+        eyebrow="Operations overview"
+        title="Admin dashboard"
+        description="Users, orders, revenue, deposits, profit, and provider health in one clean console."
+        actions={
+          <>
+            <Link href="/admin/settings#payment-details" className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-teal-800">
+              Payment setup
+            </Link>
+            <ActionButton label="Sync orders" endpoint="/api/cron/status-sync" method="GET" />
+            <ActionButton label="Sync refills" endpoint="/api/cron/refill-sync" method="GET" />
+            <ActionButton label="Sync balances" endpoint="/api/cron/provider-balance" method="GET" />
+          </>
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Users" value={stats.totalUsers} icon={Users} />
         <StatCard label="Active Users" value={stats.activeUsers} icon={Users} tone="neutral" />

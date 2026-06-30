@@ -1,7 +1,9 @@
 import { AppShell } from "@/components/app-shell";
 import { ActionButton, PromoCodeEditForm, PromoCodeForm } from "@/components/admin-controls";
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { StatusBadge } from "@/components/status-badge";
 import { serverApiJson } from "@/lib/server-api";
+import { Tags } from "lucide-react";
 
 export default async function PromoCodesPage() {
   let promoCodes: Array<{
@@ -27,14 +29,18 @@ export default async function PromoCodesPage() {
 
   return (
     <AppShell>
-      <h1 className="mb-6 text-2xl font-semibold">Promo codes</h1>
-      <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
+      <AdminHeader
+        eyebrow="Growth tools"
+        title="Promo codes"
+        description="Create, monitor, enable, disable, and edit discounts for customer orders."
+      />
+      <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <PromoCodeForm />
-        <section className="rounded-md border border-neutral-200 bg-white">
+        <AdminSection title="Active and archived codes" description="Usage, spend and controls" icon={Tags}>
           {promoCodes.map((promo) => (
             <div key={String(promo._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_130px_110px_100px]">
               <div>
-                <p className="font-medium">{promo.code}</p>
+                <p className="font-semibold text-neutral-950">{promo.code}</p>
                 <p className="text-neutral-500">
                   {promo.discountValue} {promo.discountType === "percent" ? "%" : "Rs."} off, min Rs.{promo.minOrderAmount}
                 </p>
@@ -61,8 +67,8 @@ export default async function PromoCodesPage() {
               />
             </div>
           ))}
-          {promoCodes.length === 0 && <p className="p-4 text-sm text-neutral-500">No promo codes yet.</p>}
-        </section>
+          {promoCodes.length === 0 && <AdminEmptyState icon={Tags} title="No promo codes yet" description="Create a promo code to start offering order discounts." />}
+        </AdminSection>
       </div>
     </AppShell>
   );

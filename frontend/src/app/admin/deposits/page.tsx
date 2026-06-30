@@ -2,11 +2,13 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { ActionButton, DepositRejectForm } from "@/components/admin-controls";
+import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { apiJson, backendAssetUrl, isLegacyUploadPath } from "@/lib/client-api";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ArrowDownToLine } from "lucide-react";
 
 const STATUSES = ["Pending", "Approved", "Rejected"];
 
@@ -38,8 +40,7 @@ export default function AdminDepositsPage() {
         if (!mounted) return;
         setAllDeposits(Array.isArray(data.deposits) ? data.deposits : []);
       })
-      .catch((error) => {
-        console.error("Unable to load admin deposits", error);
+      .catch(() => {
         if (mounted) setAllDeposits([]);
       });
     return () => {
@@ -51,23 +52,31 @@ export default function AdminDepositsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Deposit verification</h1>
-          <p className="mt-1 text-sm text-neutral-600">Manual dashboard and Telegram approvals stay synchronized.</p>
-        </div>
+      <AdminHeader
+        eyebrow="Wallet operations"
+        title="Deposit verification"
+        description="Review payment proof, UTR, verification windows, and Telegram/dashboard approval state."
+        actions={
         <div className="flex flex-wrap gap-2">
           <FilterLink label="All" active={!status} href="/admin/deposits" />
           {STATUSES.map((item) => (
             <FilterLink key={item} label={item} active={status === item} href={`/admin/deposits?status=${item}`} />
           ))}
         </div>
-      </div>
-      <section className="rounded-md border border-neutral-200 bg-white">
+        }
+      />
+      <AdminSection title="Deposit requests" description="Pending and reviewed wallet top-ups" icon={ArrowDownToLine}>
+        <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 md:grid md:grid-cols-[minmax(0,1fr)_120px_150px_120px_160px]">
+          <span>User / UTR</span>
+          <span>Amount</span>
+          <span>Window</span>
+          <span>Status</span>
+          <span>Review</span>
+        </div>
         {deposits.map((deposit) => (
           <div key={String(deposit._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_120px_150px_120px_160px]">
-            <div>
-              <p className="font-medium">{deposit.user?.email ?? "User"}</p>
+            <div className="min-w-0">
+              <p className="font-semibold text-neutral-950">{deposit.user?.email ?? "User"}</p>
               <p className="text-neutral-900">{deposit.depositId ?? String(deposit._id)}</p>
               <p className="text-neutral-500">UTR {deposit.utr}</p>
               {deposit.adminAction && <p className="text-neutral-500">Action: {deposit.adminAction.replaceAll("_", " ")}</p>}
@@ -86,8 +95,8 @@ export default function AdminDepositsPage() {
             )}
           </div>
         ))}
-        {deposits.length === 0 && <p className="p-4 text-sm text-neutral-500">No deposits submitted.</p>}
-      </section>
+        {deposits.length === 0 && <AdminEmptyState icon={ArrowDownToLine} title="No deposits submitted" description="New add-fund requests will appear here for review." />}
+      </AdminSection>
     </AppShell>
   );
 }

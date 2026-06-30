@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { ActionButton, ServiceAdminList, type AdminServiceItem } from "@/components/admin-controls";
+import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { apiJson } from "@/lib/client-api";
 
@@ -33,15 +34,18 @@ export default function AdminServicesPage() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold">Service admin</h1>
-        <p className="mt-1 text-sm text-neutral-600">Control service visibility and service-level margins.</p>
-      </div>
-      <div className="mb-4 flex flex-wrap gap-2">
-        <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
-        <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
-        <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
-      </div>
+      <AdminHeader
+        eyebrow="Catalog operations"
+        title="Service admin"
+        description="Control service visibility, category/service margins, and provider catalog sync."
+        actions={
+          <>
+            <ActionButton label="Import services" endpoint="/api/cron/service-import" method="GET" />
+            <ActionButton label="Sync services" endpoint="/api/cron/service-sync" method="GET" />
+            <ActionButton label="Recalculate prices" endpoint="/api/cron/price-sync" method="GET" />
+          </>
+        }
+      />
       <ServiceAdminList services={services} />
     </AppShell>
   );
