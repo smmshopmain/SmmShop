@@ -1,5 +1,3 @@
-import nodemailer from "nodemailer";
-
 type MailInput = {
   to: string;
   subject: string;
@@ -7,31 +5,95 @@ type MailInput = {
   html?: string;
 };
 
-function smtpPort() {
-  const port = Number(process.env.SMTP_PORT ?? 587);
-  return Number.isFinite(port) ? port : 587;
-}
+type MailResult = {
+  provider: "resend";
+  messageId?: string;
+  accepted: string[];
+  rejected: string[];
+  response: string;
+};
+
+const RESEND_EMAIL_URL = "https://api.resend.com/emails";
 
 function requireEnv(name: string) {
-  const value = process.env[name];
+  const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is not configured`);
   return value;
 }
 
-export async function sendMail({ to, subject, text, html }: MailInput) {
-  const host = requireEnv("SMTP_HOST");
-  const user = requireEnv("SMTP_USER");
-  const pass = requireEnv("SMTP_PASS");
-  const from = process.env.EMAIL_FROM || user;
+async function readResendResponse(response: Response) {
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
 
-  const transporter = nodemailer.createTransport({
-    host,
-    port: smtpPort(),
-    secure: smtpPort() === 465,
-    auth: { user, pass },
+function resendErrorMessage(raw: unknown) {
+  if (!raw) return "";
+  if (typeof raw === "string") return raw;
+  if (typeof raw === "object") {
+    const record = raw as Record<string, unknown>;
+    const nestedError = record.error && typeof record.error === "object" ? record.error as Record<string, unknown> : null;
+    return String(
+      nestedError?.message ??
+        record.message ??
+        record.error ??
+        record.name ??
+        JSON.stringify(record),
+    );
+  }
+  return String(raw);
+}
+
+export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
+  const apiKey = requireEnv("RESEND_API_KEY");
+  const from = requireEnv("EMAIL_FROM");
+
+  const response = await fetch(RESEND_EMAIL_URL, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+      "user-agent": "smm-shop/1.0",
+    },
+    body: JSON.stringify({
+      from,
+      to: [to],
+      subject,
+      text,
+      html,
+    }),
   });
+  const raw = await readResendResponse(response);
 
-  await transporter.sendMail({ from, to, subject, text, html });
+  if (!response.ok) {
+    const message = resendErrorMessage(raw) || response.statusText || "Resend email API failed";
+    console.error("Resend email failed", {
+      status: response.status,
+      response: message,
+      to,
+      subject,
+    });
+    throw new Error(`Email delivery failed: ${message}`);
+  }
+
+  const record = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
+  const result: MailResult = {
+    provider: "resend",
+    messageId: typeof record.id === "string" ? record.id : undefined,
+    accepted: [to],
+    rejected: [],
+    response: `${response.status} ${response.statusText}`,
+  };
+  console.info("Resend email accepted", {
+    messageId: result.messageId,
+    accepted: result.accepted,
+    rejected: result.rejected,
+    response: result.response,
+  });
+  return result;
 }
 
 export function buildPasswordOtpEmail(otp: string) {
