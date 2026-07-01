@@ -11,6 +11,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +25,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             name: form.get("name"),
             email: form.get("email"),
             password: form.get("password"),
-            referralCode: form.get("referralCode") || undefined,
+            referralCode: form.get("referralCode") || referralParam || undefined,
           };
     const response = await apiFetch(`/api/auth/${mode}`, {
       method: "POST",
@@ -81,6 +82,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           Referral code <span className="text-xs font-medium text-neutral-500">Optional</span>
           <input
             name="referralCode"
+            defaultValue={referralParam}
             placeholder="Enter code if you have one"
             className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />

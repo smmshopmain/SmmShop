@@ -3,6 +3,7 @@ import { z } from "zod";
 import { parseBody, fail, ok } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
+import { createUniqueReferralCode } from "@/lib/referral-code";
 import { User, Referral } from "@/models";
 import { notifyTelegram } from "@/lib/telegram";
 
@@ -21,10 +22,11 @@ export async function POST(request: NextRequest) {
     const exists = await User.exists({ email: input.email.toLowerCase() });
     if (exists) return fail("Email is already registered", 409);
 
-    const referrer = input.referralCode
-      ? await User.findOne({ referralCode: input.referralCode.toUpperCase() })
+    const requestedReferralCode = input.referralCode?.trim().toUpperCase();
+    const referrer = requestedReferralCode
+      ? await User.findOne({ referralCode: requestedReferralCode })
       : null;
-    const referralCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    const referralCode = await createUniqueReferralCode(User);
     const user = await User.create({
       name: input.name,
       email: input.email,
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
     });
     await notifyTelegram("New User Registration", [user.email, `Role: ${user.role}`]);
 
-    return ok({ id: user._id, name: user.name, email: user.email, role: user.role });
+    return ok({ id: user._id, name: user.name, email: user.email, role: user.role, referralCode: user.referralCode });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Registration failed");
   }

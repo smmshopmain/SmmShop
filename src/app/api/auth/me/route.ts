@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { currentUser, setSessionCookie } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
+import { createUniqueReferralCode } from "@/lib/referral-code";
 import { normalizeRole } from "@/lib/roles";
 import { User } from "@/models";
 
@@ -18,6 +19,11 @@ export async function GET() {
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) return fail("Unauthorized", 401);
   const role = normalizeRole(dbUser.role);
+
+  if (!dbUser.referralCode) {
+    dbUser.referralCode = await createUniqueReferralCode(User);
+    await dbUser.save();
+  }
 
   if (role !== user.role || dbUser.email !== user.email || dbUser.name !== user.name) {
     await setSessionCookie({ id: user.id, email: dbUser.email, name: dbUser.name, role });

@@ -1,5 +1,6 @@
 import { dbConnect } from "../src/lib/db";
 import { hashPassword } from "../src/lib/auth";
+import { createUniqueReferralCode } from "../src/lib/referral-code";
 import { User } from "../src/models";
 
 const ADMIN_PHONE = "6388391842";
@@ -11,7 +12,7 @@ async function main() {
   await dbConnect();
 
   const passwordHash = await hashPassword(ADMIN_PASSWORD);
-  const referralCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+  const referralCode = await createUniqueReferralCode(User);
 
   const existingUser = await User.findOne({ phone: ADMIN_PHONE });
   if (existingUser) {

@@ -5,6 +5,7 @@ import {
   ORDER_STATUSES,
   REFILL_STATUSES,
 } from "@/lib/constants";
+import { generateReferralCode } from "@/lib/referral-code";
 
 const money = { type: Number, default: 0, min: 0 };
 
@@ -16,7 +17,7 @@ const UserSchema = new Schema(
     passwordHash: { type: String, required: true },
     role: { type: String, enum: ["user", "staff", "secondary_admin", "admin"], default: "user", index: true },
     walletBalance: money,
-    referralCode: { type: String, unique: true, sparse: true, index: true },
+    referralCode: { type: String, unique: true, sparse: true, index: true, default: generateReferralCode },
     referredBy: { type: Schema.Types.ObjectId, ref: "User" },
     referralEarnings: money,
     isBanned: { type: Boolean, default: false },

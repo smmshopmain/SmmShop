@@ -1,7 +1,8 @@
 import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
-import { Referral } from "@/models";
+import { createUniqueReferralCode } from "@/lib/referral-code";
+import { Referral, User } from "@/models";
 import { BadgeIndianRupee, Link2, Users } from "lucide-react";
 
 export default async function ReferralsPage() {
@@ -12,6 +13,10 @@ export default async function ReferralsPage() {
 
   try {
     const { auth, dbUser } = await requireUser();
+    if (!dbUser.referralCode) {
+      dbUser.referralCode = await createUniqueReferralCode(User);
+      await dbUser.save();
+    }
     const headerStore = await headers();
     const origin = headerStore.get("x-forwarded-host")
       ? `${headerStore.get("x-forwarded-proto") ?? "https"}://${headerStore.get("x-forwarded-host")}`
