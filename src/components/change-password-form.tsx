@@ -1,15 +1,20 @@
 "use client";
 
-import { KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
+import { ChevronDown, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "@/lib/client-api";
-import { UserRole } from "@/lib/roles";
+import { roleLabel, UserRole } from "@/lib/roles";
 
-export function ProfileSettingsForm({
-  profile,
-}: {
-  profile: { name: string; email: string; phone: string; referralCode: string; role: UserRole };
-}) {
+type Profile = { name: string; email: string; phone: string; referralCode: string; role: UserRole };
+
+const inputClass =
+  "h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10";
+const primaryButtonClass =
+  "inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60 sm:w-auto";
+const darkButtonClass =
+  "inline-flex h-11 w-full items-center justify-center rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60 sm:w-auto";
+
+export function ProfileSettingsForm({ profile }: { profile: Profile }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -32,66 +37,83 @@ export function ProfileSettingsForm({
   }
 
   return (
-    <div className="grid gap-6">
-      <form onSubmit={submit} className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+    <div className="grid gap-4">
+      <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
         <div className="flex items-center gap-3">
-          <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
+          <span className="grid size-10 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800">
             <UserRound className="size-5" />
           </span>
-          <div>
-            <h2 className="text-lg font-bold text-neutral-950">Account settings</h2>
-            <p className="text-sm text-neutral-500">Basic profile information</p>
+          <div className="min-w-0">
+            <h2 className="text-lg font-bold text-neutral-950">Your details</h2>
+            <p className="truncate text-sm text-neutral-500">{profile.email || "Account information"}</p>
           </div>
         </div>
-        <div className="mt-4 grid gap-4 text-sm md:grid-cols-2">
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            Name
-            <input
-              name="name"
-              defaultValue={profile.name}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
-          </label>
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            Phone
-            <input
-              value={profile.phone || "Not set"}
-              readOnly
-              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
-            />
-          </label>
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            Email
-            <input
-              value={profile.email}
-              readOnly
-              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
-            />
-          </label>
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            Referral code
-            <input
-              value={profile.referralCode}
-              readOnly
-              className="h-11 rounded-md border border-neutral-200 bg-neutral-50 px-3 text-sm text-neutral-600"
-            />
-          </label>
+
+        <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+          <DetailItem label="Email" value={profile.email || "-"} />
+          <DetailItem label="Phone" value={profile.phone || "Not set"} />
+          <DetailItem label="Role" value={roleLabel(profile.role)} />
+          <DetailItem label="Referral code" value={profile.referralCode || "-"} mono />
         </div>
-        <div className="mt-4 flex items-center gap-3">
-          <button
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
-          >
-            <Save className="size-4" />
-            {loading ? "Saving..." : "Save profile"}
-          </button>
-          {message && <p className="rounded-md bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-600">{message}</p>}
+
+        <form onSubmit={submit} className="mt-5 border-t border-neutral-100 pt-4">
+          <div className="grid gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <label className="grid gap-2 font-semibold text-neutral-800">
+              Name
+              <input name="name" defaultValue={profile.name} required className={inputClass} />
+            </label>
+            <button disabled={loading} className={primaryButtonClass}>
+              <Save className="size-4" />
+              {loading ? "Saving..." : "Save"}
+            </button>
+          </div>
+          {message && <p className="mt-3 rounded-md bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-600">{message}</p>}
+        </form>
+      </section>
+
+      <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <div className="border-b border-neutral-100 px-4 py-3 sm:px-5">
+          <h2 className="text-base font-bold text-neutral-950">Contact changes</h2>
         </div>
-      </form>
-      <EmailChangeForm currentEmail={profile.email} />
-      <PhoneChangeForm currentPhone={profile.phone} />
+        <EmailChangeForm currentEmail={profile.email} />
+        <PhoneChangeForm currentPhone={profile.phone} />
+      </section>
     </div>
+  );
+}
+
+function DetailItem({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+      <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</p>
+      <p className={`mt-1 break-words text-sm font-semibold text-neutral-950 ${mono ? "font-mono" : ""}`}>{value}</p>
+    </div>
+  );
+}
+
+function ActionPanel({
+  icon,
+  title,
+  value,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <details className="group border-b border-neutral-100 last:border-b-0">
+      <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-4 marker:hidden sm:px-5 [&::-webkit-details-marker]:hidden">
+        <span className="grid size-9 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800">{icon}</span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold text-neutral-950">{title}</span>
+          {value && <span className="mt-0.5 block truncate text-xs font-medium text-neutral-500">{value}</span>}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-neutral-400 transition group-open:rotate-180" />
+      </summary>
+      <div className="px-4 pb-4 sm:px-5">{children}</div>
+    </details>
   );
 }
 
@@ -137,12 +159,8 @@ function EmailChangeForm({ currentEmail }: { currentEmail: string }) {
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center gap-2">
-        <Mail className="size-5 text-teal-700" />
-        <h2 className="text-lg font-bold text-neutral-950">Change email</h2>
-      </div>
-      <form onSubmit={requestOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[1fr_auto] md:items-end">
+    <ActionPanel icon={<Mail className="size-4" />} title="Change email" value={currentEmail}>
+      <form onSubmit={requestOtp} className="grid gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <label className="grid gap-2 font-semibold text-neutral-800">
           New email
           <input
@@ -151,39 +169,26 @@ function EmailChangeForm({ currentEmail }: { currentEmail: string }) {
             type="email"
             required
             placeholder={currentEmail}
-            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            className={inputClass}
           />
         </label>
-        <button
-          disabled={loading}
-          className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
-        >
+        <button disabled={loading} className={darkButtonClass}>
           {loading ? "Sending..." : "Send OTP"}
         </button>
       </form>
       {pendingEmail && (
-        <form onSubmit={verifyOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[180px_auto] md:items-end">
+        <form onSubmit={verifyOtp} className="mt-3 grid gap-3 text-sm sm:grid-cols-[180px_auto] sm:items-end">
           <label className="grid gap-2 font-semibold text-neutral-800">
             OTP
-            <input
-              name="otp"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+            <input name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required className={inputClass} />
           </label>
-          <button
-            disabled={loading}
-            className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
-          >
+          <button disabled={loading} className={primaryButtonClass}>
             {loading ? "Verifying..." : "Verify and change"}
           </button>
         </form>
       )}
-      {message && <p className="mt-4 rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">{message}</p>}
-    </section>
+      {message && <p className="mt-3 rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">{message}</p>}
+    </ActionPanel>
   );
 }
 
@@ -229,12 +234,8 @@ function PhoneChangeForm({ currentPhone }: { currentPhone: string }) {
   }
 
   return (
-    <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center gap-2">
-        <Phone className="size-5 text-teal-700" />
-        <h2 className="text-lg font-bold text-neutral-950">Change phone</h2>
-      </div>
-      <form onSubmit={requestOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[1fr_auto] md:items-end">
+    <ActionPanel icon={<Phone className="size-4" />} title="Change phone" value={currentPhone || "Not set"}>
+      <form onSubmit={requestOtp} className="grid gap-3 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
         <label className="grid gap-2 font-semibold text-neutral-800">
           New phone
           <input
@@ -244,48 +245,38 @@ function PhoneChangeForm({ currentPhone }: { currentPhone: string }) {
             minLength={6}
             maxLength={25}
             placeholder={currentPhone || "Phone number"}
-            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            className={inputClass}
           />
         </label>
-        <button
-          disabled={loading}
-          className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
-        >
+        <button disabled={loading} className={darkButtonClass}>
           {loading ? "Sending..." : "Send OTP"}
         </button>
       </form>
       {pendingPhone && (
-        <form onSubmit={verifyOtp} className="mt-4 grid gap-4 text-sm md:grid-cols-[180px_auto] md:items-end">
+        <form onSubmit={verifyOtp} className="mt-3 grid gap-3 text-sm sm:grid-cols-[180px_auto] sm:items-end">
           <label className="grid gap-2 font-semibold text-neutral-800">
             OTP
-            <input
-              name="otp"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+            <input name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required className={inputClass} />
           </label>
-          <button
-            disabled={loading}
-            className="h-11 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
-          >
+          <button disabled={loading} className={primaryButtonClass}>
             {loading ? "Verifying..." : "Verify and change"}
           </button>
         </form>
       )}
-      {message && <p className="mt-4 rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">{message}</p>}
-    </section>
+      {message && <p className="mt-3 rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">{message}</p>}
+    </ActionPanel>
   );
 }
 
 export function ChangePasswordForm() {
   return (
-    <div className="grid max-w-xl gap-4">
+    <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+      <div className="border-b border-neutral-100 px-4 py-3 sm:px-5">
+        <h2 className="text-base font-bold text-neutral-950">Security</h2>
+      </div>
       <CurrentPasswordChangeForm />
       <PasswordOtpChangeForm />
-    </div>
+    </section>
   );
 }
 
@@ -321,51 +312,26 @@ function CurrentPasswordChangeForm() {
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center gap-2">
-        <KeyRound className="size-5 text-teal-700" />
-        <div>
-          <h2 className="text-lg font-bold text-neutral-950">Change password</h2>
-          <p className="text-sm text-neutral-500">Use current password</p>
-        </div>
-      </div>
-      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-        Current password
-        <input
-          name="currentPassword"
-          type="password"
-          required
-          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-        />
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-        New password
-        <input
-          name="newPassword"
-          type="password"
-          minLength={8}
-          required
-          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-        />
-      </label>
-      <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-        Confirm new password
-        <input
-          name="confirmPassword"
-          type="password"
-          minLength={8}
-          required
-          className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-        />
-      </label>
-      {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
-      <button
-        disabled={loading}
-        className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
-      >
-        {loading ? "Saving..." : "Save password"}
-      </button>
-    </form>
+    <ActionPanel icon={<KeyRound className="size-4" />} title="Change password" value="Use current password">
+      <form onSubmit={submit} className="grid gap-3 text-sm">
+        <label className="grid gap-2 font-semibold text-neutral-800">
+          Current password
+          <input name="currentPassword" type="password" required className={inputClass} />
+        </label>
+        <label className="grid gap-2 font-semibold text-neutral-800">
+          New password
+          <input name="newPassword" type="password" minLength={8} required className={inputClass} />
+        </label>
+        <label className="grid gap-2 font-semibold text-neutral-800">
+          Confirm new password
+          <input name="confirmPassword" type="password" minLength={8} required className={inputClass} />
+        </label>
+        {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+        <button disabled={loading} className={primaryButtonClass}>
+          {loading ? "Saving..." : "Save password"}
+        </button>
+      </form>
+    </ActionPanel>
   );
 }
 
@@ -415,64 +381,30 @@ function PasswordOtpChangeForm() {
   }
 
   return (
-    <section className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex items-center gap-2">
-        <Mail className="size-5 text-teal-700" />
-        <div>
-          <h2 className="text-lg font-bold text-neutral-950">Change password with OTP</h2>
-          <p className="text-sm text-neutral-500">OTP goes to current email</p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={requestOtp}
-        disabled={loading}
-        className="h-11 rounded-md bg-neutral-950 px-4 text-sm font-semibold text-white hover:bg-neutral-800 disabled:opacity-60"
-      >
+    <ActionPanel icon={<Mail className="size-4" />} title="Change password with OTP" value="Email OTP">
+      <button type="button" onClick={requestOtp} disabled={loading} className={darkButtonClass}>
         {loading ? "Sending..." : "Send OTP"}
       </button>
       {pending && (
-        <form onSubmit={verifyOtp} className="grid gap-4 text-sm">
+        <form onSubmit={verifyOtp} className="mt-3 grid gap-3 text-sm">
           <label className="grid gap-2 font-semibold text-neutral-800">
             OTP
-            <input
-              name="otp"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+            <input name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required className={inputClass} />
           </label>
           <label className="grid gap-2 font-semibold text-neutral-800">
             New password
-            <input
-              name="otpNewPassword"
-              type="password"
-              minLength={8}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+            <input name="otpNewPassword" type="password" minLength={8} required className={inputClass} />
           </label>
           <label className="grid gap-2 font-semibold text-neutral-800">
             Confirm new password
-            <input
-              name="otpConfirmPassword"
-              type="password"
-              minLength={8}
-              required
-              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+            <input name="otpConfirmPassword" type="password" minLength={8} required className={inputClass} />
           </label>
-          <button
-            disabled={loading}
-            className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60"
-          >
+          <button disabled={loading} className={primaryButtonClass}>
             {loading ? "Verifying..." : "Verify and change"}
           </button>
         </form>
       )}
-      {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
-    </section>
+      {message && <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+    </ActionPanel>
   );
 }
