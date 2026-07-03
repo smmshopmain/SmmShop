@@ -329,6 +329,7 @@ export type PlatformSettings = {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
     verificationEndTime: string;
+    minimumWalletAddAmount: number;
     payment: {
       qrImageUrl: string;
       upiId: string;
@@ -350,6 +351,7 @@ export async function getSettings() {
     deposits: {
       verificationMode: "manual",
       ...DEFAULT_VERIFICATION_SCHEDULE,
+      minimumWalletAddAmount: 0,
       payment: {
         qrImageUrl: "",
         upiId: "",

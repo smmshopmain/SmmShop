@@ -11,6 +11,7 @@ type PlatformSettings = {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
     verificationEndTime: string;
+    minimumWalletAddAmount: number;
     payment: {
       qrImageUrl: string;
       upiId: string;
@@ -27,18 +28,18 @@ type PlatformSettings = {
 
 const DEFAULT_SETTINGS: PlatformSettings = {
   deposits: {
-    verificationMode: "manual";
-    verificationStartTime: string;
-    verificationEndTime: string;
-    minimumWalletAddAmount: number;
+    verificationMode: "manual",
+    verificationStartTime: "",
+    verificationEndTime: "",
+    minimumWalletAddAmount: 0,
     payment: {
-      qrImageUrl: string;
-      upiId: string;
-      accountNumber: string;
-      ifsc: string;
-      accountName: string;
-      bankName: string;
-      instructions: string;
+      qrImageUrl: "",
+      upiId: "",
+      accountNumber: "",
+      ifsc: "",
+      accountName: "",
+      bankName: "",
+      instructions: "",
     },
   },
   provider: { lowBalanceThreshold: 100 },
