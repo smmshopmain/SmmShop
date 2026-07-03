@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "http://localhost:3002";
+const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
 
 async function forwardLogout(request: Request) {
-  const backendUrl = `${apiBase}/api/auth/logout`;
+  const backendUrl = apiBase ? `${apiBase}/api/auth/logout` : "/api/auth/logout";
   const cookie = request.headers.get("cookie");
 
   const backendResponse = await fetch(backendUrl, {

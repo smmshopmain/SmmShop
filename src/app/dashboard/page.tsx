@@ -82,7 +82,9 @@ export default async function DashboardPage() {
       </div>
       {setupError && (
         <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Configure MONGODB_URI and JWT_SECRET in .env.local, then restart the dev server. Current status: {setupError}
+          {setupError.includes("MONGODB_URI") || setupError.includes("JWT_SECRET")
+            ? `Configure MONGODB_URI and JWT_SECRET in .env.local, then restart the dev server. Current status: ${setupError}`
+            : `Unable to load dashboard: ${setupError}. Please login or try again.`}
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

@@ -182,18 +182,25 @@ export function WalletAdjustForm({ userId }: { userId: string }) {
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
+    const action = String(form.get("action") ?? "");
+    const amount = Number(form.get("amount"));
+    if (!["add", "deduct", "set"].includes(action) || Number.isNaN(amount)) {
+      setMessage("Enter a valid action and amount.");
+      return;
+    }
+
     const response = await apiFetch("/api/admin/wallet", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
         userId,
-        action: form.get("action"),
-        amount: Number(form.get("amount")),
+        action,
+        amount,
         note: form.get("note"),
       }),
     });
-    const result = await response.json();
-    setMessage(response.ok ? "Wallet updated." : result.message);
+    const result = await response.json().catch(() => ({}));
+    setMessage(response.ok ? "Wallet updated." : result.message ?? "Unable to update wallet");
     if (response.ok) window.location.reload();
   }
 

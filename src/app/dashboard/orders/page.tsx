@@ -53,8 +53,25 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     updatedAt: new Date(order.updatedAt).toISOString(),
     lastStatusSyncAt: order.lastStatusSyncAt ? new Date(order.lastStatusSyncAt).toISOString() : undefined,
     providerOrderId: order.providerOrderId,
-    providerResponse: order.providerResponse,
-    service: order.service,
+    providerResponse: order.providerResponse
+      ? {
+          lastStatus: order.providerResponse.lastStatus
+            ? {
+                status: order.providerResponse.lastStatus.status ?? undefined,
+                start_count: order.providerResponse.lastStatus.start_count,
+                remains: order.providerResponse.lastStatus.remains,
+                charge: order.providerResponse.lastStatus.charge,
+              }
+            : undefined,
+        }
+      : undefined,
+    service: order.service
+      ? {
+          name: order.service.name,
+          refill: Boolean(order.service.refill),
+          cancel: Boolean(order.service.cancel),
+        }
+      : undefined,
   }));
 
   return (

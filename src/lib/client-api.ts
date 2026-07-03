@@ -1,11 +1,13 @@
 export function apiUrl(path: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ||
-    (process.env.NODE_ENV !== "production" ? "http://localhost:3002" : undefined);
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
-  }
+  const envBase = process.env.NEXT_PUBLIC_API_URL;
+  const baseUrl = envBase ? envBase.replace(/\/+$/, "") : "";
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${baseUrl}${cleanPath}`;
+
+  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+    return cleanPath;
+  }
+
+  return baseUrl ? `${baseUrl}${cleanPath}` : cleanPath;
 }
 
 export function backendAssetUrl(value?: string) {

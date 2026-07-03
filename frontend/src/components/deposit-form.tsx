@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Clipboard, CreditCard, UploadCloud, WalletCards } from "lucide-react";
 import { apiFetch, apiUrl, backendAssetUrl } from "@/lib/client-api";
 
@@ -20,6 +20,18 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [selectedProofFile, setSelectedProofFile] = useState<File | null>(null);
+  const [selectedProofPreviewUrl, setSelectedProofPreviewUrl] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (selectedProofPreviewUrl) {
+        URL.revokeObjectURL(selectedProofPreviewUrl);
+      }
+    };
+  }, [selectedProofPreviewUrl]);
+
   const hasPaymentDetails = Boolean(
     payment.qrImageUrl ||
       payment.upiId ||
@@ -60,20 +72,23 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setLoading(true);
     setMessage("");
     let proofUrl = String(form.get("proofUrl") ?? "").trim();
-    const proofFile = form.get("proofFile");
+    const proofFile =
+      selectedProofFile ??
+      (form.get("proofFile") instanceof File ? (form.get("proofFile") as File) : null);
+    const amount = Number(form.get("amount"));
 
-    if (!(proofFile instanceof File && proofFile.size > 0) && !proofUrl) {
+    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
       setLoading(false);
       setMessageTone("warning");
-      setMessage("Payment screenshot is required.");
+      setMessage("Enter a valid amount.");
       return;
     }
 
-    const amount = Number(form.get("amount"));
     if (minimumWalletAddAmount > 0 && amount < minimumWalletAddAmount) {
       setLoading(false);
       setMessageTone("warning");
@@ -121,11 +136,15 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
         ? `Deposit submitted. ID: ${result.data.deposit.depositId}. Verification window: ${result.data.schedule.start} - ${result.data.schedule.end}.`
         : result.message,
     );
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      formRef.current?.reset();
+      setSelectedProofFile(null);
+      setSelectedProofPreviewUrl(null);
+    }
   }
 
   return (
-    <form onSubmit={submit} className="grid gap-5 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+    <form ref={formRef} onSubmit={submit} className="grid gap-5 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
           <WalletCards className="size-5" />
@@ -167,6 +186,11 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
               {payment.ifsc && <PaymentRow label="IFSC" value={payment.ifsc} />}
             </div>
             {payment.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{payment.instructions}</p>}
+            {minimumWalletAddAmount > 0 && (
+              <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                Minimum wallet top-up amount is ₹{minimumWalletAddAmount}. Isse kam amount submit nahi kiya ja sakta.
+              </p>
+            )}
           </>
         ) : (
           <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">Payment details are not configured yet. Contact support before submitting a deposit.</p>
@@ -176,12 +200,16 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       <div className="grid gap-4">
         <label className="grid gap-2 text-sm font-semibold text-neutral-800">
           Amount
+          {minimumWalletAddAmount > 0 && (
+            <span className="text-xs font-medium text-neutral-500">Minimum ₹{minimumWalletAddAmount} compulsory</span>
+          )}
           <input
             name="amount"
             type="number"
             min={minimumWalletAddAmount > 0 ? minimumWalletAddAmount : 1}
+            step="0.01"
             required
-            placeholder="Enter amount in Rs."
+            placeholder={minimumWalletAddAmount > 0 ? `Enter ₹${minimumWalletAddAmount} or more` : "Enter amount in Rs."}
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>
@@ -194,14 +222,40 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-          Payment screenshot
-          <span className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
+        <div className="grid gap-2 text-sm font-semibold text-neutral-800">
+          <span>Payment screenshot</span>
+          <label htmlFor="proofFile" className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
             <UploadCloud className="size-6 text-teal-700" />
             <span className="font-medium">Upload screenshot or PDF</span>
-            <input name="proofFile" type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="sr-only" />
-          </span>
-        </label>
+            <input
+              id="proofFile"
+              name="proofFile"
+              type="file"
+              accept="image/png,image/jpeg,image/webp,application/pdf"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.currentTarget.files?.[0] ?? null;
+                setSelectedProofFile(file);
+                if (file && file.type.startsWith("image/")) {
+                  setSelectedProofPreviewUrl(URL.createObjectURL(file));
+                } else {
+                  setSelectedProofPreviewUrl(null);
+                }
+              }}
+            />
+          </label>
+          {selectedProofPreviewUrl && (
+            <img src={selectedProofPreviewUrl} alt="Selected proof preview" className="h-40 rounded-md border border-neutral-200 object-contain" />
+          )}
+
+          {selectedProofFile && (
+            <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+              <p className="font-medium">Selected file:</p>
+              <p>{selectedProofFile.name}</p>
+              <p className="text-xs text-neutral-500">{selectedProofFile.type || "File selected"}</p>
+            </div>
+          )}
+        </div>
         <label className="grid gap-2 text-sm font-semibold text-neutral-800">
           Screenshot URL <span className="text-xs font-medium text-neutral-500">Optional if file uploaded</span>
           <input

@@ -14,6 +14,11 @@ type PaymentDetails = {
   instructions: string;
 };
 
+type PaymentDetailsResult = {
+  payment: PaymentDetails;
+  minimumWalletAddAmount?: number;
+};
+
 export default async function WalletPage() {
   let balance = 0;
   let transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }> = [];
@@ -30,17 +35,16 @@ export default async function WalletPage() {
   let minimumWalletAddAmount = 0;
 
   try {
-    const [walletResult, depositResult, paymentResult, settings] = await Promise.all([
+    const [walletResult, depositResult, paymentResult] = await Promise.all([
       serverApiJson("/api/wallet"),
       serverApiJson("/api/deposits"),
-      serverApiJson("/api/payment-details"),
-      serverApiJson("/api/admin/settings"),
+      serverApiJson("/api/payment-details") as Promise<PaymentDetailsResult>,
     ]);
     balance = Number(walletResult.balance ?? 0);
     transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 20) : [];
     deposits = Array.isArray(depositResult.deposits) ? depositResult.deposits.slice(0, 20) : [];
     payment = { ...payment, ...(paymentResult.payment ?? {}) };
-    minimumWalletAddAmount = Number(settings.deposits.minimumWalletAddAmount ?? 0);
+    minimumWalletAddAmount = Number(paymentResult.minimumWalletAddAmount ?? 0);
   } catch {
     transactions = [];
   }

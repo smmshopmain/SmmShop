@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
+import { dbConnect } from "@/lib/db";
 import { AuditLog, User, WalletTransaction } from "@/models";
 
 const schema = z.object({
@@ -13,6 +14,7 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
+    await dbConnect();
     const input = await parseBody(request, schema);
     const user = await User.findById(input.userId);
     if (!user) return fail("User not found", 404);

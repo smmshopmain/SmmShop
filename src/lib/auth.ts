@@ -9,7 +9,7 @@ const COOKIE_NAME = "smm_token";
 const isProduction = process.env.NODE_ENV === "production";
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: "none" as const,
+  sameSite: isProduction ? ("none" as const) : ("lax" as const),
   secure: isProduction,
   path: "/",
 };
