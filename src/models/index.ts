@@ -350,6 +350,7 @@ export async function getSettings() {
     deposits: {
       verificationMode: "manual",
       ...DEFAULT_VERIFICATION_SCHEDULE,
+      minimumWalletAddAmount: 0,
       payment: {
         qrImageUrl: "",
         upiId: "",

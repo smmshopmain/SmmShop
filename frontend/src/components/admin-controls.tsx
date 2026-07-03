@@ -667,6 +667,7 @@ export function SettingsForm({
   endTime,
   mode,
   payment,
+  minimumWalletAddAmount,
   lowBalanceThreshold,
   referralCommissionPercent,
 }: {
@@ -682,6 +683,7 @@ export function SettingsForm({
     bankName: string;
     instructions: string;
   };
+  minimumWalletAddAmount: number;
   lowBalanceThreshold: number;
   referralCommissionPercent: number;
 }) {
@@ -722,6 +724,7 @@ export function SettingsForm({
             verificationMode: form.get("verificationMode"),
             verificationStartTime: form.get("verificationStartTime"),
             verificationEndTime: form.get("verificationEndTime"),
+            minimumWalletAddAmount: Number(form.get("minimumWalletAddAmount")),
             payment: {
               qrImageUrl,
               upiId: String(form.get("upiId") ?? "").trim(),
@@ -820,6 +823,10 @@ export function SettingsForm({
           </div>
         )}
       </div>
+      <label className="grid gap-2 text-sm font-medium">
+        Minimum wallet top-up amount
+        <input name="minimumWalletAddAmount" type="number" min={0} step="0.01" defaultValue={minimumWalletAddAmount} className="rounded-md border border-neutral-300 px-3 py-2" />
+      </label>
       <label className="grid gap-2 text-sm font-medium">
         Low provider balance alert
         <input name="lowBalanceThreshold" type="number" min={0} step="0.01" defaultValue={lowBalanceThreshold} className="rounded-md border border-neutral-300 px-3 py-2" />

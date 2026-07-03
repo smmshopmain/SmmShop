@@ -1,6 +1,6 @@
 export type PlatformSettings = {
   pricing: { globalMarginPercent: number; categoryMargins?: Record<string, number>; serviceMargins?: Record<string, number> };
-  deposits: { verificationMode: string; verificationStartTime: string; verificationEndTime: string; payment: any };
+  deposits: { verificationMode: string; verificationStartTime: string; verificationEndTime: string; minimumWalletAddAmount: number; payment: any };
   provider: { lowBalanceThreshold: number };
   referrals: { commissionPercent: number };
 };
@@ -11,6 +11,7 @@ const defaultSettings: PlatformSettings = {
     verificationMode: "manual",
     verificationStartTime: "10:00",
     verificationEndTime: "22:00",
+    minimumWalletAddAmount: 0,
     payment: { qrImageUrl: "", upiId: "", accountNumber: "", ifsc: "", accountName: "", bankName: "", instructions: "" },
   },
   provider: { lowBalanceThreshold: 100 },

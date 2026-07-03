@@ -12,6 +12,7 @@ export default async function SettingsPage() {
       verificationMode: "manual",
       verificationStartTime: "10:00",
       verificationEndTime: "22:00",
+      minimumWalletAddAmount: 0,
       payment: {
         qrImageUrl: "",
         upiId: "",
@@ -46,6 +47,7 @@ export default async function SettingsPage() {
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}
         payment={settings.deposits.payment}
+        minimumWalletAddAmount={settings.deposits.minimumWalletAddAmount}
         lowBalanceThreshold={settings.provider.lowBalanceThreshold}
         referralCommissionPercent={settings.referrals.commissionPercent}
       />

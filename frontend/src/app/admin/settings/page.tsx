@@ -27,17 +27,18 @@ type PlatformSettings = {
 
 const DEFAULT_SETTINGS: PlatformSettings = {
   deposits: {
-    verificationMode: "manual",
-    verificationStartTime: "10:00",
-    verificationEndTime: "22:00",
+    verificationMode: "manual";
+    verificationStartTime: string;
+    verificationEndTime: string;
+    minimumWalletAddAmount: number;
     payment: {
-      qrImageUrl: "",
-      upiId: "",
-      accountNumber: "",
-      ifsc: "",
-      accountName: "",
-      bankName: "",
-      instructions: "",
+      qrImageUrl: string;
+      upiId: string;
+      accountNumber: string;
+      ifsc: string;
+      accountName: string;
+      bankName: string;
+      instructions: string;
     },
   },
   provider: { lowBalanceThreshold: 100 },
@@ -78,6 +79,7 @@ export default function SettingsPage() {
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}
         payment={settings.deposits.payment}
+        minimumWalletAddAmount={settings.deposits.minimumWalletAddAmount}
         lowBalanceThreshold={settings.provider.lowBalanceThreshold}
         referralCommissionPercent={settings.referrals.commissionPercent}
       />

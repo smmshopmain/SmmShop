@@ -15,7 +15,7 @@ type PaymentDetails = {
   instructions: string;
 };
 
-export function DepositForm({ payment }: { payment: PaymentDetails }) {
+export function DepositForm({ payment, minimumWalletAddAmount }: { payment: PaymentDetails; minimumWalletAddAmount: number }) {
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
@@ -65,6 +65,21 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
     setMessage("");
     let proofUrl = String(form.get("proofUrl") ?? "").trim();
     const proofFile = form.get("proofFile");
+    const amount = Number(form.get("amount"));
+
+    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
+      setLoading(false);
+      setMessageTone("warning");
+      setMessage("Enter a valid amount.");
+      return;
+    }
+
+    if (minimumWalletAddAmount > 0 && amount < minimumWalletAddAmount) {
+      setLoading(false);
+      setMessageTone("warning");
+      setMessage(`Minimum wallet top-up amount is ₹${minimumWalletAddAmount}.`);
+      return;
+    }
 
     if (!(proofFile instanceof File && proofFile.size > 0) && !proofUrl) {
       setLoading(false);
@@ -171,7 +186,8 @@ export function DepositForm({ payment }: { payment: PaymentDetails }) {
           <input
             name="amount"
             type="number"
-            min={1}
+            min={minimumWalletAddAmount > 0 ? minimumWalletAddAmount : 1}
+            step="0.01"
             required
             placeholder="Enter amount in Rs."
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"

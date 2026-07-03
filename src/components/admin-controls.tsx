@@ -682,6 +682,7 @@ export function SettingsForm({
     bankName: string;
     instructions: string;
   };
+  minimumWalletAddAmount: number;
   lowBalanceThreshold: number;
   referralCommissionPercent: number;
 }) {
@@ -722,6 +723,7 @@ export function SettingsForm({
             verificationMode: form.get("verificationMode"),
             verificationStartTime: form.get("verificationStartTime"),
             verificationEndTime: form.get("verificationEndTime"),
+            minimumWalletAddAmount: Number(form.get("minimumWalletAddAmount")),
             payment: {
               qrImageUrl,
               upiId: String(form.get("upiId") ?? "").trim(),
@@ -772,6 +774,17 @@ export function SettingsForm({
       <label className="grid gap-2 text-sm font-medium">
         Verification end
         <input name="verificationEndTime" type="time" defaultValue={endTime} className="rounded-md border border-neutral-300 px-3 py-2" />
+      </label>
+      <label className="grid gap-2 text-sm font-medium">
+        Minimum wallet add amount
+        <input
+          name="minimumWalletAddAmount"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={minimumWalletAddAmount}
+          className="rounded-md border border-neutral-300 px-3 py-2"
+        />
       </label>
       <div id="payment-details" className="scroll-mt-24 grid gap-3 rounded-md bg-neutral-50 p-4 md:col-span-2">
         <h2 className="text-sm font-semibold">Payment details shown to users</h2>

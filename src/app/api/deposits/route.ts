@@ -63,6 +63,9 @@ export async function POST(request: NextRequest) {
     const input = await parseBody(request, schema);
     const { auth, dbUser } = await requireUser();
     const settings = await getSettings();
+    if (settings.deposits.minimumWalletAddAmount > 0 && input.amount < settings.deposits.minimumWalletAddAmount) {
+      return fail(`Minimum wallet top-up amount is ₹${settings.deposits.minimumWalletAddAmount}.`);
+    }
     const deposit = await createDeposit({
       user: auth.id,
       amount: input.amount,

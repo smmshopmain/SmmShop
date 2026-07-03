@@ -27,17 +27,20 @@ export default async function WalletPage() {
     bankName: "",
     instructions: "",
   };
+  let minimumWalletAddAmount = 0;
 
   try {
-    const [walletResult, depositResult, paymentResult] = await Promise.all([
+    const [walletResult, depositResult, paymentResult, settings] = await Promise.all([
       serverApiJson("/api/wallet"),
       serverApiJson("/api/deposits"),
       serverApiJson("/api/payment-details"),
+      serverApiJson("/api/admin/settings"),
     ]);
     balance = Number(walletResult.balance ?? 0);
     transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 20) : [];
     deposits = Array.isArray(depositResult.deposits) ? depositResult.deposits.slice(0, 20) : [];
     payment = { ...payment, ...(paymentResult.payment ?? {}) };
+    minimumWalletAddAmount = Number(settings.deposits.minimumWalletAddAmount ?? 0);
   } catch {
     transactions = [];
   }
@@ -60,7 +63,7 @@ export default async function WalletPage() {
         </div>
       </div>
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-        <DepositForm payment={payment} />
+        <DepositForm payment={payment} minimumWalletAddAmount={minimumWalletAddAmount} />
         <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
             <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">

@@ -18,6 +18,7 @@ export default async function WalletPage() {
     bankName: "",
     instructions: "",
   };
+  let minimumWalletAddAmount = 0;
 
   try {
     const { auth, dbUser } = await requireUser();
@@ -30,6 +31,7 @@ export default async function WalletPage() {
     transactions = nextTransactions as typeof transactions;
     deposits = nextDeposits as typeof deposits;
     payment = settings.deposits.payment;
+    minimumWalletAddAmount = settings.deposits.minimumWalletAddAmount;
   } catch {
     transactions = [];
   }
@@ -52,7 +54,7 @@ export default async function WalletPage() {
         </div>
       </div>
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
-        <DepositForm payment={payment} />
+        <DepositForm payment={payment} minimumWalletAddAmount={minimumWalletAddAmount} />
         <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
             <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
