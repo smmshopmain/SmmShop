@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { getSettings, Setting } from "@/models";
@@ -65,6 +66,11 @@ export async function PATCH(request: NextRequest) {
       { value },
       { upsert: true, returnDocument: "after" },
     );
+    if (input.key === "deposits") {
+      revalidatePath("/admin/settings");
+      revalidatePath("/dashboard/wallet");
+      revalidatePath("/api/payment-details");
+    }
     return ok({ setting });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to save settings");
