@@ -3,7 +3,7 @@ export function apiUrl(path: string) {
   const baseUrl = envBase ? envBase.replace(/\/+$/, "") : "";
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
+  if (typeof window !== "undefined") {
     return cleanPath;
   }
 
