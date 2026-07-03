@@ -16,6 +16,8 @@ type PaymentDetails = {
 };
 
 export function DepositForm({ payment, minimumWalletAddAmount }: { payment: PaymentDetails; minimumWalletAddAmount: number }) {
+  const [paymentDetails, setPaymentDetails] = useState(payment);
+  const [minimumAmount, setMinimumAmount] = useState(minimumWalletAddAmount);
   const [message, setMessage] = useState("");
   const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
@@ -23,6 +25,30 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [selectedProofFile, setSelectedProofFile] = useState<File | null>(null);
   const [selectedProofPreviewUrl, setSelectedProofPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    async function refreshPaymentDetails() {
+      try {
+        const response = await apiFetch("/api/payment-details", { cache: "no-store" });
+        const result = await response.json().catch(() => ({}));
+        if (!active || !response.ok) return;
+        if (result.data?.payment) setPaymentDetails(result.data.payment);
+        if (typeof result.data?.minimumWalletAddAmount === "number") {
+          setMinimumAmount(result.data.minimumWalletAddAmount);
+        }
+      } catch {
+        // Keep server-rendered payment details if refresh fails.
+      }
+    }
+
+    refreshPaymentDetails();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -33,13 +59,13 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   }, [selectedProofPreviewUrl]);
 
   const hasPaymentDetails = Boolean(
-    payment.qrImageUrl ||
-      payment.upiId ||
-      payment.accountNumber ||
-      payment.ifsc ||
-      payment.accountName ||
-      payment.bankName ||
-      payment.instructions,
+    paymentDetails.qrImageUrl ||
+      paymentDetails.upiId ||
+      paymentDetails.accountNumber ||
+      paymentDetails.ifsc ||
+      paymentDetails.accountName ||
+      paymentDetails.bankName ||
+      paymentDetails.instructions,
   );
 
   function uploadFile(file: File) {
@@ -89,10 +115,17 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       return;
     }
 
-    if (minimumWalletAddAmount > 0 && amount < minimumWalletAddAmount) {
+    if (minimumAmount > 0 && amount < minimumAmount) {
       setLoading(false);
       setMessageTone("warning");
-      setMessage(`Minimum wallet top-up amount is ₹${minimumWalletAddAmount}.`);
+      setMessage(`Minimum wallet top-up amount is Rs.${minimumAmount}.`);
+      return;
+    }
+
+    if (!(proofFile instanceof File && proofFile.size > 0) && !proofUrl) {
+      setLoading(false);
+      setMessageTone("warning");
+      setMessage("Payment screenshot is required.");
       return;
     }
 
@@ -171,24 +204,24 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
         </div>
         {hasPaymentDetails ? (
           <>
-            {payment.qrImageUrl && (
+            {paymentDetails.qrImageUrl && (
               <img
-                src={backendAssetUrl(payment.qrImageUrl)}
+                src={backendAssetUrl(paymentDetails.qrImageUrl)}
                 alt="Payment QR"
                 className="mx-auto h-56 w-56 rounded-md border border-neutral-200 bg-white object-contain p-2 shadow-sm"
               />
             )}
             <div className="grid gap-2">
-              {payment.upiId && <PaymentRow label="UPI ID" value={payment.upiId} />}
-              {payment.bankName && <PaymentRow label="Bank" value={payment.bankName} />}
-              {payment.accountName && <PaymentRow label="Account name" value={payment.accountName} />}
-              {payment.accountNumber && <PaymentRow label="Account number" value={payment.accountNumber} />}
-              {payment.ifsc && <PaymentRow label="IFSC" value={payment.ifsc} />}
+              {paymentDetails.upiId && <PaymentRow label="UPI ID" value={paymentDetails.upiId} />}
+              {paymentDetails.bankName && <PaymentRow label="Bank" value={paymentDetails.bankName} />}
+              {paymentDetails.accountName && <PaymentRow label="Account name" value={paymentDetails.accountName} />}
+              {paymentDetails.accountNumber && <PaymentRow label="Account number" value={paymentDetails.accountNumber} />}
+              {paymentDetails.ifsc && <PaymentRow label="IFSC" value={paymentDetails.ifsc} />}
             </div>
-            {payment.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{payment.instructions}</p>}
-            {minimumWalletAddAmount > 0 && (
+            {paymentDetails.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{paymentDetails.instructions}</p>}
+            {minimumAmount > 0 && (
               <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Minimum wallet top-up amount is ₹{minimumWalletAddAmount}. Isse kam amount submit nahi kiya ja sakta.
+                Minimum wallet top-up amount is Rs.{minimumAmount}. Isse kam amount submit nahi kiya ja sakta.
               </p>
             )}
           </>
@@ -200,16 +233,16 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       <div className="grid gap-4">
         <label className="grid gap-2 text-sm font-semibold text-neutral-800">
           Amount
-          {minimumWalletAddAmount > 0 && (
-            <span className="text-xs font-medium text-neutral-500">Minimum ₹{minimumWalletAddAmount} compulsory</span>
+          {minimumAmount > 0 && (
+            <span className="text-xs font-medium text-neutral-500">Minimum Rs.{minimumAmount} compulsory</span>
           )}
           <input
             name="amount"
             type="number"
-            min={minimumWalletAddAmount > 0 ? minimumWalletAddAmount : 1}
+            min={minimumAmount > 0 ? minimumAmount : 1}
             step="0.01"
             required
-            placeholder={minimumWalletAddAmount > 0 ? `Enter ₹${minimumWalletAddAmount} or more` : "Enter amount in Rs."}
+            placeholder={minimumAmount > 0 ? `Enter Rs.${minimumAmount} or more` : "Enter amount in Rs."}
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>

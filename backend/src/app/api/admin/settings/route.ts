@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { getSettings, Setting } from "@/models";
@@ -33,6 +34,18 @@ function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Reco
   return merged;
 }
 
+function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
+  if (key !== "deposits") return value;
+
+  const minimumWalletAddAmount = Number(value.minimumWalletAddAmount ?? 0);
+  return {
+    ...value,
+    minimumWalletAddAmount: Number.isFinite(minimumWalletAddAmount)
+      ? Math.max(0, minimumWalletAddAmount)
+      : 0,
+  };
+}
+
 export async function GET() {
   try {
     await requireAdmin();
@@ -47,12 +60,15 @@ export async function PATCH(request: NextRequest) {
     await requireAdmin();
     const input = schema.parse(await request.json());
     const existing = await Setting.findOne({ key: input.key }).lean();
-    const value = mergeSettingsValue(input.key, existing?.value, input.value);
+    const value = mergeSettingsValue(input.key, existing?.value, normalizeSettingsValue(input.key, input.value));
     const setting = await Setting.findOneAndUpdate(
       { key: input.key },
       { value },
       { upsert: true, new: true },
     );
+    if (input.key === "deposits") {
+      revalidatePath("/api/payment-details");
+    }
     return ok({ setting });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to save settings");

@@ -1,6 +1,8 @@
 import { fail, ok, requireUser } from "@/lib/api";
 import { WalletTransaction } from "@/models";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const { auth, dbUser } = await requireUser();
