@@ -1,10 +1,9 @@
-import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireAdmin } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
 import { SyncStatus } from "@/models";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     await requireAdmin();
     await dbConnect();

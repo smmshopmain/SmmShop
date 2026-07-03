@@ -5,6 +5,9 @@ import { requireUser } from "@/lib/auth";
 import { Deposit, getSettings, WalletTransaction, type PlatformSettings } from "@/models";
 import { ArrowDownToLine, History, WalletCards } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function WalletPage() {
   let balance = 0;
   let transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }> = [];

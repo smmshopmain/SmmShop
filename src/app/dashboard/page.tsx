@@ -8,6 +8,9 @@ import { requireUser } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
 import { Order, WalletTransaction } from "@/models";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const quickActions: Array<{
   href: Route;
   title: string;

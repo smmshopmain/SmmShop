@@ -7,7 +7,7 @@ import { Deposit, getSettings } from "@/models";
 import { publicOrigin } from "@/lib/request-origin";
 
 const schema = z.object({
-  amount: z.number().min(1),
+  amount: z.coerce.number().finite().min(1),
   utr: z.string().min(4).max(80),
   proofUrl: z.string().min(1, "Payment screenshot is required"),
 });
@@ -63,8 +63,9 @@ export async function POST(request: NextRequest) {
     const input = await parseBody(request, schema);
     const { auth, dbUser } = await requireUser();
     const settings = await getSettings();
-    if (settings.deposits.minimumWalletAddAmount > 0 && input.amount < settings.deposits.minimumWalletAddAmount) {
-      return fail(`Minimum wallet top-up amount is ₹${settings.deposits.minimumWalletAddAmount}.`);
+    const minimumWalletAddAmount = Math.max(0, Number(settings.deposits.minimumWalletAddAmount ?? 0));
+    if (minimumWalletAddAmount > 0 && input.amount < minimumWalletAddAmount) {
+      return fail(`Minimum wallet top-up amount is Rs.${minimumWalletAddAmount}.`);
     }
     const deposit = await createDeposit({
       user: auth.id,

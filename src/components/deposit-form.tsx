@@ -92,7 +92,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     if (minimumWalletAddAmount > 0 && amount < minimumWalletAddAmount) {
       setLoading(false);
       setMessageTone("warning");
-      setMessage(`Minimum wallet top-up amount is ₹${minimumWalletAddAmount}.`);
+      setMessage(`Minimum wallet top-up amount is Rs.${minimumWalletAddAmount}.`);
       return;
     }
 
@@ -195,7 +195,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             {payment.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{payment.instructions}</p>}
             {minimumWalletAddAmount > 0 && (
               <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Minimum wallet top-up amount is ₹{minimumWalletAddAmount}. Isse kam amount submit nahi kiya ja sakta.
+                Minimum wallet top-up amount is Rs.{minimumWalletAddAmount}. Isse kam amount submit nahi kiya ja sakta.
               </p>
             )}
           </>
@@ -208,7 +208,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
         <label className="grid gap-2 text-sm font-semibold text-neutral-800">
           Amount
           {minimumWalletAddAmount > 0 && (
-            <span className="text-xs font-medium text-neutral-500">Minimum ₹{minimumWalletAddAmount} compulsory</span>
+            <span className="text-xs font-medium text-neutral-500">Minimum Rs.{minimumWalletAddAmount} compulsory</span>
           )}
           <input
             name="amount"
@@ -216,7 +216,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             min={minimumWalletAddAmount > 0 ? minimumWalletAddAmount : 1}
             step="0.01"
             required
-            placeholder={minimumWalletAddAmount > 0 ? `Enter ₹${minimumWalletAddAmount} or more` : "Enter amount in Rs."}
+            placeholder={minimumWalletAddAmount > 0 ? `Enter Rs.${minimumWalletAddAmount} or more` : "Enter amount in Rs."}
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>

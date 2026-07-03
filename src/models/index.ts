@@ -329,6 +329,7 @@ export type PlatformSettings = {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
     verificationEndTime: string;
+    minimumWalletAddAmount: number;
     payment: {
       qrImageUrl: string;
       upiId: string;
