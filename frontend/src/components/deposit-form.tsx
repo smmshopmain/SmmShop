@@ -29,6 +29,14 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [showPaymentSection, setShowPaymentSection] = useState(false);
   const [amountValue, setAmountValue] = useState<string>("");
 
+  function parseAmountInput(value: string | number | null | undefined) {
+    if (value === null || value === undefined) return NaN;
+    const s = String(value).trim().replace(/,/g, "");
+    if (s === "") return NaN;
+    const n = parseFloat(s);
+    return Number.isFinite(n) ? n : NaN;
+  }
+
   useEffect(() => {
     let active = true;
 
@@ -87,8 +95,8 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   );
 
   function proceedToPayment() {
-    const amount = Number(amountValue);
-    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
+    const amount = parseAmountInput(amountValue);
+    if (Number.isNaN(amount) || amount <= 0) {
       setMessageTone("warning");
       setMessage("Enter a valid amount.");
       return;
@@ -144,9 +152,9 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     const proofFile =
       selectedProofFile ??
       (form.get("proofFile") instanceof File ? (form.get("proofFile") as File) : null);
-    const amount = Number(form.get("amount"));
+    const amount = parseAmountInput(String(form.get("amount")));
 
-    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
+    if (Number.isNaN(amount) || amount <= 0) {
       setLoading(false);
       setMessageTone("warning");
       setMessage("Enter a valid amount.");
