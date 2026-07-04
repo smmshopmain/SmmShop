@@ -12,7 +12,6 @@ export function LiveWalletBalance({ initialBalance }: { initialBalance: number }
 
   useEffect(() => {
     let active = true;
-    let intervalId: number | undefined;
 
     async function refreshBalance() {
       try {
@@ -27,12 +26,12 @@ export function LiveWalletBalance({ initialBalance }: { initialBalance: number }
     }
 
     refreshBalance();
-    intervalId = window.setInterval(refreshBalance, 15000);
+    const intervalId = window.setInterval(refreshBalance, 15000);
     window.addEventListener("focus", refreshBalance);
 
     return () => {
       active = false;
-      if (intervalId !== undefined) window.clearInterval(intervalId);
+      window.clearInterval(intervalId);
       window.removeEventListener("focus", refreshBalance);
     };
   }, []);

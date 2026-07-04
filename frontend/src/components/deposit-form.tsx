@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CheckCircle2, Clipboard, CreditCard, UploadCloud, WalletCards } from "lucide-react";
 import { apiFetch, apiUrl, backendAssetUrl } from "@/lib/client-api";
 
@@ -23,6 +24,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const router = useRouter();
   const [selectedProofFile, setSelectedProofFile] = useState<File | null>(null);
   const [selectedProofPreviewUrl, setSelectedProofPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
@@ -65,7 +67,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     return () => {
       active = false;
     };
-  }, []);
+  }, [minimumWalletAddAmount]);
 
   useEffect(() => {
     return () => {
@@ -80,7 +82,11 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     try {
       const key = `depositPopupHidden:${minimumWalletAddAmount}`;
       const hidden = typeof window !== "undefined" && !!localStorage.getItem(key);
-      if (!hidden && minimumWalletAddAmount > 0) setShowMinimumPopup(true);
+      if (!hidden && minimumWalletAddAmount > 0) {
+        window.setTimeout(() => {
+          setShowMinimumPopup(true);
+        }, 0);
+      }
     } catch {}
   }, [minimumWalletAddAmount]);
 
@@ -221,6 +227,9 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       formRef.current?.reset();
       setSelectedProofFile(null);
       setSelectedProofPreviewUrl(null);
+      setAmountValue("");
+      setShowPaymentSection(false);
+      router.refresh();
     }
   }
 
@@ -303,7 +312,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">Payment details are not configured yet. Contact support before submitting a deposit.</p>
           )
         ) : (
-          <p className="text-sm text-neutral-600">Enter amount and click "Add balance" to view payment details and upload proof.</p>
+          <p className="text-sm text-neutral-600">Enter amount and click <span className="font-semibold">Add balance</span> to view payment details and upload proof.</p>
         )}
       </div>
 

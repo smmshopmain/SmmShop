@@ -1,8 +1,11 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { LiveWalletBalance } from "@/components/wallet-balance";
-import { serverApiJson } from "@/lib/server-api";
+import { apiJson } from "@/lib/client-api";
 import { ArrowDownToLine, History, WalletCards } from "lucide-react";
 
 type PaymentDetails = {
@@ -15,16 +18,11 @@ type PaymentDetails = {
   instructions: string;
 };
 
-type PaymentDetailsResult = {
-  payment: PaymentDetails;
-  minimumWalletAddAmount?: number;
-};
-
-export default async function WalletPage() {
-  let balance = 0;
-  let transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }> = [];
-  let deposits: Array<{ _id: string; depositId?: string; amount: number; utr: string; status: string; createdAt: string }> = [];
-  let payment: PaymentDetails = {
+export default function WalletPage() {
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState<Array<{ _id: string; type: string; amount: number; createdAt: string }>>([]);
+  const [deposits, setDeposits] = useState<Array<{ _id: string; depositId?: string; amount: number; utr: string; status: string; createdAt: string }>>([]);
+  const [payment, setPayment] = useState<PaymentDetails>({
     qrImageUrl: "",
     upiId: "",
     accountNumber: "",
@@ -32,23 +30,78 @@ export default async function WalletPage() {
     accountName: "",
     bankName: "",
     instructions: "",
-  };
-  let minimumWalletAddAmount = 0;
+  });
+  const [minimumWalletAddAmount, setMinimumWalletAddAmount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errors, setErrors] = useState<string[]>([]);
 
-  try {
-    const [walletResult, depositResult, paymentResult] = await Promise.all([
-      serverApiJson("/api/wallet"),
-      serverApiJson("/api/deposits"),
-      serverApiJson("/api/payment-details") as Promise<PaymentDetailsResult>,
-    ]);
-    balance = Number(walletResult.balance ?? 0);
-    transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 20) : [];
-    deposits = Array.isArray(depositResult.deposits) ? depositResult.deposits.slice(0, 20) : [];
-    payment = { ...payment, ...(paymentResult.payment ?? {}) };
-    minimumWalletAddAmount = Number(paymentResult.minimumWalletAddAmount ?? 0);
-  } catch {
-    transactions = [];
-  }
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadWalletData() {
+      const results = await Promise.allSettled([
+        apiJson("/api/wallet", { cache: "no-store" }),
+        apiJson("/api/deposits", { cache: "no-store" }),
+        apiJson("/api/payment-details", { cache: "no-store" }),
+      ]);
+
+      if (!mounted) return;
+
+      const nextErrors: string[] = [];
+
+      const walletResult = results[0];
+      if (walletResult.status === "fulfilled" && walletResult.value.ok === true) {
+        setBalance(Number(walletResult.value.balance ?? 0));
+        setTransactions(Array.isArray(walletResult.value.transactions) ? walletResult.value.transactions.slice(0, 20) : []);
+      } else {
+        nextErrors.push(
+          walletResult.status === "fulfilled"
+            ? walletResult.value.message ?? "Unable to load wallet data."
+            : String(walletResult.reason?.message ?? walletResult.reason ?? "Unable to load wallet data."),
+        );
+      }
+
+      const depositResult = results[1];
+      if (depositResult.status === "fulfilled" && depositResult.value.ok === true) {
+        setDeposits(Array.isArray(depositResult.value.deposits) ? depositResult.value.deposits.slice(0, 20) : []);
+      } else {
+        nextErrors.push(
+          depositResult.status === "fulfilled"
+            ? depositResult.value.message ?? "Unable to load deposit requests."
+            : String(depositResult.reason?.message ?? depositResult.reason ?? "Unable to load deposit requests."),
+        );
+      }
+
+      const paymentResult = results[2];
+      if (paymentResult.status === "fulfilled" && paymentResult.value.ok === true) {
+        setPayment({
+          qrImageUrl: paymentResult.value.payment?.qrImageUrl ?? "",
+          upiId: paymentResult.value.payment?.upiId ?? "",
+          accountNumber: paymentResult.value.payment?.accountNumber ?? "",
+          ifsc: paymentResult.value.payment?.ifsc ?? "",
+          accountName: paymentResult.value.payment?.accountName ?? "",
+          bankName: paymentResult.value.payment?.bankName ?? "",
+          instructions: paymentResult.value.payment?.instructions ?? "",
+        });
+        setMinimumWalletAddAmount(Number(paymentResult.value.minimumWalletAddAmount ?? 0));
+      } else {
+        nextErrors.push(
+          paymentResult.status === "fulfilled"
+            ? paymentResult.value.message ?? "Unable to load payment details."
+            : String(paymentResult.reason?.message ?? paymentResult.reason ?? "Unable to load payment details."),
+        );
+      }
+
+      setErrors(nextErrors.filter(Boolean));
+      setIsLoading(false);
+    }
+
+    loadWalletData();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <AppShell>
@@ -69,6 +122,13 @@ export default async function WalletPage() {
           </div>
         </div>
       </div>
+      {errors.length > 0 && (
+        <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          {errors.map((error, index) => (
+            <p key={index}>{error}</p>
+          ))}
+        </div>
+      )}
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <DepositForm payment={payment} minimumWalletAddAmount={minimumWalletAddAmount} />
         <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
@@ -103,27 +163,34 @@ export default async function WalletPage() {
           </div>
         </section>
       </div>
-      <section className="mt-6 rounded-lg border border-neutral-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
-          <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
-            <History className="size-5" />
-          </span>
-          <div>
-            <h2 className="font-bold text-neutral-950">Transaction history</h2>
-            <p className="text-sm text-neutral-500">Wallet credits, debits and adjustments</p>
-          </div>
+
+      {isLoading ? (
+        <div className="rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
+          <p className="text-center text-sm text-neutral-500">Loading wallet history…</p>
         </div>
-        {transactions.map((tx) => (
-          <div key={String(tx._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-            <span>
-              <span className="block font-medium capitalize">{tx.type.replaceAll("_", " ")}</span>
-              <span className="block text-xs text-neutral-500">{new Date(tx.createdAt).toLocaleString()}</span>
+      ) : (
+        <section className="mt-6 rounded-lg border border-neutral-200 bg-white shadow-sm">
+          <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
+            <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
+              <History className="size-5" />
             </span>
-            <strong className={tx.amount >= 0 ? "text-teal-700" : "text-rose-700"}>Rs.{tx.amount}</strong>
+            <div>
+              <h2 className="font-bold text-neutral-950">Transaction history</h2>
+              <p className="text-sm text-neutral-500">Wallet credits, debits and adjustments</p>
+            </div>
           </div>
-        ))}
-        {transactions.length === 0 && <p className="p-4 text-sm text-neutral-500">No transactions yet.</p>}
-      </section>
+          {transactions.map((tx) => (
+            <div key={String(tx._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+              <span>
+                <span className="block font-medium capitalize">{tx.type.replaceAll("_", " ")}</span>
+                <span className="block text-xs text-neutral-500">{new Date(tx.createdAt).toLocaleString()}</span>
+              </span>
+              <strong className={tx.amount >= 0 ? "text-teal-700" : "text-rose-700"}>Rs.{tx.amount}</strong>
+            </div>
+          ))}
+          {transactions.length === 0 && <p className="p-4 text-sm text-neutral-500">No transactions yet.</p>}
+        </section>
+      )}
     </AppShell>
   );
 }

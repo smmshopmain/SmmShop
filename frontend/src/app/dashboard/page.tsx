@@ -18,34 +18,59 @@ const quickActions: Array<{
   { href: "/dashboard/tickets", title: "Need help?", text: "Support ticket create karein.", icon: Headphones },
 ];
 
+type DashboardData = {
+  balance: number;
+  totalOrders: number;
+  activeOrders: number;
+  completedOrders: number;
+  transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }>;
+};
+
 export default async function DashboardPage() {
-  let data:
-    | {
-        balance: number;
-        totalOrders: number;
-        activeOrders: number;
-        completedOrders: number;
-        transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }>;
-      }
-    | null = null;
+  let data: DashboardData = {
+    balance: 0,
+    totalOrders: 0,
+    activeOrders: 0,
+    completedOrders: 0,
+    transactions: [],
+  };
   let setupError = "";
 
-  try {
-    const [walletResult, orderResult] = await Promise.all([
-      serverApiJson("/api/wallet"),
-      serverApiJson("/api/orders?sync=1"),
-    ]);
-    const orders = Array.isArray(orderResult.orders) ? orderResult.orders : [];
-    const transactions = Array.isArray(walletResult.transactions) ? walletResult.transactions.slice(0, 5) : [];
+  let walletError = "";
+  let ordersError = "";
+
+  const [walletResult, orderResult] = await Promise.allSettled([
+    serverApiJson("/api/wallet"),
+    serverApiJson("/api/orders?sync=1"),
+  ]);
+
+  if (walletResult.status === "fulfilled") {
+    const transactions = Array.isArray(walletResult.value.transactions) ? walletResult.value.transactions.slice(0, 5) : [];
     data = {
-      balance: Number(walletResult.balance ?? 0),
+      balance: Number(walletResult.value.balance ?? 0),
+      totalOrders: 0,
+      activeOrders: 0,
+      completedOrders: 0,
+      transactions,
+    };
+  } else {
+    walletError = String(walletResult.reason?.message ?? walletResult.reason ?? "Unable to load wallet data.");
+  }
+
+  if (orderResult.status === "fulfilled") {
+    const orders = Array.isArray(orderResult.value.orders) ? orderResult.value.orders : [];
+    data = {
+      ...data,
       totalOrders: orders.length,
       activeOrders: orders.filter((order: { status?: string }) => ["Pending", "Processing", "In Progress"].includes(order.status ?? "")).length,
       completedOrders: orders.filter((order: { status?: string }) => order.status === "Completed").length,
-      transactions,
     };
-  } catch (error) {
-    setupError = error instanceof Error ? error.message : "Dashboard unavailable";
+  } else {
+    ordersError = String(orderResult.reason?.message ?? orderResult.reason ?? "Unable to load orders.");
+  }
+
+  if (walletError || ordersError) {
+    setupError = [walletError, ordersError].filter(Boolean).join(" ");
   }
 
   return (

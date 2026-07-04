@@ -3,8 +3,13 @@ export function apiUrl(path: string) {
   const baseUrl = envBase ? envBase.replace(/\/+$/, "") : "";
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
-  if (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")) {
-    return cleanPath;
+  if (typeof window !== "undefined") {
+    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+      return cleanPath;
+    }
+    if (!baseUrl) {
+      throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
+    }
   }
 
   return baseUrl ? `${baseUrl}${cleanPath}` : cleanPath;
