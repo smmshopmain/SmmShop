@@ -45,20 +45,28 @@ export default async function DashboardPage() {
   ]);
 
   if (walletResult.status === "fulfilled") {
-    const transactions = Array.isArray(walletResult.value.transactions) ? walletResult.value.transactions.slice(0, 5) : [];
+    const walletTransactions = Array.isArray(walletResult.value.transactions)
+      ? walletResult.value.transactions
+      : Array.isArray(walletResult.value.data?.transactions)
+      ? walletResult.value.data.transactions
+      : [];
     data = {
-      balance: Number(walletResult.value.balance ?? 0),
+      balance: Number(walletResult.value.balance ?? walletResult.value.data?.balance ?? 0),
       totalOrders: 0,
       activeOrders: 0,
       completedOrders: 0,
-      transactions,
+      transactions: walletTransactions.slice(0, 5),
     };
   } else {
     walletError = String(walletResult.reason?.message ?? walletResult.reason ?? "Unable to load wallet data.");
   }
 
   if (orderResult.status === "fulfilled") {
-    const orders = Array.isArray(orderResult.value.orders) ? orderResult.value.orders : [];
+    const orders = Array.isArray(orderResult.value.orders)
+      ? orderResult.value.orders
+      : Array.isArray(orderResult.value.data?.orders)
+      ? orderResult.value.data.orders
+      : [];
     data = {
       ...data,
       totalOrders: orders.length,

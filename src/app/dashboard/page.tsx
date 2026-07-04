@@ -24,15 +24,13 @@ const quickActions: Array<{
 ];
 
 export default async function DashboardPage() {
-  let data:
-    | {
-        balance: number;
-        totalOrders: number;
-        activeOrders: number;
-        completedOrders: number;
-        transactions: Array<{ _id: string; type: string; amount: number; createdAt: Date }>;
-      }
-    | null = null;
+  let data = {
+    balance: 0,
+    totalOrders: 0,
+    activeOrders: 0,
+    completedOrders: 0,
+    transactions: [] as Array<{ _id: string; type: string; amount: number; createdAt: Date }>;
+  };
   let setupError = "";
 
   try {
