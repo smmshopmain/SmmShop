@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiJson } from "@/lib/client-api";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
@@ -17,11 +17,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   useEffect(() => {
     if (mode !== "register") return;
     let mounted = true;
-    void apiFetch("/api/settings")
-      .then((response) => response.json().catch(() => ({})))
+    void apiJson("/api/settings")
       .then((result) => {
         if (!mounted) return;
-        setReferralEnabled(result?.referrals?.enabled !== false);
+        const referralSettings = result?.referrals ?? result?.data?.referrals;
+        setReferralEnabled(referralSettings?.enabled !== false);
       })
       .catch(() => {
         if (mounted) setReferralEnabled(true);
