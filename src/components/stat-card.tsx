@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
 export function StatCard({
   label,
@@ -7,7 +8,7 @@ export function StatCard({
   tone = "teal",
 }: {
   label: string;
-  value: string | number;
+  value: ReactNode;
   icon: LucideIcon;
   tone?: "teal" | "amber" | "rose" | "neutral";
 }) {

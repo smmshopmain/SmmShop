@@ -4,8 +4,9 @@ import { ArrowRight, CheckCircle2, Clock3, Headphones, PlusCircle, ShoppingBag, 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
+import { LiveWalletBalance } from "@/components/wallet-balance";
 import { requireUser } from "@/lib/auth";
-import { dbConnect } from "@/lib/db";
+import { getEffectiveWalletBalance } from "@/lib/wallet";
 import { Order, WalletTransaction } from "@/models";
 
 export const dynamic = "force-dynamic";
@@ -36,15 +37,15 @@ export default async function DashboardPage() {
 
   try {
     const { auth, dbUser } = await requireUser();
-    await dbConnect();
-    const [totalOrders, activeOrders, completedOrders, transactions] = await Promise.all([
+    const [balance, totalOrders, activeOrders, completedOrders, transactions] = await Promise.all([
+      getEffectiveWalletBalance(auth.id, dbUser.walletBalance, { repairUser: true }),
       Order.countDocuments({ user: auth.id }),
       Order.countDocuments({ user: auth.id, status: { $in: ["Pending", "Processing", "In Progress"] } }),
       Order.countDocuments({ user: auth.id, status: "Completed" }),
       WalletTransaction.find({ user: auth.id }).sort({ createdAt: -1 }).limit(5).lean(),
     ]);
     data = {
-      balance: dbUser.walletBalance,
+      balance,
       totalOrders,
       activeOrders,
       completedOrders,
@@ -91,7 +92,7 @@ export default async function DashboardPage() {
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Wallet Balance" value={`Rs.${data?.balance ?? 0}`} icon={WalletCards} />
+        <StatCard label="Wallet Balance" value={<LiveWalletBalance initialBalance={data?.balance ?? 0} />} icon={WalletCards} />
         <StatCard label="Total Orders" value={data?.totalOrders ?? 0} icon={ShoppingBag} tone="neutral" />
         <StatCard label="Active Orders" value={data?.activeOrders ?? 0} icon={Clock3} tone="amber" />
         <StatCard label="Completed Orders" value={data?.completedOrders ?? 0} icon={CheckCircle2} tone="teal" />

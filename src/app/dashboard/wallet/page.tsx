@@ -1,7 +1,9 @@
 import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
+import { LiveWalletBalance } from "@/components/wallet-balance";
 import { requireUser } from "@/lib/auth";
+import { getEffectiveWalletBalance } from "@/lib/wallet";
 import { Deposit, getSettings, WalletTransaction, type PlatformSettings } from "@/models";
 import { ArrowDownToLine, History, WalletCards } from "lucide-react";
 
@@ -25,12 +27,13 @@ export default async function WalletPage() {
 
   try {
     const { auth, dbUser } = await requireUser();
-    balance = dbUser.walletBalance;
-    const [nextTransactions, nextDeposits, settings] = await Promise.all([
+    const [nextBalance, nextTransactions, nextDeposits, settings] = await Promise.all([
+      getEffectiveWalletBalance(auth.id, dbUser.walletBalance, { repairUser: true }),
       WalletTransaction.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
       Deposit.find({ user: auth.id }).sort({ createdAt: -1 }).limit(20).lean(),
       getSettings(),
     ]);
+    balance = nextBalance;
     transactions = nextTransactions as typeof transactions;
     deposits = nextDeposits as typeof deposits;
     payment = settings.deposits.payment;
@@ -52,7 +55,9 @@ export default async function WalletPage() {
           </div>
           <div className="rounded-md bg-neutral-950 p-4 text-white">
             <p className="text-sm text-neutral-300">Available balance</p>
-            <p className="mt-2 text-3xl font-bold">Rs.{balance}</p>
+            <p className="mt-2 text-3xl font-bold">
+              <LiveWalletBalance initialBalance={balance} />
+            </p>
           </div>
         </div>
       </div>
