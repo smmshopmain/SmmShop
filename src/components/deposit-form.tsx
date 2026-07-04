@@ -19,6 +19,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [paymentDetails, setPaymentDetails] = useState(payment);
   const [minimumAmount, setMinimumAmount] = useState(minimumWalletAddAmount);
   const [message, setMessage] = useState("");
+  const [showMinimumPopup, setShowMinimumPopup] = useState(false);
   const [messageTone, setMessageTone] = useState<"success" | "warning">("warning");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
@@ -41,6 +42,12 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
         if (typeof result.data?.minimumWalletAddAmount === "number") {
           setMinimumAmount(result.data.minimumWalletAddAmount);
         }
+        // Re-evaluate popup visibility when minimum changes
+        try {
+          const key = `depositPopupHidden:${result.data?.minimumWalletAddAmount ?? minimumWalletAddAmount}`;
+          const hidden = typeof window !== "undefined" && !!localStorage.getItem(key);
+          if (!hidden && (result.data?.minimumWalletAddAmount ?? minimumWalletAddAmount) > 0) setShowMinimumPopup(true);
+        } catch {}
       } catch {
         // Server-rendered payment details remain available if refresh fails.
       }
@@ -60,6 +67,15 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       }
     };
   }, [selectedProofPreviewUrl]);
+
+  useEffect(() => {
+    // Show popup on first mount if minimum amount is set and not dismissed
+    try {
+      const key = `depositPopupHidden:${minimumWalletAddAmount}`;
+      const hidden = typeof window !== "undefined" && !!localStorage.getItem(key);
+      if (!hidden && minimumWalletAddAmount > 0) setShowMinimumPopup(true);
+    } catch {}
+  }, [minimumWalletAddAmount]);
 
   const hasPaymentDetails = Boolean(
     paymentDetails.qrImageUrl ||
@@ -181,6 +197,31 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
 
   return (
     <form ref={formRef} onSubmit={submit} className="grid gap-5 rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+      {showMinimumPopup && minimumAmount > 0 && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <strong className="block">Add minimum Balance {minimumAmount}</strong>
+              <p className="mt-1 text-sm">Please add at least Rs.{minimumAmount} when topping up your wallet.</p>
+            </div>
+            <div className="flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const key = `depositPopupHidden:${minimumAmount}`;
+                    localStorage.setItem(key, "1");
+                  } catch {}
+                  setShowMinimumPopup(false);
+                }}
+                className="rounded-md bg-amber-600 px-3 py-2 text-sm font-semibold text-white"
+              >
+                I understand
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex items-start gap-3">
         <span className="grid size-11 shrink-0 place-items-center rounded-md bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
           <WalletCards className="size-5" />
