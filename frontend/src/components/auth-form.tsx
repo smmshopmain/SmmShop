@@ -17,7 +17,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   useEffect(() => {
     if (mode !== "register") return;
     let mounted = true;
-    void apiFetch("/api/admin/settings")
+    void apiFetch("/api/settings")
       .then((response) => response.json().catch(() => ({})))
       .then((result) => {
         if (!mounted) return;

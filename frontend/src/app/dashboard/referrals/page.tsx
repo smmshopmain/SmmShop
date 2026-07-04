@@ -14,7 +14,7 @@ export default async function ReferralsPage() {
     const [user, referrals, settings] = await Promise.all([
       serverApiJson("/api/auth/me"),
       serverApiJson("/api/referrals"),
-      serverApiJson("/api/admin/settings"),
+      serverApiJson("/api/settings"),
     ]);
     const headerStore = await headers();
     const origin = headerStore.get("x-forwarded-host")
