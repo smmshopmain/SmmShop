@@ -203,7 +203,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        amount: Number(form.get("amount")),
+        amount,
         utr: form.get("utr"),
         proofUrl,
       }),
