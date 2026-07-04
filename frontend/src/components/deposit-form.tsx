@@ -26,6 +26,8 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
   const [selectedProofFile, setSelectedProofFile] = useState<File | null>(null);
   const [selectedProofPreviewUrl, setSelectedProofPreviewUrl] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement | null>(null);
+  const [showPaymentSection, setShowPaymentSection] = useState(false);
+  const [amountValue, setAmountValue] = useState<string>("");
 
   useEffect(() => {
     let active = true;
@@ -83,6 +85,26 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
       paymentDetails.bankName ||
       paymentDetails.instructions,
   );
+
+  function proceedToPayment() {
+    const amount = Number(amountValue);
+    if (typeof amount !== "number" || Number.isNaN(amount) || amount <= 0) {
+      setMessageTone("warning");
+      setMessage("Enter a valid amount.");
+      return;
+    }
+    if (minimumAmount > 0 && amount < minimumAmount) {
+      setMessageTone("warning");
+      setMessage(`Minimum wallet top-up amount is Rs.${minimumAmount}.`);
+      return;
+    }
+    setMessage("");
+    setShowPaymentSection(true);
+    // focus proof input after revealing
+    setTimeout(() => {
+      document.getElementById("proofFile")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  }
 
   function uploadFile(file: File) {
     return new Promise<{ ok: boolean; response: unknown }>((resolve, reject) => {
@@ -243,31 +265,35 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
           <CreditCard className="size-4 text-teal-700" />
           <h3 className="font-semibold text-neutral-950">Payment details</h3>
         </div>
-        {hasPaymentDetails ? (
-          <>
-            {paymentDetails.qrImageUrl && (
-              <img
-                src={backendAssetUrl(paymentDetails.qrImageUrl)}
-                alt="Payment QR"
-                className="mx-auto h-56 w-56 rounded-md border border-neutral-200 bg-white object-contain p-2 shadow-sm"
-              />
-            )}
-            <div className="grid gap-2">
-              {paymentDetails.upiId && <PaymentRow label="UPI ID" value={paymentDetails.upiId} />}
-              {paymentDetails.bankName && <PaymentRow label="Bank" value={paymentDetails.bankName} />}
-              {paymentDetails.accountName && <PaymentRow label="Account name" value={paymentDetails.accountName} />}
-              {paymentDetails.accountNumber && <PaymentRow label="Account number" value={paymentDetails.accountNumber} />}
-              {paymentDetails.ifsc && <PaymentRow label="IFSC" value={paymentDetails.ifsc} />}
-            </div>
-            {paymentDetails.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{paymentDetails.instructions}</p>}
-            {minimumAmount > 0 && (
-              <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                Minimum wallet top-up amount is Rs.{minimumAmount}. Isse kam amount submit nahi kiya ja sakta.
-              </p>
-            )}
-          </>
+        {showPaymentSection ? (
+          hasPaymentDetails ? (
+            <>
+              {paymentDetails.qrImageUrl && (
+                <img
+                  src={backendAssetUrl(paymentDetails.qrImageUrl)}
+                  alt="Payment QR"
+                  className="mx-auto h-56 w-56 rounded-md border border-neutral-200 bg-white object-contain p-2 shadow-sm"
+                />
+              )}
+              <div className="grid gap-2">
+                {paymentDetails.upiId && <PaymentRow label="UPI ID" value={paymentDetails.upiId} />}
+                {paymentDetails.bankName && <PaymentRow label="Bank" value={paymentDetails.bankName} />}
+                {paymentDetails.accountName && <PaymentRow label="Account name" value={paymentDetails.accountName} />}
+                {paymentDetails.accountNumber && <PaymentRow label="Account number" value={paymentDetails.accountNumber} />}
+                {paymentDetails.ifsc && <PaymentRow label="IFSC" value={paymentDetails.ifsc} />}
+              </div>
+              {paymentDetails.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{paymentDetails.instructions}</p>}
+              {minimumAmount > 0 && (
+                <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  Minimum wallet top-up amount is Rs.{minimumAmount}. Isse kam amount submit nahi kiya ja sakta.
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">Payment details are not configured yet. Contact support before submitting a deposit.</p>
+          )
         ) : (
-          <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-amber-900">Payment details are not configured yet. Contact support before submitting a deposit.</p>
+          <p className="text-sm text-neutral-600">Enter amount and click "Add balance" to view payment details and upload proof.</p>
         )}
       </div>
 
@@ -283,19 +309,24 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             min={minimumAmount > 0 ? minimumAmount : 1}
             step="0.01"
             required
+            value={amountValue}
+            onChange={(e) => setAmountValue(e.target.value)}
+            disabled={showPaymentSection}
             placeholder={minimumAmount > 0 ? `Enter Rs.${minimumAmount} or more` : "Enter amount in Rs."}
             className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
           />
         </label>
-        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-          UTR / Reference number
-          <input
-            name="utr"
-            required
-            placeholder="Enter UTR after payment"
-            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-          />
-        </label>
+        {showPaymentSection && (
+          <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+            UTR / Reference number
+            <input
+              name="utr"
+              required
+              placeholder="Enter UTR after payment"
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+        )}
         <div className="grid gap-2 text-sm font-semibold text-neutral-800">
           <span>Payment screenshot</span>
           <label htmlFor="proofFile" className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
@@ -316,6 +347,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
                   setSelectedProofPreviewUrl(null);
                 }
               }}
+              disabled={!showPaymentSection}
             />
           </label>
           {selectedProofPreviewUrl && (
@@ -330,15 +362,17 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             </div>
           )}
         </div>
-        <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-          Screenshot URL <span className="text-xs font-medium text-neutral-500">Optional if file uploaded</span>
-          <input
-            name="proofUrl"
-            type="url"
-            placeholder="https://..."
-            className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-          />
-        </label>
+        {showPaymentSection && (
+          <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+            Screenshot URL <span className="text-xs font-medium text-neutral-500">Optional if file uploaded</span>
+            <input
+              name="proofUrl"
+              type="url"
+              placeholder="https://..."
+              className="h-11 rounded-md border border-neutral-300 px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            />
+          </label>
+        )}
       </div>
       {uploadProgress !== null && (
         <div className="rounded-md bg-neutral-100 px-3 py-2 text-sm text-neutral-700">
@@ -360,9 +394,17 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
           {message}
         </p>
       )}
-      <button disabled={loading || !hasPaymentDetails} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60">
-        {loading ? "Submitting..." : "Submit deposit"}
-      </button>
+      {!showPaymentSection ? (
+        <div className="flex gap-2">
+          <button type="button" onClick={proceedToPayment} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60">
+            Add balance
+          </button>
+        </div>
+      ) : (
+        <button disabled={loading || !hasPaymentDetails} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:opacity-60">
+          {loading ? "Submitting..." : "Submit deposit"}
+        </button>
+      )}
     </form>
   );
 }
