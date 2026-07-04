@@ -154,7 +154,9 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     const proofFile =
       selectedProofFile ??
       (form.get("proofFile") instanceof File ? (form.get("proofFile") as File) : null);
-    const amount = parseAmountInput(String(form.get("amount")));
+    // Disabled inputs are not included in FormData. Fall back to the controlled `amountValue`.
+    const rawAmount = form.get("amount");
+    const amount = parseAmountInput(rawAmount === null ? amountValue : String(rawAmount));
 
     if (Number.isNaN(amount) || amount <= 0) {
       setLoading(false);
