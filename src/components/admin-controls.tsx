@@ -697,6 +697,23 @@ export function SettingsForm({
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    function scrollToPaymentDetails() {
+      if (window.location.hash !== "#payment-details") return;
+
+      window.requestAnimationFrame(() => {
+        document.getElementById("payment-details")?.scrollIntoView({
+          block: "start",
+          behavior: "smooth",
+        });
+      });
+    }
+
+    scrollToPaymentDetails();
+    window.addEventListener("hashchange", scrollToPaymentDetails);
+    return () => window.removeEventListener("hashchange", scrollToPaymentDetails);
+  }, []);
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
