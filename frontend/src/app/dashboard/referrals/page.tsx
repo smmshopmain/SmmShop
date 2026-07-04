@@ -8,11 +8,13 @@ export default async function ReferralsPage() {
   let referralLink = "";
   let earnings = 0;
   let history: Array<{ _id: string; earnings: number; status: string; createdAt: string }> = [];
+  let referralEnabled = true;
 
   try {
-    const [user, referrals] = await Promise.all([
+    const [user, referrals, settings] = await Promise.all([
       serverApiJson("/api/auth/me"),
       serverApiJson("/api/referrals"),
+      serverApiJson("/api/admin/settings"),
     ]);
     const headerStore = await headers();
     const origin = headerStore.get("x-forwarded-host")
@@ -22,12 +24,18 @@ export default async function ReferralsPage() {
     referralLink = `${origin}/register?ref=${referralCode}`;
     earnings = Number(user.referralEarnings ?? 0);
     history = Array.isArray(referrals.history) ? referrals.history : [];
+    referralEnabled = settings?.referrals?.enabled !== false;
   } catch {
     history = [];
   }
 
   return (
     <AppShell>
+      {!referralEnabled ? (
+        <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">
+          Referral program is currently disabled by admin. The referral link and earnings section are hidden until it is turned on again.
+        </div>
+      ) : null}
       <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Referral program</p>
         <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Referrals</h1>
@@ -36,58 +44,62 @@ export default async function ReferralsPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
-              <Link2 className="size-5" />
-            </span>
-            <div>
-              <h2 className="font-bold text-neutral-950">Unique referral link</h2>
-              <p className="text-sm text-neutral-500">Share this link with new users</p>
+      {!referralEnabled ? null : (
+        <>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+            <section className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+              <div className="flex items-center gap-3">
+                <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
+                  <Link2 className="size-5" />
+                </span>
+                <div>
+                  <h2 className="font-bold text-neutral-950">Unique referral link</h2>
+                  <p className="text-sm text-neutral-500">Share this link with new users</p>
+                </div>
+              </div>
+              <p className="mt-4 break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
+                {referralLink || `/register?ref=${referralCode}`}
+              </p>
+              <p className="mt-3 text-xs text-neutral-500">Referral code: <span className="font-semibold text-neutral-800">{referralCode || "-"}</span></p>
+            </section>
+
+            <section className="rounded-lg bg-neutral-950 p-5 text-white shadow-sm">
+              <BadgeIndianRupee className="size-7 text-teal-200" />
+              <p className="mt-4 text-sm text-neutral-300">Referral earnings</p>
+              <p className="mt-2 text-3xl font-bold">Rs.{earnings}</p>
+              <p className="mt-3 text-sm text-neutral-400">Approved referral rewards</p>
+            </section>
+          </div>
+
+          <section className="mt-6 rounded-lg border border-neutral-200 bg-white shadow-sm">
+            <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
+              <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
+                <Users className="size-5" />
+              </span>
+              <div>
+                <h2 className="font-bold text-neutral-950">Referral history</h2>
+                <p className="text-sm text-neutral-500">Recent referral rewards and status</p>
+              </div>
             </div>
-          </div>
-          <p className="mt-4 break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
-            {referralLink || `/register?ref=${referralCode}`}
-          </p>
-          <p className="mt-3 text-xs text-neutral-500">Referral code: <span className="font-semibold text-neutral-800">{referralCode || "-"}</span></p>
-        </section>
-
-        <section className="rounded-lg bg-neutral-950 p-5 text-white shadow-sm">
-          <BadgeIndianRupee className="size-7 text-teal-200" />
-          <p className="mt-4 text-sm text-neutral-300">Referral earnings</p>
-          <p className="mt-2 text-3xl font-bold">Rs.{earnings}</p>
-          <p className="mt-3 text-sm text-neutral-400">Approved referral rewards</p>
-        </section>
-      </div>
-
-      <section className="mt-6 rounded-lg border border-neutral-200 bg-white shadow-sm">
-        <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
-          <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
-            <Users className="size-5" />
-          </span>
-          <div>
-            <h2 className="font-bold text-neutral-950">Referral history</h2>
-            <p className="text-sm text-neutral-500">Recent referral rewards and status</p>
-          </div>
-        </div>
-        {history.map((item) => (
-          <div key={String(item._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-            <span>
-              <span className="block font-medium">{item.status}</span>
-              <span className="block text-xs text-neutral-500">{new Date(item.createdAt).toLocaleString()}</span>
-            </span>
-            <strong className="text-teal-700">Rs.{item.earnings}</strong>
-          </div>
-        ))}
-        {history.length === 0 && (
-          <div className="grid place-items-center px-4 py-12 text-center">
-            <Users className="size-10 text-neutral-300" />
-            <p className="mt-3 text-sm font-semibold text-neutral-800">No referral history yet</p>
-            <p className="mt-1 max-w-md text-sm text-neutral-500">Aapke referred users active honge to rewards yahan dikhenge.</p>
-          </div>
-        )}
-      </section>
+            {history.map((item) => (
+              <div key={String(item._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
+                <span>
+                  <span className="block font-medium">{item.status}</span>
+                  <span className="block text-xs text-neutral-500">{new Date(item.createdAt).toLocaleString()}</span>
+                </span>
+                <strong className="text-teal-700">Rs.{item.earnings}</strong>
+              </div>
+            ))}
+            {history.length === 0 && (
+              <div className="grid place-items-center px-4 py-12 text-center">
+                <Users className="size-10 text-neutral-300" />
+                <p className="mt-3 text-sm font-semibold text-neutral-800">No referral history yet</p>
+                <p className="mt-1 max-w-md text-sm text-neutral-500">Aapke referred users active honge to rewards yahan dikhenge.</p>
+              </div>
+            )}
+          </section>
+        </>
+      )}
     </AppShell>
   );
 }

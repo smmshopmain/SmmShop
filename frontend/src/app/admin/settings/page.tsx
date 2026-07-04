@@ -23,7 +23,7 @@ type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
-  referrals: { commissionPercent: number };
+  referrals: { enabled: boolean; commissionPercent: number; commissionAmount: number };
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -43,7 +43,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     },
   },
   provider: { lowBalanceThreshold: 100 },
-  referrals: { commissionPercent: 2 },
+  referrals: { enabled: true, commissionPercent: 2, commissionAmount: 0 },
 };
 
 export default function SettingsPage() {
@@ -82,7 +82,9 @@ export default function SettingsPage() {
         payment={settings.deposits.payment}
         minimumWalletAddAmount={settings.deposits.minimumWalletAddAmount}
         lowBalanceThreshold={settings.provider.lowBalanceThreshold}
+        referralEnabled={settings.referrals.enabled}
         referralCommissionPercent={settings.referrals.commissionPercent}
+        referralCommissionAmount={settings.referrals.commissionAmount}
       />
     </AppShell>
   );

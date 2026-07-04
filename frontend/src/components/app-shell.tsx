@@ -40,7 +40,6 @@ const userLinks: NavItem[] = [
   { href: "/dashboard/orders", label: "Orders", icon: History },
   { href: "/dashboard/refills", label: "Refills", icon: RefreshCcw },
   { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
-  { href: "/dashboard/referrals", label: "Referrals", icon: BadgeIndianRupee },
   { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
   { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
   { href: "/dashboard/profile", label: "Profile", icon: UserRound },

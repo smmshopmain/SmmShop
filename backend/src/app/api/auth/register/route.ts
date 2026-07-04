@@ -4,7 +4,7 @@ import { parseBody, fail, ok } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { hashPassword, setSessionCookie } from "@/lib/auth";
 import { createUniqueReferralCode } from "@/lib/referral-code";
-import { User, Referral } from "@/models";
+import { User, Referral, getSettings } from "@/models";
 import { notifyTelegram } from "@/lib/telegram";
 
 const schema = z.object({
@@ -23,8 +23,10 @@ export async function POST(request: NextRequest) {
     if (exists) return fail("Email is already registered", 409);
 
     const isFirstAdmin = !(await User.exists({ role: "admin" }));
-    const requestedReferralCode = input.referralCode?.trim().toUpperCase();
-    const referrer = requestedReferralCode
+    const settings = await getSettings();
+    const referralSystemEnabled = settings.referrals.enabled !== false;
+    const requestedReferralCode = referralSystemEnabled ? input.referralCode?.trim().toUpperCase() : "";
+    const referrer = referralSystemEnabled && requestedReferralCode
       ? await User.findOne({ referralCode: requestedReferralCode })
       : null;
     const referralCode = await createUniqueReferralCode(User);
@@ -34,10 +36,10 @@ export async function POST(request: NextRequest) {
       passwordHash: await hashPassword(input.password),
       role: isFirstAdmin ? "admin" : "user",
       referralCode,
-      referredBy: referrer?._id,
+      referredBy: referralSystemEnabled && referrer ? referrer._id : undefined,
     });
 
-    if (referrer) {
+    if (referralSystemEnabled && referrer) {
       await Referral.create({ referrer: referrer._id, referredUser: user._id });
     }
 
