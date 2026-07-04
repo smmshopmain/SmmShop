@@ -329,41 +329,43 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
             />
           </label>
         )}
-        <div className="grid gap-2 text-sm font-semibold text-neutral-800">
-          <span>Payment screenshot</span>
-          <label htmlFor="proofFile" className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
-            <UploadCloud className="size-6 text-teal-700" />
-            <span className="font-medium">Upload screenshot or PDF</span>
-            <input
-              id="proofFile"
-              name="proofFile"
-              type="file"
-              accept="image/png,image/jpeg,image/webp,application/pdf"
-              className="sr-only"
-              onChange={(event) => {
-                const file = event.currentTarget.files?.[0] ?? null;
-                setSelectedProofFile(file);
-                if (file && file.type.startsWith("image/")) {
-                  setSelectedProofPreviewUrl(URL.createObjectURL(file));
-                } else {
-                  setSelectedProofPreviewUrl(null);
-                }
-              }}
-              disabled={!showPaymentSection}
-            />
-          </label>
-          {selectedProofPreviewUrl && (
-            <img src={selectedProofPreviewUrl} alt="Selected proof preview" className="h-40 rounded-md border border-neutral-200 object-contain" />
-          )}
+        {showPaymentSection && (
+          <div className="grid gap-2 text-sm font-semibold text-neutral-800">
+            <span>Payment screenshot</span>
+            <label htmlFor="proofFile" className="flex min-h-28 cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-3 py-4 text-center text-sm text-neutral-600 hover:border-teal-400 hover:bg-teal-50">
+              <UploadCloud className="size-6 text-teal-700" />
+              <span className="font-medium">Upload screenshot or PDF</span>
+              <input
+                id="proofFile"
+                name="proofFile"
+                type="file"
+                accept="image/png,image/jpeg,image/webp,application/pdf"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.currentTarget.files?.[0] ?? null;
+                  setSelectedProofFile(file);
+                  if (file && file.type.startsWith("image/")) {
+                    setSelectedProofPreviewUrl(URL.createObjectURL(file));
+                  } else {
+                    setSelectedProofPreviewUrl(null);
+                  }
+                }}
+                disabled={!showPaymentSection}
+              />
+            </label>
+            {selectedProofPreviewUrl && (
+              <img src={selectedProofPreviewUrl} alt="Selected proof preview" className="h-40 rounded-md border border-neutral-200 object-contain" />
+            )}
 
-          {selectedProofFile && (
-            <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
-              <p className="font-medium">Selected file:</p>
-              <p>{selectedProofFile.name}</p>
-              <p className="text-xs text-neutral-500">{selectedProofFile.type || "File selected"}</p>
-            </div>
-          )}
-        </div>
+            {selectedProofFile && (
+              <div className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+                <p className="font-medium">Selected file:</p>
+                <p>{selectedProofFile.name}</p>
+                <p className="text-xs text-neutral-500">{selectedProofFile.type || "File selected"}</p>
+              </div>
+            )}
+          </div>
+        )}
         {showPaymentSection && (
           <label className="grid gap-2 text-sm font-semibold text-neutral-800">
             Screenshot URL <span className="text-xs font-medium text-neutral-500">Optional if file uploaded</span>
