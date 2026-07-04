@@ -1,11 +1,30 @@
 services:
   - type: web
     name: smm-panel
-    root: backend
     runtime: node
     plan: free
-    buildCommand: npm ci && npm run build
-    startCommand: npm run start
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci && npm run build
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci && npm run build
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci && npm run build
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        npm run start
+      elif [ -d ../backend ] && cd ../backend; then
+        npm run start
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm run start
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: NODE_ENV
         value: production
@@ -45,21 +64,59 @@ services:
         sync: false
   - type: cron
     name: smm-keep-alive
-    root: backend
     runtime: node
     schedule: "*/10 * * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/keep-alive`).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
   - type: cron
     name: smm-status-sync
-    root: backend
     runtime: node
     schedule: "*/2 * * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/status-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/status-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/status-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/status-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
@@ -67,11 +124,30 @@ services:
         sync: false
   - type: cron
     name: smm-provider-balance-sync
-    root: backend
     runtime: node
     schedule: "0 */6 * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/provider-balance`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/provider-balance\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/provider-balance\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/provider-balance\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
@@ -79,11 +155,30 @@ services:
         sync: false
   - type: cron
     name: smm-service-sync
-    root: backend
     runtime: node
     schedule: "*/5 * * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/service-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/service-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/service-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/service-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
@@ -91,11 +186,30 @@ services:
         sync: false
   - type: cron
     name: smm-price-sync
-    root: backend
     runtime: node
     schedule: "15 */6 * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/price-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/price-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/price-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/price-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
@@ -103,11 +217,30 @@ services:
         sync: false
   - type: cron
     name: smm-refill-sync
-    root: backend
     runtime: node
     schedule: "*/20 * * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/refill-sync`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/refill-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/refill-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/refill-sync\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
@@ -115,11 +248,30 @@ services:
         sync: false
   - type: cron
     name: smm-deposit-verification
-    root: backend
     runtime: node
     schedule: "*/5 * * * *"
-    buildCommand: npm ci
-    startCommand: node -e "fetch(`${process.env.APP_BASE_URL}/api/cron/deposit-verification`, { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+    buildCommand: |
+      if [ -d backend ] && cd backend; then
+        npm ci
+      elif [ -d ../backend ] && cd ../backend; then
+        npm ci
+      elif [ -d ../../backend ] && cd ../../backend; then
+        npm ci
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
+    startCommand: |
+      if [ -d backend ] && cd backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/deposit-verification\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../backend ] && cd ../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/deposit-verification\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      elif [ -d ../../backend ] && cd ../../backend; then
+        node -e "fetch(\"${process.env.APP_BASE_URL}/api/cron/deposit-verification\", { headers: { 'x-cron-secret': process.env.CRON_SECRET } }).then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
+      else
+        echo "Could not locate backend package directory" >&2
+        exit 1
+      fi
     envVars:
       - key: APP_BASE_URL
         sync: false
