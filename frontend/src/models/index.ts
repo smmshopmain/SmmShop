@@ -1,8 +1,24 @@
 export type PlatformSettings = {
   pricing: { globalMarginPercent: number; categoryMargins?: Record<string, number>; serviceMargins?: Record<string, number> };
-  deposits: { verificationMode: string; verificationStartTime: string; verificationEndTime: string; minimumWalletAddAmount: number; payment: any };
+  deposits: {
+    verificationMode: string;
+    verificationStartTime: string;
+    verificationEndTime: string;
+    minimumWalletAddAmount: number;
+    payment: PaymentSettings;
+  };
   provider: { lowBalanceThreshold: number };
   referrals: { commissionPercent: number };
+};
+
+type PaymentSettings = {
+  qrImageUrl: string;
+  upiId: string;
+  accountNumber: string;
+  ifsc: string;
+  accountName: string;
+  bankName: string;
+  instructions: string;
 };
 
 const defaultSettings: PlatformSettings = {
@@ -18,18 +34,22 @@ const defaultSettings: PlatformSettings = {
   referrals: { commissionPercent: 2 },
 };
 
-class Query {
-  constructor(private result: any[] = []) {}
-  populate(..._args: any[]) {
+class Query<T = unknown> {
+  constructor(private result: T[] = []) {}
+  populate(..._args: unknown[]) {
+    void _args;
     return this;
   }
-  sort(..._args: any[]) {
+  sort(..._args: unknown[]) {
+    void _args;
     return this;
   }
-  limit(..._args: any[]) {
+  limit(..._args: unknown[]) {
+    void _args;
     return this;
   }
-  select(..._args: any[]) {
+  select(..._args: unknown[]) {
+    void _args;
     return this;
   }
   lean() {
@@ -38,21 +58,91 @@ class Query {
 }
 
 export const Order = {
-  find: (_filter?: any) => new Query([]),
-  aggregate: async (_ops?: any) => [] as any[],
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+  aggregate: async (_ops?: unknown) => {
+    void _ops;
+    return [] as unknown[];
+  },
 };
 
-export const Deposit = { find: (_filter?: any) => new Query([]) };
-export const WalletTransaction = { find: (_filter?: any) => new Query([]), aggregate: async (..._args: any[]): Promise<any[]> => [] };
-export const Notification = { find: (_filter?: any) => new Query([]) };
-export const Refill = { find: (_filter?: any) => new Query([]) };
-export const Ticket = { find: (_filter?: any) => new Query([]) };
-export const PromoCode = { find: (_filter?: any) => new Query([]) };
-export const Provider = { find: (_filter?: any) => new Query([]) };
-export const Service = { find: (_filter?: any) => new Query([]), distinct: async (_field?: string) => [] };
-export const Category = { find: (_filter?: any) => new Query([]) };
-export const Referral = { find: (_filter?: any) => new Query([]), distinct: async () => [] };
-export const AuditLog = { find: (_filter?: any) => new Query([]) };
+export const Deposit = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const WalletTransaction = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+  aggregate: async (..._args: unknown[]): Promise<unknown[]> => {
+    void _args;
+    return [];
+  },
+};
+export const Notification = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const Refill = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const Ticket = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const PromoCode = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const Provider = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const Service = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+  distinct: async (_field?: string) => {
+    void _field;
+    return [] as string[];
+  },
+};
+export const Category = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
+export const Referral = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+  distinct: async () => [] as string[],
+};
+export const AuditLog = {
+  find: (_filter?: unknown) => {
+    void _filter;
+    return new Query<unknown>([]);
+  },
+};
 
 export async function getSettings(): Promise<PlatformSettings> {
   return defaultSettings;

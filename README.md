@@ -2,12 +2,18 @@
 
 Production-ready SMM reseller platform built with Next.js App Router, TypeScript, Tailwind CSS, MongoDB Atlas, Mongoose, JWT cookies, Telegram notifications, provider APIs, cron-ready sync routes, and email OTP password reset.
 
+> Important: This repository has separate packages for frontend and backend.
+> Use `frontend/src` for UI changes and `backend/src` for backend/API changes.
+> The root `src` folder is a legacy duplicate and is not the production deployment target.
+
 ## Setup
 
 1. Install dependencies:
 
 ```bash
 npm install
+cd frontend && npm install
+cd ../backend && npm install
 ```
 
 2. Copy `.env.example` to `.env.local` and fill real values:
@@ -37,6 +43,8 @@ RESEND_API_KEY=
 ```bash
 npm run dev
 ```
+
+This will run the deployed frontend app from `frontend/` so local development matches Vercel.
 
 Open `http://localhost:3000`.
 

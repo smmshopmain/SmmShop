@@ -1,6 +1,7 @@
 services:
   - type: web
     name: smm-panel
+    root: backend
     runtime: node
     plan: free
     buildCommand: npm ci && npm run build
@@ -44,6 +45,7 @@ services:
         sync: false
   - type: cron
     name: smm-keep-alive
+    root: backend
     runtime: node
     schedule: "*/10 * * * *"
     buildCommand: npm ci
@@ -53,6 +55,7 @@ services:
         sync: false
   - type: cron
     name: smm-status-sync
+    root: backend
     runtime: node
     schedule: "*/2 * * * *"
     buildCommand: npm ci
@@ -64,6 +67,7 @@ services:
         sync: false
   - type: cron
     name: smm-provider-balance-sync
+    root: backend
     runtime: node
     schedule: "0 */6 * * *"
     buildCommand: npm ci
@@ -75,6 +79,7 @@ services:
         sync: false
   - type: cron
     name: smm-service-sync
+    root: backend
     runtime: node
     schedule: "*/5 * * * *"
     buildCommand: npm ci
@@ -86,6 +91,7 @@ services:
         sync: false
   - type: cron
     name: smm-price-sync
+    root: backend
     runtime: node
     schedule: "15 */6 * * *"
     buildCommand: npm ci
@@ -97,6 +103,7 @@ services:
         sync: false
   - type: cron
     name: smm-refill-sync
+    root: backend
     runtime: node
     schedule: "*/20 * * * *"
     buildCommand: npm ci
@@ -108,6 +115,7 @@ services:
         sync: false
   - type: cron
     name: smm-deposit-verification
+    root: backend
     runtime: node
     schedule: "*/5 * * * *"
     buildCommand: npm ci

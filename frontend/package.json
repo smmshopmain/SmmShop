@@ -9,7 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint --config ./eslint.config.mjs --no-ignore \"src/**/*.{ts,tsx}\" --ext .ts,.tsx"
   },
   "dependencies": {
     "lucide-react": "^1.17.0",

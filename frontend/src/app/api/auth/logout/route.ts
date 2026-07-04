@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 
-const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") || "";
+const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+if (!apiBase) {
+  throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
+}
 
 async function forwardLogout(request: Request) {
-  const backendUrl = apiBase ? `${apiBase}/api/auth/logout` : "/api/auth/logout";
+  const backendUrl = `${apiBase}/api/auth/logout`;
   const cookie = request.headers.get("cookie");
 
   const backendResponse = await fetch(backendUrl, {

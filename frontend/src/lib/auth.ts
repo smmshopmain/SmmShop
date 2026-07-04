@@ -1,8 +1,11 @@
 import { isAdminRole } from "@/lib/roles";
 
 export async function requireUser() {
-  const base = process.env.NEXT_PUBLIC_API_URL ?? "";
-  const res = await fetch(`${base}/api/auth/me`, { credentials: "include", cache: "no-store" });
+  const base = process.env.NEXT_PUBLIC_API_URL;
+  if (!base) {
+    throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
+  }
+  const res = await fetch(`${base.replace(/\/+$/, "")}/api/auth/me`, { credentials: "include", cache: "no-store" });
   if (!res.ok) throw new Error("Unauthorized");
   return res.json();
 }
