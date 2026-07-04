@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { apiFetch } from "@/lib/client-api";
+import { apiJson } from "@/lib/client-api";
 
 function formatBalance(value: number) {
   return `Rs.${Number.isFinite(value) ? value : 0}`;
@@ -12,19 +12,28 @@ export function LiveWalletBalance({ initialBalance }: { initialBalance: number }
 
   useEffect(() => {
     let active = true;
+    let intervalId: number | undefined;
 
-    apiFetch("/api/wallet")
-      .then((response) => response.json())
-      .then((result) => {
-        const nextBalance = Number(result.data?.balance);
-        if (active && Number.isFinite(nextBalance)) setBalance(nextBalance);
-      })
-      .catch(() => {
+    async function refreshBalance() {
+      try {
+        const result = await apiJson("/api/wallet", { cache: "no-store" });
+        const nextBalance = Number(result.data?.balance ?? result.balance ?? NaN);
+        if (active && Number.isFinite(nextBalance)) {
+          setBalance(nextBalance);
+        }
+      } catch {
         // Keep the server-rendered balance if the live refresh fails.
-      });
+      }
+    }
+
+    refreshBalance();
+    intervalId = window.setInterval(refreshBalance, 15000);
+    window.addEventListener("focus", refreshBalance);
 
     return () => {
       active = false;
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshBalance);
     };
   }, []);
 
