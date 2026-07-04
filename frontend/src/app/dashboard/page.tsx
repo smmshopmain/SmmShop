@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Clock3, Headphones, PlusCircle, ShoppingBag, 
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
 import { StatusBadge } from "@/components/status-badge";
+import { LiveWalletBalance } from "@/components/wallet-balance";
 import { serverApiJson } from "@/lib/server-api";
 
 const quickActions: Array<{
@@ -82,7 +83,7 @@ export default async function DashboardPage() {
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Wallet Balance" value={`Rs.${data?.balance ?? 0}`} icon={WalletCards} />
+        <StatCard label="Wallet Balance" value={<LiveWalletBalance initialBalance={data?.balance ?? 0} />} icon={WalletCards} />
         <StatCard label="Total Orders" value={data?.totalOrders ?? 0} icon={ShoppingBag} tone="neutral" />
         <StatCard label="Active Orders" value={data?.activeOrders ?? 0} icon={Clock3} tone="amber" />
         <StatCard label="Completed Orders" value={data?.completedOrders ?? 0} icon={CheckCircle2} tone="teal" />

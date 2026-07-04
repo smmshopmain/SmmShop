@@ -1,6 +1,7 @@
 import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
+import { LiveWalletBalance } from "@/components/wallet-balance";
 import { serverApiJson } from "@/lib/server-api";
 import { ArrowDownToLine, History, WalletCards } from "lucide-react";
 
@@ -62,7 +63,9 @@ export default async function WalletPage() {
           </div>
           <div className="rounded-md bg-neutral-950 p-4 text-white">
             <p className="text-sm text-neutral-300">Available balance</p>
-            <p className="mt-2 text-3xl font-bold">Rs.{balance}</p>
+            <p className="mt-2 text-3xl font-bold">
+              <LiveWalletBalance initialBalance={balance} />
+            </p>
           </div>
         </div>
       </div>
