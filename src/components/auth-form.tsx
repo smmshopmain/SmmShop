@@ -2,16 +2,34 @@
 
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiJson } from "@/lib/client-api";
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [referralEnabled, setReferralEnabled] = useState(true);
   const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
+
+  useEffect(() => {
+    if (mode !== "register") return;
+    let mounted = true;
+    void apiJson("/api/settings")
+      .then((result) => {
+        if (!mounted) return;
+        const referralSettings = result?.referrals ?? result?.data?.referrals;
+        setReferralEnabled(referralSettings?.enabled !== false);
+      })
+      .catch(() => {
+        if (mounted) setReferralEnabled(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [mode]);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,7 +95,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
         />
       </label>
-      {mode === "register" && (
+      {mode === "register" && referralEnabled && (
         <label className="grid gap-2 text-sm font-semibold text-neutral-800">
           Referral code <span className="text-xs font-medium text-neutral-500">Optional</span>
           <input

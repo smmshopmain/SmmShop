@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { AppShell } from "@/components/app-shell";
 import { requireUser } from "@/lib/auth";
 import { createUniqueReferralCode } from "@/lib/referral-code";
-import { Referral, User } from "@/models";
+import { Referral, User, getSettings } from "@/models";
 import { BadgeIndianRupee, Link2, Users } from "lucide-react";
 
 export default async function ReferralsPage() {
@@ -13,6 +13,17 @@ export default async function ReferralsPage() {
 
   try {
     const { auth, dbUser } = await requireUser();
+    const settings = await getSettings();
+    const referralSystemEnabled = settings?.referrals?.enabled !== false;
+    if (!referralSystemEnabled) {
+      return (
+        <AppShell>
+          <div className="rounded-lg border border-neutral-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-sm font-semibold text-neutral-700">Referral program is disabled by the administrator.</p>
+          </div>
+        </AppShell>
+      );
+    }
     if (!dbUser.referralCode) {
       dbUser.referralCode = await createUniqueReferralCode(User);
       await dbUser.save();
