@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
-import { calculateOrderPrice } from "@/lib/pricing";
+import { calculateOrderPrice, roundMoney } from "@/lib/pricing";
 import {
   addProviderOrder,
   cancelProviderOrder,
@@ -11,8 +11,7 @@ import {
   normalizeProviderOrderStatus,
 } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
-import { Order, PromoCode, Referral, Service, User, WalletTransaction, getSettings } from "@/models";
-import { roundMoney } from "@/lib/pricing";
+import { Order, PromoCode, Service, WalletTransaction } from "@/models";
 
 const schema = z.object({
   serviceId: z.string().min(1),
@@ -257,44 +256,6 @@ export async function POST(request: NextRequest) {
         source: "promo_code",
         reference: promo.code,
       });
-    }
-
-    if (dbUser.referredBy && sellingPrice > 0) {
-      const settings = await getSettings();
-      const referralSystemEnabled = settings.referrals.enabled !== false;
-      if (referralSystemEnabled) {
-        const commissionAmount = Number(settings.referrals.commissionAmount ?? 0);
-        const commissionPercent = Number(settings.referrals.commissionPercent ?? 0);
-        const commission = commissionAmount > 0 ? roundMoney(commissionAmount) : commissionPercent > 0 ? roundMoney((sellingPrice * commissionPercent) / 100) : 0;
-        if (commission > 0) {
-          const referrer = await User.findById(dbUser.referredBy);
-          if (referrer) {
-            const referralBalanceBefore = referrer.walletBalance;
-            referrer.walletBalance += commission;
-            referrer.referralEarnings += commission;
-            await referrer.save();
-            await WalletTransaction.create({
-              user: referrer._id,
-              type: "referral",
-              amount: commission,
-              balanceBefore: referralBalanceBefore,
-              balanceAfter: referrer.walletBalance,
-              source: "referral_order_commission",
-              reference: String(order._id),
-            });
-            await Referral.findOneAndUpdate(
-              { referrer: referrer._id, referredUser: dbUser._id },
-              { $inc: { earnings: commission }, status: "Paid" },
-              { upsert: true, returnDocument: "after" },
-            );
-            await notifyInApp({
-              user: referrer._id,
-              title: "Referral commission credited",
-              body: `Rs.${commission} credited from ${dbUser.name}'s order.`,
-            });
-          }
-        }
-      }
     }
 
     await notifyInApp({

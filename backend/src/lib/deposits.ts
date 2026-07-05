@@ -1,5 +1,6 @@
 import { notifyInApp } from "@/lib/notifications";
-import { Deposit, User, WalletTransaction } from "@/models";
+import { roundMoney } from "@/lib/pricing";
+import { Deposit, Referral, User, WalletTransaction, getSettings } from "@/models";
 import {
   ensureTelegramWebhook,
   notifyTelegram,
@@ -38,6 +39,95 @@ type DepositDoc = {
   save: () => Promise<unknown>;
 };
 
+type WalletUserDoc = {
+  _id: unknown;
+  name?: string;
+  walletBalance: number;
+  referralEarnings: number;
+  referredBy?: unknown;
+  save: () => Promise<unknown>;
+};
+
+async function maybeCreditReferralTopUpBonus({
+  user,
+  depositAmount,
+}: {
+  user: WalletUserDoc;
+  depositAmount: number;
+}) {
+  if (!user.referredBy) return;
+
+  const settings = await getSettings();
+  if (settings.referrals.enabled === false) return;
+
+  const minimumTopUp = Number(settings.referrals.minimumReferredWalletAddAmount ?? 0);
+  const [summary] = await WalletTransaction.aggregate([
+    { $match: { user: user._id, type: "deposit" } },
+    { $group: { _id: null, total: { $sum: "$amount" } } },
+  ]);
+  const totalTopUp = Number(summary?.total ?? 0);
+  if (totalTopUp < Math.max(0, minimumTopUp)) return;
+
+  const existingReferral = await Referral.findOne({
+    referrer: user.referredBy,
+    referredUser: user._id,
+  });
+  if (existingReferral?.status === "Paid") return;
+
+  const existingPayout = await WalletTransaction.exists({
+    user: user.referredBy,
+    type: "referral",
+    source: "referral_wallet_topup_bonus",
+    reference: String(user._id),
+  });
+  if (existingPayout) {
+    await Referral.findOneAndUpdate(
+      { referrer: user.referredBy, referredUser: user._id },
+      { status: "Paid" },
+      { upsert: true },
+    );
+    return;
+  }
+
+  const commissionAmount = Number(settings.referrals.commissionAmount ?? 0);
+  const commissionPercent = Number(settings.referrals.commissionPercent ?? 0);
+  const commission =
+    commissionAmount > 0
+      ? roundMoney(commissionAmount)
+      : commissionPercent > 0
+        ? roundMoney((depositAmount * commissionPercent) / 100)
+        : 0;
+  if (commission <= 0) return;
+
+  const referrer = await User.findById(user.referredBy);
+  if (!referrer) return;
+
+  const balanceBefore = referrer.walletBalance;
+  referrer.walletBalance += commission;
+  referrer.referralEarnings += commission;
+  await referrer.save();
+
+  await WalletTransaction.create({
+    user: referrer._id,
+    type: "referral",
+    amount: commission,
+    balanceBefore,
+    balanceAfter: referrer.walletBalance,
+    source: "referral_wallet_topup_bonus",
+    reference: String(user._id),
+  });
+  await Referral.findOneAndUpdate(
+    { referrer: referrer._id, referredUser: user._id },
+    { $inc: { earnings: commission }, status: "Paid" },
+    { upsert: true, returnDocument: "after" },
+  );
+  await notifyInApp({
+    user: referrer._id,
+    title: "Referral bonus credited",
+    body: `Rs.${commission} credited after ${user.name ?? "referred user"} added wallet balance.`,
+  });
+}
+
 export async function creditDepositWallet({
   userId,
   amount,
@@ -66,7 +156,7 @@ export async function creditDepositWallet({
   user.walletBalance += amount;
   await user.save();
 
-  return WalletTransaction.create({
+  const transaction = await WalletTransaction.create({
     user: user._id,
     type: "deposit",
     amount,
@@ -76,6 +166,14 @@ export async function creditDepositWallet({
     reference,
     createdBy,
   });
+
+  try {
+    await maybeCreditReferralTopUpBonus({ user, depositAmount: amount });
+  } catch (error) {
+    console.error("Referral top-up bonus failed", error);
+  }
+
+  return transaction;
 }
 
 export async function applyDepositDecision({

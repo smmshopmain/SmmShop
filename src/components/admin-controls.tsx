@@ -676,7 +676,10 @@ export function SettingsForm({
   payment,
   minimumWalletAddAmount,
   lowBalanceThreshold,
+  referralEnabled,
   referralCommissionPercent,
+  referralCommissionAmount,
+  referralMinimumWalletAddAmount,
 }: {
   startTime: string;
   endTime: string;
@@ -692,7 +695,10 @@ export function SettingsForm({
   };
   minimumWalletAddAmount: number;
   lowBalanceThreshold: number;
+  referralEnabled: boolean;
   referralCommissionPercent: number;
+  referralCommissionAmount: number;
+  referralMinimumWalletAddAmount: number;
 }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -774,7 +780,12 @@ export function SettingsForm({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           key: "referrals",
-          value: { commissionPercent: Number(form.get("referralCommissionPercent")) },
+          value: {
+            enabled: form.get("referralEnabled") === "on",
+            commissionPercent: Number(form.get("referralCommissionPercent")),
+            commissionAmount: Number(form.get("referralCommissionAmount")),
+            minimumReferredWalletAddAmount: Number(form.get("referralMinimumWalletAddAmount")),
+          },
         }),
       }),
     ];
@@ -862,9 +873,28 @@ export function SettingsForm({
         Low provider balance alert
         <input name="lowBalanceThreshold" type="number" min={0} step="0.01" defaultValue={lowBalanceThreshold} className="rounded-md border border-neutral-300 px-3 py-2" />
       </label>
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input name="referralEnabled" type="checkbox" defaultChecked={referralEnabled} className="h-4 w-4 rounded border-neutral-300 text-teal-700 focus:ring-teal-700" />
+        <span>Enable referral rewards</span>
+      </label>
       <label className="grid gap-2 text-sm font-medium">
         Referral commission %
         <input name="referralCommissionPercent" type="number" min={0} max={100} step="0.01" defaultValue={referralCommissionPercent} className="rounded-md border border-neutral-300 px-3 py-2" />
+      </label>
+      <label className="grid gap-2 text-sm font-medium">
+        Referral reward per successful referral (Rs)
+        <input name="referralCommissionAmount" type="number" min={0} step="0.01" defaultValue={referralCommissionAmount} className="rounded-md border border-neutral-300 px-3 py-2" />
+      </label>
+      <label className="grid gap-2 text-sm font-medium">
+        Minimum referred wallet top-up for bonus (Rs)
+        <input
+          name="referralMinimumWalletAddAmount"
+          type="number"
+          min={0}
+          step="0.01"
+          defaultValue={referralMinimumWalletAddAmount}
+          className="rounded-md border border-neutral-300 px-3 py-2"
+        />
       </label>
       <div className="flex items-end gap-3">
         <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">

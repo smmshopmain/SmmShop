@@ -24,7 +24,12 @@ export default async function SettingsPage() {
       },
     },
     provider: { lowBalanceThreshold: 100 },
-    referrals: { commissionPercent: 2 },
+    referrals: {
+      enabled: true,
+      commissionPercent: 2,
+      commissionAmount: 0,
+      minimumReferredWalletAddAmount: 0,
+    },
   };
 
   try {
@@ -49,7 +54,10 @@ export default async function SettingsPage() {
         payment={settings.deposits.payment}
         minimumWalletAddAmount={settings.deposits.minimumWalletAddAmount}
         lowBalanceThreshold={settings.provider.lowBalanceThreshold}
+        referralEnabled={settings.referrals.enabled}
         referralCommissionPercent={settings.referrals.commissionPercent}
+        referralCommissionAmount={settings.referrals.commissionAmount}
+        referralMinimumWalletAddAmount={settings.referrals.minimumReferredWalletAddAmount}
       />
     </AppShell>
   );

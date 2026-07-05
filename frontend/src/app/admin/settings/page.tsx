@@ -23,7 +23,12 @@ type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
-  referrals: { enabled: boolean; commissionPercent: number; commissionAmount: number };
+  referrals: {
+    enabled: boolean;
+    commissionPercent: number;
+    commissionAmount: number;
+    minimumReferredWalletAddAmount: number;
+  };
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -43,7 +48,12 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     },
   },
   provider: { lowBalanceThreshold: 100 },
-  referrals: { enabled: true, commissionPercent: 2, commissionAmount: 0 },
+  referrals: {
+    enabled: true,
+    commissionPercent: 2,
+    commissionAmount: 0,
+    minimumReferredWalletAddAmount: 0,
+  },
 };
 
 export default function SettingsPage() {
@@ -88,6 +98,7 @@ export default function SettingsPage() {
         referralEnabled={settings.referrals.enabled}
         referralCommissionPercent={settings.referrals.commissionPercent}
         referralCommissionAmount={settings.referrals.commissionAmount}
+        referralMinimumWalletAddAmount={settings.referrals.minimumReferredWalletAddAmount}
       />
     </AppShell>
   );

@@ -35,6 +35,24 @@ function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Reco
 }
 
 function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
+  if (key === "referrals") {
+    const commissionPercent = Number(value.commissionPercent ?? 0);
+    const commissionAmount = Number(value.commissionAmount ?? 0);
+    const minimumReferredWalletAddAmount = Number(value.minimumReferredWalletAddAmount ?? 0);
+
+    return {
+      ...value,
+      enabled: value.enabled !== false,
+      commissionPercent: Number.isFinite(commissionPercent)
+        ? Math.max(0, Math.min(100, commissionPercent))
+        : 0,
+      commissionAmount: Number.isFinite(commissionAmount) ? Math.max(0, commissionAmount) : 0,
+      minimumReferredWalletAddAmount: Number.isFinite(minimumReferredWalletAddAmount)
+        ? Math.max(0, minimumReferredWalletAddAmount)
+        : 0,
+    };
+  }
+
   if (key !== "deposits") return value;
 
   const minimumWalletAddAmount = Number(value.minimumWalletAddAmount ?? 0);
