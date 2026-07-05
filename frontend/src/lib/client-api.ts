@@ -7,8 +7,10 @@ export function apiUrl(path: string) {
     if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
       return cleanPath;
     }
+    // If NEXT_PUBLIC_API_URL is not set, fall back to relative paths so
+    // same-origin deployments work without additional env configuration.
     if (!baseUrl) {
-      throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
+      return cleanPath;
     }
   }
 
