@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { SettingsForm } from "@/components/admin-controls";
+import { SettingsForm, ActionButton } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { apiJson } from "@/lib/client-api";
@@ -75,6 +75,9 @@ export default function SettingsPage() {
         title="Platform settings"
         description="Deposit verification, payment details, referral commission, and provider balance alerts."
       />
+      <div className="mb-4 px-4 lg:px-0">
+        <ActionButton label="Backfill referral codes" endpoint="/api/admin/backfill-referrals" method="POST" confirmMessage="Assign referral codes to users missing them?" />
+      </div>
       <SettingsForm
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
