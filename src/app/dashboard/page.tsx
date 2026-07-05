@@ -29,7 +29,7 @@ export default async function DashboardPage() {
     totalOrders: 0,
     activeOrders: 0,
     completedOrders: 0,
-    transactions: [] as Array<{ _id: string; type: string; amount: number; createdAt: Date }>;
+    transactions: [] as Array<{ _id: string; type: string; amount: number; createdAt: Date }>,
   };
   let setupError = "";
 

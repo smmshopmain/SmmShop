@@ -341,7 +341,12 @@ export type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
-  referrals: { commissionPercent: number };
+  referrals: {
+    enabled: boolean;
+    commissionPercent: number;
+    commissionAmount: number;
+    minimumReferredWalletAddAmount: number;
+  };
 };
 
 export async function getSettings() {
@@ -363,7 +368,12 @@ export async function getSettings() {
       },
     },
     provider: { lowBalanceThreshold: 100 },
-    referrals: { commissionPercent: 2 },
+    referrals: {
+      enabled: true,
+      commissionPercent: 2,
+      commissionAmount: 0,
+      minimumReferredWalletAddAmount: 0,
+    },
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {

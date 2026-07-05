@@ -7,10 +7,13 @@
     "node": ">=20.11.0"
   },
   "scripts": {
-    "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "start": "npm --prefix frontend run start",
-    "lint": "npm --prefix frontend run lint"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "npm --prefix frontend run lint",
+    "frontend:dev": "npm --prefix frontend run dev",
+    "frontend:build": "npm --prefix frontend run build",
+    "backend:dev": "npm --prefix backend run dev"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
