@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { dbConnect } from "@/lib/db";
+import { createUniqueReferralCode } from "@/lib/referral-code";
 import { isAdminRole, normalizeRole, UserRole } from "@/lib/roles";
 import { User } from "@/models";
 
@@ -69,6 +70,10 @@ export async function requireUser() {
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) throw new Error("Unauthorized");
+  if (!dbUser.referralCode) {
+    dbUser.referralCode = await createUniqueReferralCode(User);
+    await dbUser.save();
+  }
   return {
     auth: {
       ...user,

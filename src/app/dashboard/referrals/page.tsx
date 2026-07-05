@@ -29,9 +29,11 @@ export default async function ReferralsPage() {
       await dbUser.save();
     }
     const headerStore = await headers();
-    const origin = headerStore.get("x-forwarded-host")
-      ? `${headerStore.get("x-forwarded-proto") ?? "https"}://${headerStore.get("x-forwarded-host")}`
-      : "";
+    const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+    const protocol = headerStore.get("x-forwarded-proto") ?? "https";
+    const origin = host
+      ? `${protocol}://${host}`
+      : (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
     referralCode = dbUser.referralCode;
     referralLink = `${origin}/register?ref=${referralCode}`;
     earnings = dbUser.referralEarnings;

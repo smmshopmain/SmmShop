@@ -11,15 +11,17 @@ export default async function ReferralsPage() {
   let referralEnabled = true;
 
   try {
-    const [user, referrals, settings] = await Promise.all([
-      serverApiJson("/api/auth/me"),
-      serverApiJson("/api/referrals"),
-      serverApiJson("/api/settings"),
+    const user = await serverApiJson("/api/auth/me");
+    const [referrals, settings] = await Promise.all([
+      serverApiJson("/api/referrals").catch(() => ({ history: [] })),
+      serverApiJson("/api/settings").catch(() => ({ referrals: { enabled: true } })),
     ]);
     const headerStore = await headers();
-    const origin = headerStore.get("x-forwarded-host")
-      ? `${headerStore.get("x-forwarded-proto") ?? "https"}://${headerStore.get("x-forwarded-host")}`
-      : "";
+    const host = headerStore.get("x-forwarded-host") ?? headerStore.get("host");
+    const protocol = headerStore.get("x-forwarded-proto") ?? "https";
+    const origin = host
+      ? `${protocol}://${host}`
+      : (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
     referralCode = user.referralCode ?? "";
     referralLink = `${origin}/register?ref=${referralCode}`;
     earnings = Number(user.referralEarnings ?? 0);
