@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeIndianRupee, Link2, Users } from "lucide-react";
+import { BadgeIndianRupee, Check, Copy, Link2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { apiJson } from "@/lib/client-api";
 
@@ -26,6 +26,7 @@ export function ReferralPanel({
   const [earnings, setEarnings] = useState(initialEarnings);
   const [history, setHistory] = useState(initialHistory);
   const [referralEnabled, setReferralEnabled] = useState(initialEnabled);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -59,6 +60,14 @@ export function ReferralPanel({
     return `${window.location.origin}/register?ref=${referralCode}`;
   }, [referralCode]);
 
+  async function copyReferralLink() {
+    if (!referralLink) return;
+
+    await navigator.clipboard.writeText(referralLink);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
   if (!referralEnabled) {
     return (
       <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 shadow-sm">
@@ -80,9 +89,20 @@ export function ReferralPanel({
               <p className="text-sm text-neutral-500">Share this link with new users</p>
             </div>
           </div>
-          <p className="mt-4 break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
-            {referralLink || "Generating referral link..."}
-          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <p className="break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
+              {referralLink || "Generating referral link..."}
+            </p>
+            <button
+              type="button"
+              onClick={copyReferralLink}
+              disabled={!referralLink}
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
           <p className="mt-3 text-xs text-neutral-500">
             Referral code: <span className="font-semibold text-neutral-800">{referralCode || "-"}</span>
           </p>
