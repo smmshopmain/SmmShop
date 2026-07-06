@@ -108,6 +108,16 @@ https://your-service-name.onrender.com
 
 This sends an inbound request every 10 minutes to reduce Render free-tier cold starts.
 
+### Nightly Catalog Refresh
+
+The Render blueprint includes `smm-nightly-catalog-refresh`, a cron service that calls:
+
+```text
+/api/cron/auto-sync
+```
+
+It runs service import first, then recalculates prices so the catalog shows updated rates. Render evaluates cron schedules in UTC, so the blueprint uses `30 18 * * *`, which runs at 12:00 AM IST.
+
 ## Useful Commands
 
 ```bash

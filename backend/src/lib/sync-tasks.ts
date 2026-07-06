@@ -443,6 +443,19 @@ export async function priceSyncTask() {
 
     let updated = 0;
     const step = Math.max(1, Math.floor(total / 40));
+    const batchSize = Number(process.env.PRICE_SYNC_BATCH_SIZE ?? 250);
+    const operations: Array<{
+      updateOne: {
+        filter: { _id: unknown };
+        update: { $set: { sellingRate: number } };
+      };
+    }> = [];
+
+    async function flushBatch() {
+      if (operations.length === 0) return;
+      await Service.bulkWrite(operations);
+      operations.length = 0;
+    }
 
     for (const [index, service] of services.entries()) {
       const serviceMargins: Record<string, number> = {
@@ -463,10 +476,20 @@ export async function priceSyncTask() {
             }
           : settings.pricing,
       );
-      await service.save();
+      operations.push({
+        updateOne: {
+          filter: { _id: service._id },
+          update: { $set: { sellingRate: service.sellingRate } },
+        },
+      });
       updated += 1;
 
+      if (operations.length >= batchSize) {
+        await flushBatch();
+      }
+
       if (index % step === 0 || index === total - 1) {
+        await flushBatch();
         await upsertSyncStatus("price_sync", {
           status: "running",
           processed: index + 1,
@@ -475,6 +498,8 @@ export async function priceSyncTask() {
         });
       }
     }
+
+    await flushBatch();
 
     await logProviderEvent({
       scope: "price_sync",
@@ -501,7 +526,7 @@ export async function priceSyncTask() {
 }
 
 export async function runAutoSync() {
-  const serviceResult = await serviceSyncTask();
+  const serviceResult = await serviceImportTask();
   const priceResult = await priceSyncTask();
   return { serviceResult, priceResult };
 }
