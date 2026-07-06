@@ -68,6 +68,7 @@ export function SyncStatusPanel() {
     processed?: number;
     startedAt?: string;
     finishedAt?: string;
+    updatedAt?: string;
   }>>([]);
 
   useEffect(() => {
@@ -98,8 +99,10 @@ export function SyncStatusPanel() {
 
   function formatLabel(taskType: string) {
     switch (taskType) {
-      case "service_sync":
+      case "service_import":
         return "Service import";
+      case "service_sync":
+        return "Service sync";
       case "price_sync":
         return "Price recalculation";
       default:
@@ -107,14 +110,38 @@ export function SyncStatusPanel() {
     }
   }
 
+  function formatTimestamp(value?: string) {
+    if (!value) return "Not run yet";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Not run yet";
+    return date.toLocaleString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  function formatTimeLabel(status: string) {
+    if (status === "completed") return "Last refresh";
+    if (status === "failed") return "Last attempt";
+    if (status === "running") return "Started";
+    return "Last update";
+  }
+
   return (
     <section className="rounded-md border border-neutral-200 bg-white p-4 text-sm">
-      <h2 className="text-lg font-semibold">Sync progress</h2>
-      <div className="mt-3 grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Catalog refresh status</h2>
+        <span className="text-xs font-medium text-neutral-500">Import, sync, and price refresh history</span>
+      </div>
+      <div className="mt-3 grid gap-4 lg:grid-cols-3">
         {statuses.map((status) => {
           const total = status.total ?? 0;
           const processed = status.processed ?? 0;
           const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
+          const displayTime = status.finishedAt ?? status.updatedAt ?? status.startedAt;
           return (
             <div key={status.taskType} className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
               <div className="flex items-center justify-between gap-4 text-sm font-medium text-neutral-900">
@@ -127,6 +154,10 @@ export function SyncStatusPanel() {
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-neutral-500">
                 <span>{status.message ?? `${processed}/${total} completed`}</span>
                 {total > 0 && <span>{percent}%</span>}
+              </div>
+              <div className="mt-3 rounded-md bg-white px-2 py-2 text-xs text-neutral-600">
+                <span className="font-semibold text-neutral-800">{formatTimeLabel(status.status)}:</span>{" "}
+                {formatTimestamp(displayTime)}
               </div>
             </div>
           );

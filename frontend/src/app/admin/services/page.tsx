@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ActionButton, ServiceAdminList, type AdminServiceItem } from "@/components/admin-controls";
+import { ActionButton, ServiceAdminList, SyncStatusPanel, type AdminServiceItem } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { apiJson } from "@/lib/client-api";
@@ -46,6 +46,7 @@ export default function AdminServicesPage() {
           </>
         }
       />
+      <SyncStatusPanel />
       <ServiceAdminList services={services} />
     </AppShell>
   );

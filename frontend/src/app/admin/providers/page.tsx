@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { ActionButton } from "@/components/admin-controls";
+import { ActionButton, SyncStatusPanel } from "@/components/admin-controls";
 import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { ProviderEditForm, ProviderForm } from "@/components/provider-form";
 import { AppShell } from "@/components/app-shell";
@@ -58,7 +58,8 @@ export default function ProvidersPage() {
           </>
         }
       />
-      <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+      <SyncStatusPanel />
+      <div className="mt-4 grid gap-6 xl:grid-cols-[420px_1fr]">
         <ProviderForm />
         <AdminSection title="Connected providers" description="Routing, health and balance controls" icon={Layers3}>
           {loading ? (
