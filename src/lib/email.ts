@@ -1,4 +1,6 @@
+import { resolve4 } from "dns/promises";
 import nodemailer from "nodemailer";
+import type SMTPTransport from "nodemailer/lib/smtp-transport";
 
 type MailInput = {
   to: string;
@@ -36,17 +38,31 @@ function smtpSecure() {
   throw new Error("SMTP_SECURE must be true or false");
 }
 
+async function resolveSmtpHost(host: string) {
+  try {
+    return (await resolve4(host))[0] ?? host;
+  } catch {
+    return host;
+  }
+}
+
 export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
   const from = requireEnv("FROM_EMAIL");
-  const transporter = nodemailer.createTransport({
-    host: requireEnv("SMTP_HOST"),
+  const smtpHost = requireEnv("SMTP_HOST");
+  const resolvedHost = await resolveSmtpHost(smtpHost);
+  const transportOptions: SMTPTransport.Options = {
+    host: resolvedHost,
     port: smtpPort(),
     secure: smtpSecure(),
+    tls: {
+      servername: smtpHost,
+    },
     auth: {
       user: requireEnv("SMTP_USER"),
       pass: requireEnv("SMTP_PASS"),
     },
-  });
+  };
+  const transporter = nodemailer.createTransport(transportOptions);
 
   try {
     const info = await transporter.sendMail({
