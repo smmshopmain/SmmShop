@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, CheckCircle2, Clock3, Headphones, PlusCircle, ShoppingBag, WalletCards } from "lucide-react";
+import { ArrowRight, Clock3, Headphones, PlusCircle, ShoppingBag, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
+import { DashboardOrderStats } from "@/components/dashboard-order-stats";
+import { DashboardRecentTransactions } from "@/components/dashboard-recent-transactions";
 import { StatCard } from "@/components/stat-card";
-import { StatusBadge } from "@/components/status-badge";
 import { LiveWalletBalance } from "@/components/wallet-balance";
-import { serverApiJson } from "@/lib/server-api";
 
 const quickActions: Array<{
   href: Route;
@@ -18,62 +18,7 @@ const quickActions: Array<{
   { href: "/dashboard/tickets", title: "Need help?", text: "Create a support ticket.", icon: Headphones },
 ];
 
-type DashboardData = {
-  balance: number;
-  totalOrders: number;
-  activeOrders: number;
-  completedOrders: number;
-  transactions: Array<{ _id: string; type: string; amount: number; createdAt: string }>;
-};
-
 export default async function DashboardPage() {
-  let data: DashboardData = {
-    balance: 0,
-    totalOrders: 0,
-    activeOrders: 0,
-    completedOrders: 0,
-    transactions: [],
-  };
-  let loadError = false;
-
-  const [walletResult, orderResult] = await Promise.allSettled([
-    serverApiJson("/api/wallet"),
-    serverApiJson("/api/orders?sync=1"),
-  ]);
-
-  if (walletResult.status === "fulfilled") {
-    const walletTransactions = Array.isArray(walletResult.value.transactions)
-      ? walletResult.value.transactions
-      : Array.isArray(walletResult.value.data?.transactions)
-      ? walletResult.value.data.transactions
-      : [];
-    data = {
-      balance: Number(walletResult.value.balance ?? walletResult.value.data?.balance ?? 0),
-      totalOrders: 0,
-      activeOrders: 0,
-      completedOrders: 0,
-      transactions: walletTransactions.slice(0, 5),
-    };
-  } else {
-    loadError = true;
-  }
-
-  if (orderResult.status === "fulfilled") {
-    const orders = Array.isArray(orderResult.value.orders)
-      ? orderResult.value.orders
-      : Array.isArray(orderResult.value.data?.orders)
-      ? orderResult.value.data.orders
-      : [];
-    data = {
-      ...data,
-      totalOrders: orders.length,
-      activeOrders: orders.filter((order: { status?: string }) => ["Pending", "Processing", "In Progress"].includes(order.status ?? "")).length,
-      completedOrders: orders.filter((order: { status?: string }) => order.status === "Completed").length,
-    };
-  } else {
-    loadError = true;
-  }
-
   return (
     <AppShell>
       <div className="mb-6 overflow-hidden rounded-lg border border-teal-900/10 bg-white p-5 shadow-sm sm:p-6">
@@ -103,16 +48,15 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
-      {loadError && (
-        <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Some dashboard data could not be loaded right now. Please try again later or contact support.
-        </div>
-      )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Wallet Balance" value={<LiveWalletBalance initialBalance={data?.balance ?? 0} />} icon={WalletCards} />
-        <StatCard label="Total Orders" value={data?.totalOrders ?? 0} icon={ShoppingBag} tone="neutral" />
-        <StatCard label="Active Orders" value={data?.activeOrders ?? 0} icon={Clock3} tone="amber" />
-        <StatCard label="Completed Orders" value={data?.completedOrders ?? 0} icon={CheckCircle2} tone="teal" />
+        <StatCard label="Wallet Balance" value={<LiveWalletBalance initialBalance={0} />} icon={WalletCards} />
+        <DashboardOrderStats
+          initialSummary={{
+            totalOrders: 0,
+            activeOrders: 0,
+            completedOrders: 0,
+          }}
+        />
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -124,23 +68,7 @@ export default async function DashboardPage() {
             </Link>
           </div>
           <div className="divide-y divide-neutral-100">
-            {(data?.transactions ?? []).map((tx) => (
-              <div key={String(tx._id)} className="grid gap-3 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
-                <div className="min-w-0">
-                  <p className="truncate font-medium capitalize">{tx.type.replaceAll("_", " ")}</p>
-                  <p className="text-neutral-500">{new Date(tx.createdAt).toLocaleString()}</p>
-                </div>
-                <StatusBadge status={tx.amount >= 0 ? "Approved" : "Canceled"} />
-                <p className="font-semibold">Rs.{tx.amount}</p>
-              </div>
-            ))}
-            {!data?.transactions.length && (
-              <div className="grid place-items-center px-4 py-10 text-center">
-                <WalletCards className="size-9 text-neutral-300" />
-                <p className="mt-3 text-sm font-semibold text-neutral-700">No transactions yet</p>
-                <p className="mt-1 max-w-sm text-sm text-neutral-500">Latest wallet activity will appear here after you add funds.</p>
-              </div>
-            )}
+            <DashboardRecentTransactions initialTransactions={[]} />
           </div>
         </section>
 
