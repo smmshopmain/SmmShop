@@ -139,7 +139,7 @@ export function ReferralPanel({
           <div className="grid place-items-center px-4 py-12 text-center">
             <Users className="size-10 text-neutral-300" />
             <p className="mt-3 text-sm font-semibold text-neutral-800">No referral history yet</p>
-            <p className="mt-1 max-w-md text-sm text-neutral-500">Aapke referred users active honge to rewards yahan dikhenge.</p>
+            <p className="mt-1 max-w-md text-sm text-neutral-500">Rewards will appear here when your referred users become active.</p>
           </div>
         )}
       </section>

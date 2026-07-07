@@ -20,7 +20,7 @@ export default function Home() {
             SMM Panel Platform
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-700">
-            Services browse karein, wallet manage karein, orders track karein aur support tickets ek clean user-friendly panel me handle karein.
+            Browse services, manage your wallet, track orders, and handle support tickets in one clean user-friendly panel.
           </p>
           <div className="mt-8 grid gap-3 sm:flex sm:flex-wrap">
             <Link
@@ -67,9 +67,9 @@ export default function Home() {
           </div>
           <div className="grid gap-3">
             {[
-              { icon: Layers3, title: "Browse services", text: "Platform filters, categories, search aur order form ready." },
-              { icon: WalletCards, title: "Wallet and deposits", text: "Clear balance, deposits aur transaction history." },
-              { icon: BarChart3, title: "Order tracking", text: "Pending, active and completed orders ka quick overview." },
+              { icon: Layers3, title: "Browse services", text: "Platform filters, categories, search, and order form ready." },
+              { icon: WalletCards, title: "Wallet and deposits", text: "Clear balance, deposits, and transaction history." },
+              { icon: BarChart3, title: "Order tracking", text: "Quick overview of pending, active, and completed orders." },
               { icon: ShieldCheck, title: "Admin controls", text: "Providers, pricing, users and support management." },
             ].map((item) => (
               <div key={item.title} className="rounded-md border border-neutral-200 p-4 transition hover:border-teal-200 hover:bg-teal-50">

@@ -71,7 +71,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Order center</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Order history</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Link, provider order ID, quantity, status aur refill/cancel actions ek clean view me.
+              Link, provider order ID, quantity, status, and refill/cancel actions in one clean view.
             </p>
         </div>
           <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_170px_auto]" action="/dashboard/orders">

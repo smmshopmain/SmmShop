@@ -24,7 +24,7 @@ export default async function LoginPage() {
             </p>
             <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Manage services, wallet and orders without confusion.</h1>
             <p className="mt-5 text-lg leading-8 text-neutral-700">
-              Login ke baad users directly services page par jayenge, jahan search, filters aur order form ready milta hai.
+              After login, users go directly to the services page with search, filters, and the order form ready.
             </p>
             <div className="mt-8 grid max-w-lg gap-3">
               {["Mobile friendly navigation", "Clear wallet and order status", "Secure session access"].map((item) => (
@@ -48,7 +48,7 @@ export default async function LoginPage() {
             </span>
           </div>
           <h2 className="text-2xl font-bold text-neutral-950">Welcome back</h2>
-          <p className="mt-2 text-sm leading-6 text-neutral-600">Login karke directly services page par order place karna start karein.</p>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">Log in to start placing orders directly from the services page.</p>
           <div className="mt-7">
             <AuthForm mode="login" />
           </div>

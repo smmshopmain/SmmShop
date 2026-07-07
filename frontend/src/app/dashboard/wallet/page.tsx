@@ -33,7 +33,7 @@ export default function WalletPage() {
   });
   const [minimumWalletAddAmount, setMinimumWalletAddAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -47,29 +47,21 @@ export default function WalletPage() {
 
       if (!mounted) return;
 
-      const nextErrors: string[] = [];
+      let nextLoadError = false;
 
       const walletResult = results[0];
       if (walletResult.status === "fulfilled" && walletResult.value.ok === true) {
         setBalance(Number(walletResult.value.balance ?? 0));
         setTransactions(Array.isArray(walletResult.value.transactions) ? walletResult.value.transactions.slice(0, 20) : []);
       } else {
-        nextErrors.push(
-          walletResult.status === "fulfilled"
-            ? walletResult.value.message ?? "Unable to load wallet data."
-            : String(walletResult.reason?.message ?? walletResult.reason ?? "Unable to load wallet data."),
-        );
+        nextLoadError = true;
       }
 
       const depositResult = results[1];
       if (depositResult.status === "fulfilled" && depositResult.value.ok === true) {
         setDeposits(Array.isArray(depositResult.value.deposits) ? depositResult.value.deposits.slice(0, 20) : []);
       } else {
-        nextErrors.push(
-          depositResult.status === "fulfilled"
-            ? depositResult.value.message ?? "Unable to load deposit requests."
-            : String(depositResult.reason?.message ?? depositResult.reason ?? "Unable to load deposit requests."),
-        );
+        nextLoadError = true;
       }
 
       const paymentResult = results[2];
@@ -85,14 +77,10 @@ export default function WalletPage() {
         });
         setMinimumWalletAddAmount(Number(paymentResult.value.minimumWalletAddAmount ?? 0));
       } else {
-        nextErrors.push(
-          paymentResult.status === "fulfilled"
-            ? paymentResult.value.message ?? "Unable to load payment details."
-            : String(paymentResult.reason?.message ?? paymentResult.reason ?? "Unable to load payment details."),
-        );
+        nextLoadError = true;
       }
 
-      setErrors(nextErrors.filter(Boolean));
+      setLoadError(nextLoadError);
       setIsLoading(false);
     }
 
@@ -111,7 +99,7 @@ export default function WalletPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Wallet center</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Wallet</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Add funds, deposit status aur wallet transactions ko ek professional view me manage karein.
+              Manage funds, deposit status, and wallet transactions in a clean workspace.
             </p>
           </div>
           <div className="rounded-md bg-neutral-950 p-4 text-white">
@@ -122,11 +110,9 @@ export default function WalletPage() {
           </div>
         </div>
       </div>
-      {errors.length > 0 && (
+      {loadError && (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {errors.map((error, index) => (
-            <p key={index}>{error}</p>
-          ))}
+          Some wallet details could not be loaded right now. Please try again later or contact support.
         </div>
       )}
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
@@ -157,7 +143,7 @@ export default function WalletPage() {
               <div className="grid place-items-center px-4 py-12 text-center">
                 <WalletCards className="size-10 text-neutral-300" />
                 <p className="mt-3 text-sm font-semibold text-neutral-800">No deposits yet</p>
-                <p className="mt-1 max-w-md text-sm text-neutral-500">Add funds form submit karne ke baad deposit request yahan dikhegi.</p>
+                <p className="mt-1 max-w-md text-sm text-neutral-500">Deposit requests will appear here after you submit the add funds form.</p>
               </div>
             )}
           </div>

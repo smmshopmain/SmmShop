@@ -19,8 +19,8 @@ export function TicketForm() {
         priority: form.get("priority"),
       }),
     });
-    const result = await response.json();
-    setMessage(response.ok ? "Ticket created." : result.message);
+    await response.json().catch(() => ({}));
+    setMessage(response.ok ? "Ticket created." : "Unable to create ticket right now. Please try again.");
   }
 
   return (
@@ -31,7 +31,7 @@ export function TicketForm() {
         </span>
         <div>
           <h2 className="text-lg font-bold text-neutral-950">Create ticket</h2>
-          <p className="mt-1 text-sm text-neutral-600">Order, payment ya account issue clearly describe karein.</p>
+          <p className="mt-1 text-sm text-neutral-600">Clearly describe your order, payment, or account issue.</p>
         </div>
       </div>
       <label className="grid gap-2 text-sm font-semibold text-neutral-800">

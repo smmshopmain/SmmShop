@@ -66,13 +66,13 @@ export function OrderLiveList({
       const response = await apiFetch("/api/orders?sync=1", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) {
-        setError(result.message ?? "Unable to refresh order status");
+        setError("Unable to refresh order status right now.");
         return;
       }
       setOrders(result.data?.orders ?? []);
       setLastUpdated(result.data?.syncedAt ?? new Date().toISOString());
-    } catch (refreshError) {
-      setError(refreshError instanceof Error ? refreshError.message : "Unable to refresh order status");
+    } catch {
+      setError("Unable to refresh order status right now.");
     } finally {
       setLoading(false);
     }
@@ -208,7 +208,7 @@ export function OrderLiveList({
             <ShoppingBag className="size-10 text-neutral-300" />
             <p className="mt-3 text-sm font-semibold text-neutral-800">No orders found</p>
             <p className="mt-1 max-w-md text-sm text-neutral-500">
-              Search/filter clear karke dekhein ya services page se new order place karein.
+              Clear the search/filter or place a new order from the services page.
             </p>
           </div>
         )}

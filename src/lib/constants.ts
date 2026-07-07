@@ -18,10 +18,10 @@ export const REFILL_STATUSES = [
 ] as const;
 
 export const WARNING_EN =
-  "Wrong/private/invalid link par refund nahi milega.";
+  "Wrong, private, or invalid links are not eligible for refunds.";
 
 export const WARNING_HI =
-  "Galat/private/invalid link par refund nahi milega.";
+  "गलत, प्राइवेट या अमान्य लिंक पर रिफंड नहीं मिलेगा।";
 
 export const DEFAULT_VERIFICATION_SCHEDULE = {
   verificationStartTime: "10:00",

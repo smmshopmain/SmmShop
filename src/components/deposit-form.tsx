@@ -188,15 +188,15 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
           setLoading(false);
           setUploadProgress(null);
           setMessageTone("warning");
-          setMessage(parsed.message ?? "Proof upload failed");
+          setMessage("Proof upload failed. Please try again.");
           return;
         }
         proofUrl = parsed.data.url;
-      } catch (error) {
+      } catch {
         setLoading(false);
         setUploadProgress(null);
         setMessageTone("warning");
-        setMessage(error instanceof Error ? error.message : "Proof upload failed");
+        setMessage("Proof upload failed. Please try again.");
         return;
       }
     }
@@ -217,7 +217,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
     setMessage(
       response.ok
         ? `Deposit submitted. ID: ${result.data.deposit.depositId}. Verification window: ${result.data.schedule.start} - ${result.data.schedule.end}.`
-        : result.message,
+        : "Unable to submit deposit right now. Please try again or contact support.",
     );
     if (response.ok) {
       formRef.current?.reset();
@@ -259,7 +259,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
         </span>
         <div>
           <h2 className="text-lg font-bold text-neutral-950">Add funds</h2>
-          <p className="mt-1 text-sm leading-6 text-neutral-600">Payment karein, UTR enter karein, proof upload karein. Admin verification ke baad wallet update hoga.</p>
+          <p className="mt-1 text-sm leading-6 text-neutral-600">Complete the payment, enter the UTR, and upload proof. Your wallet updates after admin verification.</p>
         </div>
       </div>
 
@@ -297,7 +297,7 @@ export function DepositForm({ payment, minimumWalletAddAmount }: { payment: Paym
               {paymentDetails.instructions && <p className="whitespace-pre-line rounded-md border border-neutral-200 bg-white p-3 text-neutral-700">{paymentDetails.instructions}</p>}
               {minimumAmount > 0 && (
                 <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-                  Minimum wallet top-up amount is Rs.{minimumAmount}. Isse kam amount submit nahi kiya ja sakta.
+                  Minimum wallet top-up amount is Rs.{minimumAmount}. Lower amounts cannot be submitted.
                 </p>
               )}
             </>

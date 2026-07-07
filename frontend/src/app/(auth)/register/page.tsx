@@ -24,7 +24,7 @@ export default async function RegisterPage() {
             </p>
             <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Create your panel account and start ordering faster.</h1>
             <p className="mt-5 text-lg leading-8 text-neutral-700">
-              Clean dashboard, easy service browsing, wallet deposits aur support tickets ek hi jagah par.
+              Clean dashboard, easy service browsing, wallet deposits, and support tickets in one place.
             </p>
             <div className="mt-8 grid max-w-lg gap-3">
               {["Fast onboarding", "Simple mobile layout", "Admin-ready first account"].map((item) => (
@@ -48,7 +48,7 @@ export default async function RegisterPage() {
             </span>
           </div>
           <h2 className="text-2xl font-bold text-neutral-950">Create account</h2>
-          <p className="mt-2 text-sm leading-6 text-neutral-600">Account banane ke baad services page directly open hoga.</p>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">After creating an account, the services page opens directly.</p>
           <div className="mt-7">
             <AuthForm mode="register" />
           </div>

@@ -50,7 +50,7 @@ export default async function WalletPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Wallet center</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Wallet</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Add funds, deposit status aur wallet transactions ko ek professional view me manage karein.
+              Manage funds, deposit status, and wallet transactions in a clean workspace.
             </p>
           </div>
           <div className="rounded-md bg-neutral-950 p-4 text-white">
@@ -89,7 +89,7 @@ export default async function WalletPage() {
               <div className="grid place-items-center px-4 py-12 text-center">
                 <WalletCards className="size-10 text-neutral-300" />
                 <p className="mt-3 text-sm font-semibold text-neutral-800">No deposits yet</p>
-                <p className="mt-1 max-w-md text-sm text-neutral-500">Add funds form submit karne ke baad deposit request yahan dikhegi.</p>
+                <p className="mt-1 max-w-md text-sm text-neutral-500">Deposit requests will appear here after you submit the add funds form.</p>
               </div>
             )}
           </div>

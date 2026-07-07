@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import fs from "fs";
-import path from "path";
 
 type CachedConnection = {
   conn: typeof mongoose | null;
@@ -17,29 +15,6 @@ const cache =
 
 export async function dbConnect() {
   if (cache.conn) return cache.conn;
-
-  // If MONGODB_URI isn't set in environment, try loading from .env.local or .env
-  if (!process.env.MONGODB_URI) {
-    try {
-      const base = process.cwd();
-      for (const name of [".env.local", ".env"]) {
-        const p = path.join(base, name);
-        if (fs.existsSync(p)) {
-          const content = fs.readFileSync(p, "utf8");
-          for (const line of content.split(/\r?\n/)) {
-            const m = line.match(/^\s*([^#=]+)=(?:\s*)['"]?(.*)['"]?\s*$/);
-            if (m) {
-              const key = m[1].trim();
-              const val = m[2];
-              if (process.env[key] === undefined) process.env[key] = val;
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Failed to load .env file:", err);
-    }
-  }
 
   const uri = process.env.MONGODB_URI;
   if (!uri) {

@@ -26,7 +26,7 @@ export default async function NotificationsPage() {
         <div>
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Updates</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Notifications</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Order, deposit, ticket aur account updates yahan milenge.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Order, deposit, ticket, and account updates appear here.</p>
         </div>
         {notifications.some((item) => !item.readAt) && (
           <ActionButton label="Mark all read" endpoint="/api/notifications" body={{ action: "read_all" }} />
@@ -62,7 +62,7 @@ export default async function NotificationsPage() {
           <div className="grid place-items-center px-4 py-12 text-center">
             <Bell className="size-10 text-neutral-300" />
             <p className="mt-3 text-sm font-semibold text-neutral-800">No notifications yet</p>
-            <p className="mt-1 max-w-md text-sm text-neutral-500">Important account updates yahan show honge.</p>
+            <p className="mt-1 max-w-md text-sm text-neutral-500">Important account updates will appear here.</p>
           </div>
         )}
       </section>

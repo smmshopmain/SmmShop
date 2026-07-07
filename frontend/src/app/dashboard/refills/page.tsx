@@ -25,7 +25,7 @@ export default async function RefillsPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Refill tracking</p>
         <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Refills</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Eligible completed orders ke refill requests yahan track karein. Provider refill ID milte hi status update dikhega.
+          Track refill requests for eligible completed orders. Status updates appear when the provider returns a refill ID.
         </p>
       </div>
       <section className="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
@@ -51,7 +51,7 @@ export default async function RefillsPage() {
             <div className="grid place-items-center px-4 py-12 text-center">
               <RefreshCcw className="size-10 text-neutral-300" />
               <p className="mt-3 text-sm font-semibold text-neutral-800">No refill requests yet</p>
-              <p className="mt-1 max-w-md text-sm text-neutral-500">Completed eligible orders par refill action available hoga.</p>
+              <p className="mt-1 max-w-md text-sm text-neutral-500">The refill action appears on completed eligible orders.</p>
             </div>
           )}
         </div>

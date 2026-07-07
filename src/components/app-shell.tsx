@@ -18,6 +18,7 @@ import {
   Shield,
   Tags,
   Ticket,
+  AlertTriangle,
   UserRound,
   Users,
   Wallet,
@@ -60,6 +61,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/tickets", label: "Support", icon: Ticket },
   { href: "/admin/notifications", label: "Notifications", icon: Bell },
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
+  { href: "/admin/errors" as Route, label: "Errors", icon: AlertTriangle },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

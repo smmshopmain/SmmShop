@@ -28,7 +28,7 @@ export default async function ReferralsPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Referral program</p>
         <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Referrals</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Apna referral link share karein aur successful referred users se earnings track karein.
+          Share your referral link and track earnings from successful referred users.
         </p>
       </div>
       <ReferralPanel

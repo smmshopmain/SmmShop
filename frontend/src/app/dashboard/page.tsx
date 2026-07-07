@@ -13,9 +13,9 @@ const quickActions: Array<{
   text: string;
   icon: typeof ShoppingBag;
 }> = [
-  { href: "/dashboard/services", title: "Browse services", text: "Platform select karke service order karein.", icon: ShoppingBag },
-  { href: "/dashboard/orders", title: "Track orders", text: "Running aur completed orders check karein.", icon: Clock3 },
-  { href: "/dashboard/tickets", title: "Need help?", text: "Support ticket create karein.", icon: Headphones },
+  { href: "/dashboard/services", title: "Browse services", text: "Choose a platform and place a service order.", icon: ShoppingBag },
+  { href: "/dashboard/orders", title: "Track orders", text: "Check running and completed orders.", icon: Clock3 },
+  { href: "/dashboard/tickets", title: "Need help?", text: "Create a support ticket.", icon: Headphones },
 ];
 
 type DashboardData = {
@@ -34,10 +34,7 @@ export default async function DashboardPage() {
     completedOrders: 0,
     transactions: [],
   };
-  let setupError = "";
-
-  let walletError = "";
-  let ordersError = "";
+  let loadError = false;
 
   const [walletResult, orderResult] = await Promise.allSettled([
     serverApiJson("/api/wallet"),
@@ -58,7 +55,7 @@ export default async function DashboardPage() {
       transactions: walletTransactions.slice(0, 5),
     };
   } else {
-    walletError = String(walletResult.reason?.message ?? walletResult.reason ?? "Unable to load wallet data.");
+    loadError = true;
   }
 
   if (orderResult.status === "fulfilled") {
@@ -74,11 +71,7 @@ export default async function DashboardPage() {
       completedOrders: orders.filter((order: { status?: string }) => order.status === "Completed").length,
     };
   } else {
-    ordersError = String(orderResult.reason?.message ?? orderResult.reason ?? "Unable to load orders.");
-  }
-
-  if (walletError || ordersError) {
-    setupError = [walletError, ordersError].filter(Boolean).join(" ");
+    loadError = true;
   }
 
   return (
@@ -89,7 +82,7 @@ export default async function DashboardPage() {
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Account overview</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Dashboard</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Wallet balance, active orders aur recent activity ek clean view me. New order ke liye services page open karein.
+              View wallet balance, active orders, and recent activity in one clean workspace. Open the services page to place a new order.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -110,9 +103,9 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
-      {setupError && (
+      {loadError && (
         <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          Configure MONGODB_URI and JWT_SECRET in .env.local, then restart the dev server. Current status: {setupError}
+          Some dashboard data could not be loaded right now. Please try again later or contact support.
         </div>
       )}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -145,7 +138,7 @@ export default async function DashboardPage() {
               <div className="grid place-items-center px-4 py-10 text-center">
                 <WalletCards className="size-9 text-neutral-300" />
                 <p className="mt-3 text-sm font-semibold text-neutral-700">No transactions yet</p>
-                <p className="mt-1 max-w-sm text-sm text-neutral-500">Funds add karne ke baad latest wallet activity yahan dikhegi.</p>
+                <p className="mt-1 max-w-sm text-sm text-neutral-500">Latest wallet activity will appear here after you add funds.</p>
               </div>
             )}
           </div>

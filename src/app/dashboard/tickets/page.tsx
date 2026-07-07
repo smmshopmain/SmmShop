@@ -29,7 +29,7 @@ export default async function TicketsPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Support center</p>
         <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Support tickets</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Payment, order, refill aur account issues ke liye tickets create karein aur replies track karein.
+          Create tickets for payment, order, refill, and account issues, then track replies here.
         </p>
       </div>
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
@@ -69,7 +69,7 @@ export default async function TicketsPage() {
             <div className="grid place-items-center px-4 py-12 text-center">
               <MessageSquareText className="size-10 text-neutral-300" />
               <p className="mt-3 text-sm font-semibold text-neutral-800">No tickets yet</p>
-              <p className="mt-1 max-w-md text-sm text-neutral-500">Koi issue ho to left form se ticket create karein.</p>
+              <p className="mt-1 max-w-md text-sm text-neutral-500">Create a ticket from the form if you need help.</p>
             </div>
           )}
         </section>

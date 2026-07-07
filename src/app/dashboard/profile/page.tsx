@@ -27,7 +27,7 @@ export default async function ProfilePage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Account settings</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Profile</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Account details, contact information aur password security manage karein.</p>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Manage account details, contact information, and password security.</p>
           </div>
           <div className="flex items-center gap-3 rounded-md bg-neutral-950 p-4 text-white">
             <span className="grid size-11 place-items-center rounded-md bg-white/10">
