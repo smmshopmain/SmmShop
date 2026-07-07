@@ -63,14 +63,22 @@ async function resolveSmtpHost(host: string) {
   }
 }
 
-export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
-  const from = requireEnv("FROM_EMAIL");
-  const smtpHost = requireEnv("SMTP_HOST");
+function isTimeoutError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code) : "";
+  return /timed out|timeout/i.test(message) || ["ETIMEDOUT", "ESOCKET"].includes(code);
+}
+
+function canTrySecureSmtpFallback(host: string, port: number, secure: boolean) {
+  return !secure && port === 587 && /(^|\.)gmail\.com$/i.test(host);
+}
+
+async function createSmtpTransport(smtpHost: string, port: number, secure: boolean) {
   const resolvedHost = await resolveSmtpHost(smtpHost);
   const transportOptions: SMTPTransport.Options = {
     host: resolvedHost,
-    port: smtpPort(),
-    secure: smtpSecure(),
+    port,
+    secure,
     connectionTimeout: SMTP_TIMEOUT_MS,
     greetingTimeout: SMTP_TIMEOUT_MS,
     socketTimeout: SMTP_TIMEOUT_MS,
@@ -83,20 +91,48 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
       pass: requireEnv("SMTP_PASS"),
     },
   };
-  const transporter = nodemailer.createTransport(transportOptions);
+  return nodemailer.createTransport(transportOptions);
+}
+
+async function deliverMail({
+  from,
+  to,
+  subject,
+  text,
+  html,
+  smtpHost,
+  port,
+  secure,
+}: MailInput & { from: string; smtpHost: string; port: number; secure: boolean }) {
+  const transporter = await createSmtpTransport(smtpHost, port, secure);
 
   try {
-    const info = await withTimeout(
-      transporter.sendMail({
-        from,
-        to,
-        subject,
-        text,
-        html,
-      }),
+    return await withTimeout(
+      transporter.sendMail({ from, to, subject, text, html }),
       SEND_TIMEOUT_MS,
       "SMTP email delivery timed out",
     );
+  } finally {
+    transporter.close();
+  }
+}
+
+export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
+  const from = requireEnv("FROM_EMAIL");
+  const smtpHost = requireEnv("SMTP_HOST");
+  const port = smtpPort();
+  const secure = smtpSecure();
+
+  try {
+    let info;
+    try {
+      info = await deliverMail({ from, to, subject, text, html, smtpHost, port, secure });
+    } catch (error) {
+      if (!isTimeoutError(error) || !canTrySecureSmtpFallback(smtpHost, port, secure)) throw error;
+      console.warn("SMTP primary port timed out; retrying secure fallback", { smtpHost, port, fallbackPort: 465 });
+      info = await deliverMail({ from, to, subject, text, html, smtpHost, port: 465, secure: true });
+    }
+
     const result: MailResult = {
       provider: "smtp",
       messageId: info.messageId,
@@ -119,8 +155,6 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
       subject,
     });
     throw new Error(`Email delivery failed: ${message}`);
-  } finally {
-    transporter.close();
   }
 }
 
