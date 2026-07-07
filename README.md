@@ -34,8 +34,12 @@ PAYMENT_VERIFY_API_KEY=
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_CHAT_ID=
 TELEGRAM_ADMIN_ID=
-EMAIL_FROM=
-RESEND_API_KEY=
+SMTP_HOST=
+SMTP_PORT=
+SMTP_SECURE=
+SMTP_USER=
+SMTP_PASS=
+FROM_EMAIL=
 ```
 
 3. Start development server:
@@ -68,7 +72,7 @@ Use the existing Render service configuration and set backend env vars as shown 
 
 - Public registration always creates a normal user account.
 - Login accepts email or mobile number when a user has `phone` saved.
-- Forgot password sends a 6 digit OTP to the user's email through Resend.
+- Forgot password sends a 6 digit OTP to the user's email through SMTP.
 - OTPs are hashed before storing in MongoDB, expire after 10 minutes, and allow 5 attempts.
 
 ## Render Deploy

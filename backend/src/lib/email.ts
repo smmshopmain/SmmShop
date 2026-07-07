@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 type MailInput = {
   to: string;
   subject: string;
@@ -6,14 +8,12 @@ type MailInput = {
 };
 
 type MailResult = {
-  provider: "resend";
+  provider: "smtp";
   messageId?: string;
   accepted: string[];
   rejected: string[];
   response: string;
 };
-
-const RESEND_EMAIL_URL = "https://api.resend.com/emails";
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -21,79 +21,64 @@ function requireEnv(name: string) {
   return value;
 }
 
-async function readResendResponse(response: Response) {
-  const text = await response.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    return text;
+function smtpPort() {
+  const port = Number(requireEnv("SMTP_PORT"));
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error("SMTP_PORT must be a valid port number");
   }
+  return port;
 }
 
-function resendErrorMessage(raw: unknown) {
-  if (!raw) return "";
-  if (typeof raw === "string") return raw;
-  if (typeof raw === "object") {
-    const record = raw as Record<string, unknown>;
-    const nestedError = record.error && typeof record.error === "object" ? record.error as Record<string, unknown> : null;
-    return String(
-      nestedError?.message ??
-        record.message ??
-        record.error ??
-        record.name ??
-        JSON.stringify(record),
-    );
-  }
-  return String(raw);
+function smtpSecure() {
+  const value = requireEnv("SMTP_SECURE").toLowerCase();
+  if (["true", "1", "yes"].includes(value)) return true;
+  if (["false", "0", "no"].includes(value)) return false;
+  throw new Error("SMTP_SECURE must be true or false");
 }
 
 export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
-  const apiKey = requireEnv("RESEND_API_KEY");
-  const from = requireEnv("EMAIL_FROM");
-
-  const response = await fetch(RESEND_EMAIL_URL, {
-    method: "POST",
-    headers: {
-      authorization: `Bearer ${apiKey}`,
-      "content-type": "application/json",
-      "user-agent": "smm-shop/1.0",
+  const from = requireEnv("FROM_EMAIL");
+  const transporter = nodemailer.createTransport({
+    host: requireEnv("SMTP_HOST"),
+    port: smtpPort(),
+    secure: smtpSecure(),
+    auth: {
+      user: requireEnv("SMTP_USER"),
+      pass: requireEnv("SMTP_PASS"),
     },
-    body: JSON.stringify({
+  });
+
+  try {
+    const info = await transporter.sendMail({
       from,
-      to: [to],
+      to,
       subject,
       text,
       html,
-    }),
-  });
-  const raw = await readResendResponse(response);
-
-  if (!response.ok) {
-    const message = resendErrorMessage(raw) || response.statusText || "Resend email API failed";
-    console.error("Resend email failed", {
-      status: response.status,
-      response: message,
+    });
+    const result: MailResult = {
+      provider: "smtp",
+      messageId: info.messageId,
+      accepted: info.accepted.map(String),
+      rejected: info.rejected.map(String),
+      response: info.response,
+    };
+    console.info("SMTP email accepted", {
+      messageId: result.messageId,
+      accepted: result.accepted,
+      rejected: result.rejected,
+      response: result.response,
+    });
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "SMTP email delivery failed";
+    console.error("SMTP email failed", {
+      error: message,
       to,
       subject,
     });
     throw new Error(`Email delivery failed: ${message}`);
   }
-
-  const record = typeof raw === "object" && raw !== null ? raw as Record<string, unknown> : {};
-  const result: MailResult = {
-    provider: "resend",
-    messageId: typeof record.id === "string" ? record.id : undefined,
-    accepted: [to],
-    rejected: [],
-    response: `${response.status} ${response.statusText}`,
-  };
-  console.info("Resend email accepted", {
-    messageId: result.messageId,
-    accepted: result.accepted,
-    rejected: result.rejected,
-    response: result.response,
-  });
-  return result;
 }
 
 export function buildPasswordOtpEmail(otp: string) {
