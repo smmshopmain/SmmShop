@@ -17,6 +17,10 @@ type MailResult = {
   response: string;
 };
 
+const DNS_TIMEOUT_MS = 5000;
+const SMTP_TIMEOUT_MS = 15000;
+const SEND_TIMEOUT_MS = 20000;
+
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is not configured`);
@@ -38,9 +42,22 @@ function smtpSecure() {
   throw new Error("SMTP_SECURE must be true or false");
 }
 
+async function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
 async function resolveSmtpHost(host: string) {
   try {
-    return (await resolve4(host))[0] ?? host;
+    return (await withTimeout(resolve4(host), DNS_TIMEOUT_MS, "SMTP DNS lookup timed out"))[0] ?? host;
   } catch {
     return host;
   }
@@ -54,6 +71,10 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
     host: resolvedHost,
     port: smtpPort(),
     secure: smtpSecure(),
+    connectionTimeout: SMTP_TIMEOUT_MS,
+    greetingTimeout: SMTP_TIMEOUT_MS,
+    socketTimeout: SMTP_TIMEOUT_MS,
+    dnsTimeout: DNS_TIMEOUT_MS,
     tls: {
       servername: smtpHost,
     },
@@ -65,13 +86,17 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   const transporter = nodemailer.createTransport(transportOptions);
 
   try {
-    const info = await transporter.sendMail({
-      from,
-      to,
-      subject,
-      text,
-      html,
-    });
+    const info = await withTimeout(
+      transporter.sendMail({
+        from,
+        to,
+        subject,
+        text,
+        html,
+      }),
+      SEND_TIMEOUT_MS,
+      "SMTP email delivery timed out",
+    );
     const result: MailResult = {
       provider: "smtp",
       messageId: info.messageId,
@@ -94,6 +119,8 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
       subject,
     });
     throw new Error(`Email delivery failed: ${message}`);
+  } finally {
+    transporter.close();
   }
 }
 
