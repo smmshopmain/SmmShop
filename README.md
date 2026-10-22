@@ -115,6 +115,10 @@ Admin can configure deposit payment details from:
 
 Open Admin > Settings, then scroll to **Payment details shown to users**. Add the QR image, UPI ID, bank name, account holder name, account number, IFSC, and payment instructions. Users will see these details on Dashboard > Wallet before submitting a deposit request.
 
+### Animation Controls
+
+Admins can open **Admin > Animations** (or Admin > Settings) to enable or disable website motion, switch page-entry, floating, and interactive effects individually, choose the animation accent colour, and adjust speed. Save changes to apply them across the public site and dashboard. The browser's reduced-motion preference is always respected.
+
 ### Render Keep Alive
 
 The blueprint includes `smm-keep-alive`, a cron service that calls:

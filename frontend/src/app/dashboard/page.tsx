@@ -21,7 +21,7 @@ const quickActions: Array<{
 export default async function DashboardPage() {
   return (
     <AppShell>
-      <div className="mb-6 overflow-hidden rounded-lg border border-teal-900/10 bg-white p-5 shadow-sm sm:p-6">
+      <div className="surface-card mb-6 overflow-hidden p-5 sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Account overview</p>
@@ -33,14 +33,14 @@ export default async function DashboardPage() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/dashboard/services"
-              className="inline-flex items-center gap-2 rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-teal-800"
+              className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/10 transition hover:bg-teal-800"
             >
               <PlusCircle className="size-4" />
               New order
             </Link>
             <Link
               href="/dashboard/wallet"
-              className="inline-flex items-center gap-2 rounded-md border border-neutral-300 bg-white px-4 py-3 text-sm font-semibold hover:bg-neutral-100"
+              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
             >
               Add funds
               <ArrowRight className="size-4" />
@@ -60,7 +60,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <section className="rounded-md border border-neutral-200 bg-white shadow-sm">
+        <section className="surface-card overflow-hidden">
           <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4">
             <h2 className="font-semibold">Recent transactions</h2>
             <Link href="/dashboard/wallet" className="text-sm font-semibold text-teal-700 hover:text-teal-800">
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
           </div>
         </section>
 
-        <section className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm">
+        <section className="surface-card p-5">
           <h2 className="font-semibold">Quick actions</h2>
           <div className="mt-4 grid gap-3">
             {quickActions.map((item) => (

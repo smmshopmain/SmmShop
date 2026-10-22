@@ -20,10 +20,10 @@ export function StatCard({
   };
 
   return (
-    <div className="rounded-md border border-neutral-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="surface-card p-5 hover:-translate-y-0.5">
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm font-medium text-neutral-500">{label}</p>
-        <span className={`grid size-10 place-items-center rounded-md ring-1 ${tones[tone]}`}>
+        <span className={`grid size-11 place-items-center rounded-xl ring-1 ${tones[tone]}`}>
           <Icon className="size-4" />
         </span>
       </div>

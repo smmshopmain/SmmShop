@@ -1,10 +1,14 @@
 import React from "react";
 import type { Metadata } from "next";
+import { MotionSettingsProvider } from "@/components/motion-settings-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "SMM Reseller Panel",
-  description: "Production-ready SMM reseller platform",
+  title: {
+    default: "SMM Panel | Social Growth, Simplified",
+    template: "%s | SMM Panel",
+  },
+  description: "Manage social media services, orders, wallet, and support from one modern reseller workspace.",
 };
 
 export default function RootLayout({
@@ -13,9 +17,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full bg-stone-50 text-neutral-950">
-        <React.Suspense fallback={null}>{children}</React.Suspense>
+    <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
+      <body className="min-h-full text-neutral-950">
+        <MotionSettingsProvider>
+          <React.Suspense fallback={null}>{children}</React.Suspense>
+        </MotionSettingsProvider>
       </body>
     </html>
   );

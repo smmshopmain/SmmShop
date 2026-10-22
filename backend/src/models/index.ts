@@ -320,6 +320,14 @@ export const Notification =
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
 
 export type PlatformSettings = {
+  appearance: {
+    animationsEnabled: boolean;
+    entranceEnabled: boolean;
+    floatingEnabled: boolean;
+    hoverEnabled: boolean;
+    animationColor: string;
+    animationSpeed: number;
+  };
   pricing: {
     globalMarginPercent: number;
     categoryMargins: Record<string, number>;
@@ -352,6 +360,14 @@ export type PlatformSettings = {
 export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
+    appearance: {
+      animationsEnabled: true,
+      entranceEnabled: true,
+      floatingEnabled: true,
+      hoverEnabled: true,
+      animationColor: "#14b8a6",
+      animationSpeed: 1,
+    },
     pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
     deposits: {
       verificationMode: "manual",
@@ -377,6 +393,13 @@ export async function getSettings() {
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
+    if (record.key === "appearance" && record.value && typeof record.value === "object" && !Array.isArray(record.value)) {
+      const value = record.value as Partial<PlatformSettings["appearance"]>;
+      settings.appearance = {
+        ...settings.appearance,
+        ...value,
+      };
+    }
     if (record.key === "pricing") settings.pricing = { ...settings.pricing, ...(record.value as Partial<PlatformSettings["pricing"]>) };
     if (record.key === "deposits") {
       const value = record.value as Partial<PlatformSettings["deposits"]>;

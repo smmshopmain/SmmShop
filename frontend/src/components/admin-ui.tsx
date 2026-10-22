@@ -13,7 +13,7 @@ export function AdminHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+    <div className="surface-card mb-6 p-5 sm:p-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-teal-700">{eyebrow}</p>
@@ -38,10 +38,10 @@ export function AdminSection({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
+    <section className="surface-card overflow-hidden">
       <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
         {Icon && (
-          <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
+          <span className="grid size-10 place-items-center rounded-xl bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
             <Icon className="size-5" />
           </span>
         )}

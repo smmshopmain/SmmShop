@@ -16,6 +16,7 @@ import {
   RefreshCcw,
   Settings,
   Shield,
+  Sparkles,
   Tags,
   Ticket,
   AlertTriangle,
@@ -63,6 +64,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/errors" as Route, label: "Errors", icon: AlertTriangle },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
+  { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -105,8 +107,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   function isActive(href: string) {
-    if (href === "/dashboard") return pathname === href;
-    return pathname === href || pathname.startsWith(`${href}/`);
+    const path = href.split("#", 1)[0];
+    if (path === "/dashboard") return pathname === path;
+    return pathname === path || pathname.startsWith(`${path}/`);
   }
 
   async function logout(event: React.FormEvent<HTMLFormElement>) {
@@ -123,10 +126,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f4ee]">
-      <aside className="fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r border-neutral-200 bg-white px-4 py-5 shadow-sm lg:block">
+    <div className="min-h-screen">
+      <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex items-center gap-3 px-2">
-          <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">
+          <span className="brand-mark grid size-10 place-items-center rounded-xl text-sm font-bold text-white">
             SP
           </span>
           <span>
@@ -139,10 +142,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition ${
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                 isActive(item.href)
-                  ? "bg-teal-50 text-teal-900 ring-1 ring-teal-700/10"
-                  : "text-neutral-700 hover:bg-neutral-100 hover:text-neutral-950"
+                  ? "bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-700/10"
+                  : "text-neutral-600 hover:translate-x-0.5 hover:bg-neutral-100/80 hover:text-neutral-950"
               }`}
             >
               <item.icon className="size-4" />
@@ -153,11 +156,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </aside>
 
       <div className="min-w-0 lg:pl-64">
-        <header className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 px-3 py-3 shadow-sm backdrop-blur sm:px-4">
+        <header className="app-header sticky top-0 z-20 border-b px-3 py-3 sm:px-4">
           <div className="mx-auto max-w-7xl">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
-                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-teal-700 text-xs font-bold text-white">SP</span>
+                <span className="brand-mark grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold text-white">SP</span>
                 <span className="truncate">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
               </Link>
               <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
@@ -165,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {loading ? "Loading..." : user?.email ?? ""}
                 </span>
                 <form onSubmit={logout} className="shrink-0">
-                  <button className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-semibold hover:bg-neutral-100">
+                  <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm hover:border-neutral-300 hover:bg-white">
                     <LogOut className="size-4" />
                     <span className="hidden sm:inline">Logout</span>
                   </button>
@@ -173,7 +176,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setMenuOpen(true)}
-                  className="inline-flex items-center gap-2 rounded-md border border-neutral-300 px-3 py-2 text-sm font-semibold hover:bg-neutral-100 lg:hidden"
+                  className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm hover:border-neutral-300 hover:bg-white lg:hidden"
                   aria-label="Open menu"
                 >
                   <Menu className="size-4" />
@@ -183,16 +186,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
         </header>
-        <main className="mx-auto min-w-0 max-w-7xl px-3 py-5 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
+        <main className="page-enter mx-auto min-w-0 max-w-7xl px-3 py-5 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-neutral-200 bg-white/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] backdrop-blur lg:hidden">
+      <nav className="app-header fixed inset-x-0 bottom-0 z-30 border-t px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] lg:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {primaryLinks.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className={`grid min-w-0 justify-items-center gap-1 rounded-md px-1 py-2 text-[11px] font-semibold transition ${
+              className={`grid min-w-0 justify-items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition ${
                 isActive(item.href) ? "bg-teal-50 text-teal-800" : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >
@@ -203,7 +206,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={() => setMenuOpen(true)}
-            className="grid min-w-0 justify-items-center gap-1 rounded-md px-1 py-2 text-[11px] font-semibold text-neutral-600 hover:bg-neutral-100"
+            className="grid min-w-0 justify-items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold text-neutral-600 hover:bg-neutral-100"
           >
             <Menu className="size-5" />
             <span>More</span>
@@ -219,7 +222,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             aria-label="Close menu"
             onClick={() => setMenuOpen(false)}
           />
-          <div className="absolute inset-y-0 right-0 flex w-[min(24rem,92vw)] flex-col bg-white shadow-2xl">
+          <div className="mobile-menu-panel absolute inset-y-0 right-0 flex w-[min(24rem,92vw)] flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4">
               <div className="min-w-0">
                 <p className="font-semibold text-neutral-950">SMM Panel</p>

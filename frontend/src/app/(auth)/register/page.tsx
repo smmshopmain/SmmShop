@@ -8,11 +8,11 @@ export default async function RegisterPage() {
   if (await currentUser()) redirect("/dashboard/services");
 
   return (
-    <main className="min-h-screen bg-[#f7f4ee] px-4 py-6 sm:px-6 lg:px-8">
-      <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
-        <div className="hidden lg:block">
+    <main className="auth-page min-h-screen px-4 py-6 sm:px-6 lg:px-8">
+      <section className="page-enter mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[minmax(0,1fr)_460px]">
+        <div className="auth-visual hidden lg:block">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white shadow-sm">SP</span>
+            <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm">SP</span>
             <span>
               <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
               <span className="block text-sm text-neutral-600">Reseller platform</span>
@@ -37,10 +37,10 @@ export default async function RegisterPage() {
           </div>
         </div>
 
-        <div className="w-full rounded-lg border border-white bg-white p-5 shadow-xl shadow-neutral-900/10 sm:p-7">
+        <div className="auth-card w-full p-5 sm:p-8">
           <div className="mb-7 flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-3 lg:hidden">
-              <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">SP</span>
+              <span className="brand-mark grid size-10 place-items-center rounded-2xl text-sm font-bold text-white">SP</span>
               <span className="text-sm font-bold text-neutral-950">SMM Panel</span>
             </Link>
             <span className="ml-auto grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">

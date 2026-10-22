@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import { SettingsForm, ActionButton } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
+import { AnimationControls } from "@/components/animation-controls";
 import { apiJson } from "@/lib/client-api";
+import {
+  DEFAULT_MOTION_SETTINGS,
+  type MotionSettings,
+} from "@/components/motion-settings-provider";
 
 type PlatformSettings = {
+  appearance: MotionSettings;
   deposits: {
     verificationMode: "manual" | "automatic";
     verificationStartTime: string;
@@ -32,6 +38,7 @@ type PlatformSettings = {
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
+  appearance: DEFAULT_MOTION_SETTINGS,
   deposits: {
     verificationMode: "manual",
     verificationStartTime: "",
@@ -83,8 +90,14 @@ export default function SettingsPage() {
       <AdminHeader
         eyebrow="Platform controls"
         title="Platform settings"
-        description="Deposit verification, payment details, referral commission, and provider balance alerts."
+        description="Appearance, deposit verification, payment details, referral commission, and provider balance alerts."
       />
+      <div id="animation-settings" className="mb-6 scroll-mt-24">
+        <AnimationControls
+          key={JSON.stringify(settings.appearance)}
+          initialSettings={settings.appearance}
+        />
+      </div>
       <div className="mb-4 px-4 lg:px-0">
         <ActionButton label="Backfill referral codes" endpoint="/api/admin/backfill-referrals" method="POST" confirmMessage="Assign referral codes to users missing them?" />
       </div>

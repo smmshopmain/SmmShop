@@ -56,8 +56,10 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         setError(result.message ?? "Something went wrong");
         return;
       }
+      const user = result?.data ?? result;
       const nextPath = searchParams.get("next");
-      router.push((nextPath?.startsWith("/") ? nextPath : "/dashboard/services") as Route);
+      const defaultPath = user?.role === "admin" ? "/admin" : "/dashboard/services";
+      router.push((nextPath?.startsWith("/") ? nextPath : defaultPath) as Route);
       router.refresh();
     } catch {
       setError("Unable to connect to the server. Please try again.");

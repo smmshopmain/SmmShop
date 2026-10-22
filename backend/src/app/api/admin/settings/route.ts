@@ -2,11 +2,21 @@ import { NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
+import { dbConnect } from "@/lib/db";
 import { getSettings, Setting } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["pricing", "deposits", "provider", "referrals"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "referrals"]),
   value: z.record(z.string(), z.unknown()),
+});
+
+const appearanceSchema = z.object({
+  animationsEnabled: z.boolean(),
+  entranceEnabled: z.boolean(),
+  floatingEnabled: z.boolean(),
+  hoverEnabled: z.boolean(),
+  animationColor: z.string().regex(/^#[\da-fA-F]{6}$/),
+  animationSpeed: z.number().min(0.5).max(2),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -35,6 +45,14 @@ function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Reco
 }
 
 function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
+  if (key === "appearance") {
+    const appearance = appearanceSchema.parse(value);
+    return {
+      ...appearance,
+      animationColor: appearance.animationColor.toLowerCase(),
+    };
+  }
+
   if (key === "referrals") {
     const commissionPercent = Number(value.commissionPercent ?? 0);
     const commissionAmount = Number(value.commissionAmount ?? 0);
@@ -67,6 +85,7 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
 export async function GET() {
   try {
     await requireAdmin();
+    await dbConnect();
     return ok(await getSettings());
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load settings", 403);
@@ -76,6 +95,7 @@ export async function GET() {
 export async function PATCH(request: NextRequest) {
   try {
     await requireAdmin();
+    await dbConnect();
     const input = schema.parse(await request.json());
     const existing = await Setting.findOne({ key: input.key }).lean();
     const value = mergeSettingsValue(input.key, existing?.value, normalizeSettingsValue(input.key, input.value));
