@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { ArrowRight, Clock3, Headphones, PlusCircle, ShoppingBag, WalletCards } from "lucide-react";
+import { ArrowRight, Clock3, Headphones, PlusCircle, ShoppingBag, Sparkles, WalletCards } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { DashboardOrderStats } from "@/components/dashboard-order-stats";
 import { DashboardRecentTransactions } from "@/components/dashboard-recent-transactions";
@@ -21,34 +21,36 @@ const quickActions: Array<{
 export default async function DashboardPage() {
   return (
     <AppShell>
-      <div className="surface-card mb-6 overflow-hidden p-5 sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Account overview</p>
-            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Dashboard</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              View wallet balance, active orders, and recent activity in one clean workspace. Open the services page to place a new order.
+      <section className="workspace-hero mb-6 rounded-3xl p-6 text-white sm:p-8 lg:p-10">
+        <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="max-w-2xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-teal-100">
+              <Sparkles className="size-3.5" /> Your workspace
+            </p>
+            <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Everything you need, in one place.</h1>
+            <p className="mt-3 max-w-xl text-sm leading-6 text-teal-50/85 sm:text-base">
+              Keep an eye on your wallet, track orders, and get back to what matters with a clearer, faster dashboard.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/dashboard/services"
-              className="inline-flex items-center gap-2 rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-900/10 transition hover:bg-teal-800"
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-teal-900 shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-teal-50"
             >
               <PlusCircle className="size-4" />
               New order
             </Link>
             <Link
               href="/dashboard/wallet"
-              className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-semibold shadow-sm transition hover:border-neutral-300 hover:bg-neutral-50"
+              className="inline-flex items-center gap-2 rounded-xl border border-white/25 bg-white/10 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition hover:bg-white/20"
             >
               Add funds
               <ArrowRight className="size-4" />
             </Link>
           </div>
         </div>
-      </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      </section>
+      <div className="workspace-grid grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Wallet Balance" value={<LiveWalletBalance initialBalance={0} />} icon={WalletCards} />
         <DashboardOrderStats
           initialSummary={{
@@ -79,7 +81,7 @@ export default async function DashboardPage() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-start gap-3 rounded-md border border-neutral-200 p-3 transition hover:border-teal-200 hover:bg-teal-50"
+                className="workspace-link flex items-start gap-3 rounded-2xl border border-neutral-200 bg-white/70 p-3"
               >
                 <span className="grid size-10 shrink-0 place-items-center rounded-md bg-neutral-100 text-neutral-700">
                   <item.icon className="size-5" />

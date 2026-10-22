@@ -51,7 +51,9 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
   const [error, setError] = useState("");
 
   function update(patch: Partial<MotionSettings>) {
-    setSettings((current) => ({ ...current, ...patch }));
+    const next = { ...settings, ...patch };
+    setSettings(next);
+    setGlobalSettings(next);
     setMessage("");
     setError("");
   }
@@ -73,7 +75,7 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
         throw new Error(result.message ?? "Unable to save animation settings.");
       }
       setGlobalSettings(settings);
-      setMessage("Animation preferences saved and applied across the website.");
+      setMessage("Website design and animation preferences saved and applied for all visitors.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save animation settings.");
     } finally {
@@ -83,11 +85,64 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
 
   return (
     <AdminSection
-      title="Animations & motion"
-      description="Tune the motion, colour, and speed used throughout the website."
+      title="Website design & animations"
+      description="Preview and apply a site-wide design, then tune its motion, colour, and speed."
       icon={Sparkles}
     >
       <form onSubmit={save} className="grid gap-5 p-4 sm:p-6">
+        <div>
+          <div className="mb-3">
+            <h3 className="text-sm font-bold text-slate-900">Website design</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Preview a design here, then save to apply it for every visitor and logged-in panel.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {([
+              {
+                id: "default",
+                title: "Default Design",
+                description: "Current light, teal-accented website design.",
+                swatches: ["#f4f7f7", "#ffffff", "#0f766e"],
+              },
+              {
+                id: "midnight",
+                title: "Midnight Studio",
+                description: "A premium dark workspace with blue-violet highlights.",
+                swatches: ["#0b1020", "#172033", "#818cf8"],
+              },
+            ] as const).map((design) => {
+              const selected = settings.designPreset === design.id;
+              return (
+                <button
+                  key={design.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => update({ designPreset: design.id })}
+                  className={`rounded-2xl border p-3 text-left transition ${
+                    selected
+                      ? "border-teal-600 bg-teal-50/70 ring-2 ring-teal-600/15"
+                      : "border-slate-200 bg-white hover:border-slate-300"
+                  }`}
+                >
+                  <span className="grid h-20 grid-cols-[1fr_2fr] gap-1 overflow-hidden rounded-xl border border-black/5 p-1" style={{ backgroundColor: design.swatches[0] }}>
+                    <span className="rounded-md" style={{ backgroundColor: design.swatches[1] }} />
+                    <span className="grid grid-rows-[1fr_1fr] gap-1">
+                      <span className="rounded-md" style={{ backgroundColor: design.swatches[1] }} />
+                      <span className="w-2/3 rounded-md" style={{ backgroundColor: design.swatches[2] }} />
+                    </span>
+                  </span>
+                  <span className="mt-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-900">{design.title}</span>
+                    {selected && <Check className="size-4 text-teal-700" aria-label="Selected design" />}
+                  </span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">{design.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="grid gap-3 lg:grid-cols-2">
           <Toggle
             checked={settings.animationsEnabled}
@@ -187,7 +242,7 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
             disabled={saving}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-teal-950/20 hover:bg-teal-500 disabled:opacity-60"
           >
-            {saving ? "Saving..." : "Save animation settings"}
+            {saving ? "Saving..." : "Apply & save appearance"}
             {!saving && <Check className="size-4" />}
           </button>
         </div>

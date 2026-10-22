@@ -321,6 +321,7 @@ export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema)
 
 export type PlatformSettings = {
   appearance: {
+    designPreset: "default" | "midnight";
     animationsEnabled: boolean;
     entranceEnabled: boolean;
     floatingEnabled: boolean;
@@ -361,6 +362,7 @@ export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
     appearance: {
+      designPreset: "default",
       animationsEnabled: true,
       entranceEnabled: true,
       floatingEnabled: true,

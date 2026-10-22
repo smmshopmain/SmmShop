@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { apiJson } from "@/lib/client-api";
 
 export type MotionSettings = {
+  designPreset: "default" | "midnight";
   animationsEnabled: boolean;
   entranceEnabled: boolean;
   floatingEnabled: boolean;
@@ -14,6 +15,7 @@ export type MotionSettings = {
 };
 
 const DEFAULT_MOTION_SETTINGS: MotionSettings = {
+  designPreset: "default",
   animationsEnabled: true,
   entranceEnabled: true,
   floatingEnabled: true,
@@ -40,6 +42,7 @@ function applyMotionSettings(settings: MotionSettings) {
   const root = document.documentElement;
   const speed = Math.max(0.5, Math.min(2, settings.animationSpeed));
   root.dataset.motion = settings.animationsEnabled ? "on" : "off";
+  root.dataset.design = settings.designPreset;
   root.dataset.motionEntrance = settings.entranceEnabled ? "on" : "off";
   root.dataset.motionFloating = settings.floatingEnabled ? "on" : "off";
   root.dataset.motionHover = settings.hoverEnabled ? "on" : "off";

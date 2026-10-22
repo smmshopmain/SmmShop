@@ -65,6 +65,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -72,11 +73,16 @@ export default function SettingsPage() {
     apiJson("/api/admin/settings")
       .then((nextSettings) => {
         if (!mounted) return;
+        if (!nextSettings?.appearance || !nextSettings?.deposits) {
+          throw new Error(nextSettings?.message ?? "Unable to load administrator settings.");
+        }
         setSettings(nextSettings);
+        setLoadError("");
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (mounted) {
           setSettings(DEFAULT_SETTINGS);
+          setLoadError(error instanceof Error ? error.message : "Unable to load administrator settings.");
         }
       });
 
@@ -90,9 +96,14 @@ export default function SettingsPage() {
       <AdminHeader
         eyebrow="Platform controls"
         title="Platform settings"
-        description="Appearance, deposit verification, payment details, referral commission, and provider balance alerts."
+        description="Website design and animations, deposit verification, payment details, referral commission, and provider balance alerts."
       />
       <div id="animation-settings" className="mb-6 scroll-mt-24">
+        {loadError && (
+          <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">
+            {loadError}
+          </p>
+        )}
         <AnimationControls
           key={JSON.stringify(settings.appearance)}
           initialSettings={settings.appearance}

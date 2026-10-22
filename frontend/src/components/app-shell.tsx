@@ -13,10 +13,10 @@ import {
   Bell,
   LogOut,
   Menu,
+  Palette,
   RefreshCcw,
   Settings,
   Shield,
-  Sparkles,
   Tags,
   Ticket,
   AlertTriangle,
@@ -64,7 +64,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/errors" as Route, label: "Errors", icon: AlertTriangle },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
-  { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Sparkles },
+  { href: "/admin/settings#animation-settings" as Route, label: "Design & motion", icon: Palette },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -80,13 +80,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     apiJson("/api/auth/me")
       .then((data) => {
         if (!mounted) return;
+        if (!data?.ok) {
+          setUser(null);
+          router.replace("/login");
+          return;
+        }
         const user = data?.user ?? (data?.ok ? data : null);
         setUser(user);
       })
       .catch(() => {
         if (mounted) {
           setUser(null);
-          router.push("/login");
+          router.replace("/login");
         }
       })
       .finally(() => {
@@ -96,6 +101,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       mounted = false;
     };
   }, [router]);
+
+  if (loading) {
+    return (
+      <main className="grid min-h-screen place-items-center px-4" role="status">
+        <p className="animate-pulse text-sm font-medium text-neutral-600">Loading your workspace...</p>
+      </main>
+    );
+  }
+
+  if (!user) return null;
 
   const isAdmin = isAdminRole(user?.role);
   const links = isAdmin ? adminLinks : userLinks;
@@ -126,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="app-shell min-h-screen">
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex items-center gap-3 px-2">
           <span className="brand-mark grid size-10 place-items-center rounded-xl text-sm font-bold text-white">

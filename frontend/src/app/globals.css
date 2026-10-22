@@ -296,6 +296,234 @@ a {
   animation: rise-in var(--motion-menu-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
+.workspace-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 90% 10%, rgb(45 212 191 / 24%), transparent 30rem),
+    linear-gradient(125deg, #102a35 0%, #124e4a 55%, #0f766e 100%);
+  box-shadow: 0 24px 50px -34px rgb(15 118 110 / 55%);
+}
+
+.workspace-hero::after {
+  position: absolute;
+  z-index: -1;
+  top: -5rem;
+  right: 5%;
+  width: 17rem;
+  height: 17rem;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 2rem rgb(255 255 255 / 3%),
+    0 0 0 4rem rgb(255 255 255 / 2%);
+  content: "";
+  animation: float-soft var(--motion-float-duration) ease-in-out infinite;
+}
+
+.workspace-link {
+  transition:
+    transform var(--motion-hover-duration) ease,
+    border-color var(--motion-hover-duration) ease,
+    box-shadow var(--motion-hover-duration) ease;
+}
+
+.workspace-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 35px -28px rgb(15 23 42 / 42%);
+}
+
+.workspace-grid > * {
+  animation: rise-in var(--motion-page-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.workspace-grid > :nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.workspace-grid > :nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.workspace-grid > :nth-child(4) {
+  animation-delay: 135ms;
+}
+
+html[data-motion-hover="off"] .workspace-link:hover {
+  transform: none;
+}
+
+html[data-design="midnight"] .app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 75% 0%, rgb(99 102 241 / 11%), transparent 35rem),
+    #0b1020;
+  color: #e5e7eb;
+}
+
+html[data-design="midnight"] body {
+  background:
+    radial-gradient(ellipse at 75% 0%, rgb(99 102 241 / 11%), transparent 35rem),
+    #0b1020;
+  color: #e5e7eb;
+}
+
+html[data-design="midnight"] body::before {
+  background-image: radial-gradient(rgb(203 213 225 / 5%) 0.65px, transparent 0.65px);
+}
+
+html[data-design="midnight"] .auth-page {
+  background:
+    radial-gradient(ellipse at 12% 18%, rgb(99 102 241 / 18%), transparent 32rem),
+    radial-gradient(ellipse at 95% 82%, rgb(45 212 191 / 10%), transparent 28rem),
+    #0b1020;
+}
+
+html[data-design="midnight"] .app-shell .app-sidebar {
+  border-color: #273248;
+  background: rgb(15 23 42 / 94%);
+  color: #e5e7eb;
+  box-shadow: 12px 0 40px -32px rgb(0 0 0 / 80%);
+}
+
+html[data-design="midnight"] .app-shell .app-header {
+  border-color: #273248;
+  background: rgb(15 23 42 / 86%);
+  color: #e5e7eb;
+}
+
+html[data-design="midnight"] .surface-card,
+html[data-design="midnight"] .auth-card {
+  border-color: #273248;
+  background: rgb(20 29 48 / 94%);
+  color: #e5e7eb;
+  box-shadow: 0 18px 40px -32px rgb(0 0 0 / 80%);
+}
+
+html[data-design="midnight"] .surface-card:hover {
+  border-color: #46537a;
+}
+
+html[data-design="midnight"] body [class~="bg-white"],
+html[data-design="midnight"] body [class~="bg-white/80"],
+html[data-design="midnight"] body [class~="bg-white/70"],
+html[data-design="midnight"] body [class~="bg-slate-50"],
+html[data-design="midnight"] body [class~="bg-slate-50/80"],
+html[data-design="midnight"] body [class~="bg-neutral-50"],
+html[data-design="midnight"] body [class~="bg-neutral-100"] {
+  background-color: #1b263b;
+}
+
+html[data-design="midnight"] body [class~="bg-teal-50"],
+html[data-design="midnight"] body [class~="bg-teal-50/70"],
+html[data-design="midnight"] body [class~="bg-emerald-50"],
+html[data-design="midnight"] body [class~="bg-amber-50"],
+html[data-design="midnight"] body [class~="bg-rose-50"],
+html[data-design="midnight"] body [class~="bg-indigo-50"],
+html[data-design="midnight"] body [class~="bg-violet-50"] {
+  background-color: #222b43;
+}
+
+html[data-design="midnight"] body [class~="text-neutral-950"],
+html[data-design="midnight"] body [class~="text-neutral-900"],
+html[data-design="midnight"] body [class~="text-neutral-800"],
+html[data-design="midnight"] body [class~="text-slate-900"],
+html[data-design="midnight"] body [class~="text-slate-950"],
+html[data-design="midnight"] body [class~="text-slate-800"] {
+  color: #f1f5f9;
+}
+
+html[data-design="midnight"] body [class~="text-neutral-700"],
+html[data-design="midnight"] body [class~="text-neutral-600"],
+html[data-design="midnight"] body [class~="text-neutral-500"],
+html[data-design="midnight"] body [class~="text-slate-700"],
+html[data-design="midnight"] body [class~="text-slate-600"],
+html[data-design="midnight"] body [class~="text-slate-500"] {
+  color: #aab6ca;
+}
+
+html[data-design="midnight"] body [class~="text-teal-700"],
+html[data-design="midnight"] body [class~="text-teal-800"],
+html[data-design="midnight"] body [class~="text-teal-900"],
+html[data-design="midnight"] body [class~="text-emerald-700"],
+html[data-design="midnight"] body [class~="text-emerald-800"] {
+  color: #5eead4;
+}
+
+html[data-design="midnight"] body [class~="text-indigo-700"],
+html[data-design="midnight"] body [class~="text-violet-700"] {
+  color: #c4b5fd;
+}
+
+html[data-design="midnight"] body [class~="border-neutral-100"],
+html[data-design="midnight"] body [class~="border-neutral-200"],
+html[data-design="midnight"] body [class~="border-neutral-300"],
+html[data-design="midnight"] body [class~="border-slate-200"],
+html[data-design="midnight"] body [class~="border-slate-300"] {
+  border-color: #334158;
+}
+
+html[data-design="midnight"] body [class~="divide-neutral-100"] > :not([hidden]) ~ :not([hidden]) {
+  border-color: #29364c;
+}
+
+html[data-design="midnight"] body a[class~="bg-teal-50"],
+html[data-design="midnight"] body a[class~="hover:bg-neutral-100"]:hover,
+html[data-design="midnight"] body a[class~="hover:bg-teal-50"]:hover,
+html[data-design="midnight"] body button[class~="hover:bg-neutral-100"]:hover {
+  background-color: #252f49;
+  color: #c7d2fe;
+}
+
+html[data-design="midnight"] body input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="midnight"] body select,
+html[data-design="midnight"] body textarea {
+  border-color: #334158;
+  background-color: #111a2b;
+  color: #f1f5f9;
+}
+
+html[data-design="midnight"] body input::placeholder,
+html[data-design="midnight"] body textarea::placeholder {
+  color: #8492a8;
+}
+
+html[data-design="midnight"] body th {
+  background: #1b263b;
+  color: #b7c2d5;
+}
+
+html[data-design="midnight"] body tbody tr:hover {
+  background-color: rgb(99 102 241 / 8%);
+}
+
+html[data-design="midnight"] body .workspace-hero {
+  background:
+    radial-gradient(ellipse at 90% 10%, rgb(129 140 248 / 28%), transparent 30rem),
+    linear-gradient(125deg, #151b33 0%, #25254b 55%, #373574 100%);
+  box-shadow: 0 24px 50px -34px rgb(99 102 241 / 60%);
+}
+
+html[data-design="midnight"] body .workspace-hero [class~="bg-white"] {
+  background-color: #f8fafc;
+  color: #312e81;
+}
+
+html[data-design="midnight"] body .workspace-hero [class~="hover:bg-teal-50"]:hover {
+  background-color: #e0e7ff;
+}
+
+html[data-design="midnight"] body .brand-mark {
+  background: linear-gradient(145deg, #a5b4fc 0%, #6366f1 50%, #4338ca 100%);
+  box-shadow: 0 7px 18px rgb(99 102 241 / 28%);
+}
+
+html[data-design="midnight"] body .mobile-menu-panel {
+  background: #111a2b;
+  color: #e5e7eb;
+}
+
 .home-preview {
   background:
     radial-gradient(ellipse at 100% 0%, rgb(45 212 191 / 24%), transparent 60%),

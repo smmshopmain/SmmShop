@@ -115,9 +115,9 @@ Admin can configure deposit payment details from:
 
 Open Admin > Settings, then scroll to **Payment details shown to users**. Add the QR image, UPI ID, bank name, account holder name, account number, IFSC, and payment instructions. Users will see these details on Dashboard > Wallet before submitting a deposit request.
 
-### Animation Controls
+### Website Design and Animation Controls
 
-Admins can open **Admin > Animations** (or Admin > Settings) to enable or disable website motion, switch page-entry, floating, and interactive effects individually, choose the animation accent colour, and adjust speed. Save changes to apply them across the public site and dashboard. The browser's reduced-motion preference is always respected.
+Admins can open **Admin > Design & motion** (or Admin > Settings) to preview and apply **Default Design** (the original light teal design) or **Midnight Studio**. The selected design is saved site-wide for visitors and logged-in user/admin panels. Admins can also enable or disable website motion, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
 
 ### Render Keep Alive
 
