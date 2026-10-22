@@ -202,6 +202,7 @@ const PromoCodeSchema = new Schema(
     minOrderAmount: money,
     active: { type: Boolean, default: true },
     expiresAt: Date,
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );

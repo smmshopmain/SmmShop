@@ -18,6 +18,7 @@ type PromoCode = {
   usedCount: number;
   active: boolean;
   expiresAt?: Date;
+  deletedAt?: Date | string | null;
 };
 
 async function fetchPromoCodes() {
@@ -82,43 +83,78 @@ export default function PromoCodesPage() {
       />
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <PromoCodeForm onCreated={refreshPromoCodes} />
-        <AdminSection title="Active and archived codes" description="Usage, spend and controls" icon={Tags}>
+        <AdminSection
+          title="Active and archived codes"
+          description={`${promoCodes.length} saved · Usage, spend and controls`}
+          icon={Tags}
+        >
           {loadError && (
             <p role="alert" className="m-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800">
               Promo codes could not be loaded: {loadError}. Check your admin session and try refreshing this page.
             </p>
           )}
           {loading && <p role="status" className="p-4 text-sm text-neutral-500">Loading promo codes...</p>}
-          {!loading && promoCodes.map((promo) => (
-            <div key={promo._id} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_130px_110px_100px]">
-              <div>
-                <p className="font-semibold text-neutral-950">{promo.code}</p>
-                <p className="text-neutral-500">
-                  {promo.discountValue} {promo.discountType === "percent" ? "%" : "Rs."} off, min Rs.{promo.minOrderAmount}
-                </p>
-                <p className="text-neutral-500">Total discount: Rs.{promoDiscounts[promo.code] ?? 0}</p>
-              </div>
-              <span>{promo.usedCount}/{promo.maxUses ?? "unlimited"}</span>
-              <StatusBadge status={promo.active ? "Approved" : "Canceled"} />
-              <ActionButton
-                label={promo.active ? "Disable" : "Enable"}
-                endpoint="/api/admin/promo-codes"
-                body={{ id: promo._id, active: !promo.active }}
-              />
-              <PromoCodeEditForm
-                promo={{
-                  _id: promo._id,
-                  code: promo.code,
-                  discountType: promo.discountType,
-                  discountValue: promo.discountValue,
-                  minOrderAmount: promo.minOrderAmount,
-                  maxUses: promo.maxUses,
-                  active: promo.active,
-                  expiresAt: promo.expiresAt,
-                }}
-              />
+          {!loading && promoCodes.length > 0 && (
+            <div className="max-h-[27rem] overflow-y-auto overscroll-contain">
+              {promoCodes.map((promo) => {
+                const deleted = Boolean(promo.deletedAt);
+                return (
+                  <article key={promo._id} className="min-h-36 border-b border-neutral-100 p-4 text-sm last:border-b-0">
+                    <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-neutral-950">{promo.code}</p>
+                          <StatusBadge status={deleted ? "Deleted" : promo.active ? "Approved" : "Canceled"} />
+                        </div>
+                        <p className="mt-1 text-neutral-500">
+                          {promo.discountValue} {promo.discountType === "percent" ? "%" : "Rs."} off, min Rs.{promo.minOrderAmount}
+                        </p>
+                        <p className="text-neutral-500">
+                          Used {promo.usedCount}/{promo.maxUses ?? "unlimited"} · Total discount: Rs.{promoDiscounts[promo.code] ?? 0}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {!deleted && (
+                          <ActionButton
+                            label={promo.active ? "Disable" : "Enable"}
+                            endpoint="/api/admin/promo-codes"
+                            body={{ id: promo._id, active: !promo.active }}
+                          />
+                        )}
+                        {!deleted && (
+                          <ActionButton
+                            label="Delete"
+                            endpoint="/api/admin/promo-codes"
+                            method="DELETE"
+                            body={{ id: promo._id }}
+                            danger
+                            confirmMessage={`Delete ${promo.code}? It will be disabled immediately and kept in the history.`}
+                          />
+                        )}
+                      </div>
+                    </div>
+                    {!deleted && (
+                      <details className="mt-2">
+                        <summary className="w-fit cursor-pointer text-xs font-semibold text-teal-700">Edit promo</summary>
+                        <PromoCodeEditForm
+                          promo={{
+                            _id: promo._id,
+                            code: promo.code,
+                            discountType: promo.discountType,
+                            discountValue: promo.discountValue,
+                            minOrderAmount: promo.minOrderAmount,
+                            maxUses: promo.maxUses,
+                            active: promo.active,
+                            expiresAt: promo.expiresAt,
+                          }}
+                        />
+                      </details>
+                    )}
+                  </article>
+                );
+              })}
             </div>
-          ))}
+          )}
           {!loading && promoCodes.length === 0 && !loadError && (
             <AdminEmptyState icon={Tags} title="No promo codes yet" description="Create a promo code to start offering order discounts." />
           )}

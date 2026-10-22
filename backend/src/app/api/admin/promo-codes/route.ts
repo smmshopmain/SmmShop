@@ -62,6 +62,8 @@ export async function PATCH(request: NextRequest) {
     const id = z.string().parse(body.id);
     const input = schema.partial().parse(body);
     const before = await PromoCode.findById(id).lean();
+    if (!before) return fail("Promo code not found", 404);
+    if (before.deletedAt) return fail("Deleted promo codes cannot be changed", 409);
     const promoCode = await PromoCode.findByIdAndUpdate(
       id,
       {
@@ -82,5 +84,34 @@ export async function PATCH(request: NextRequest) {
     return ok({ promoCode });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to update promo code");
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { auth } = await requireAdmin();
+    await dbConnect();
+    const body = await request.json();
+    const id = z.string().parse(body.id);
+    const before = await PromoCode.findById(id).lean();
+    if (!before) return fail("Promo code not found", 404);
+    if (before.deletedAt) return ok({ promoCode: before });
+
+    const promoCode = await PromoCode.findByIdAndUpdate(
+      id,
+      { active: false, deletedAt: new Date() },
+      { new: true },
+    );
+    await AuditLog.create({
+      actor: auth.id,
+      action: "promo.delete",
+      entity: "PromoCode",
+      entityId: id,
+      before,
+      after: promoCode,
+    });
+    return ok({ promoCode });
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : "Unable to delete promo code");
   }
 }
