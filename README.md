@@ -119,6 +119,10 @@ Open Admin > Settings, then scroll to **Payment details shown to users**. Add th
 
 Admins can open **Admin > Design & motion** (or Admin > Settings) to preview and apply **Default Design** (the original light teal design) or **Midnight Studio**. The selected design is saved site-wide for visitors and logged-in user/admin panels. Admins can also enable or disable website motion, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
 
+### Content Copy Deterrents
+
+Visible page text is non-selectable by default, right-click is suppressed on regular page content, and images cannot be dragged. Form fields, table data, and explicitly marked values remain selectable for normal account and operations workflows. These are usability deterrents only; they cannot prevent screenshots, browser developer tools, or access to assets delivered to a visitor's browser.
+
 ### Render Keep Alive
 
 The blueprint includes `smm-keep-alive`, a cron service that calls:

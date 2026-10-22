@@ -1,6 +1,7 @@
 import React from "react";
 import type { Metadata } from "next";
 import { MotionSettingsProvider } from "@/components/motion-settings-provider";
+import { CopyProtection } from "@/components/copy-protection";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -20,6 +21,7 @@ export default function RootLayout({
     <html lang="en" className="h-full antialiased" data-scroll-behavior="smooth">
       <body className="min-h-full text-neutral-950">
         <MotionSettingsProvider>
+          <CopyProtection />
           <React.Suspense fallback={null}>{children}</React.Suspense>
         </MotionSettingsProvider>
       </body>

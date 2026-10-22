@@ -90,7 +90,7 @@ export function ReferralPanel({
             </div>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <p className="break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
+            <p data-copy-allowed className="break-all rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm font-semibold text-neutral-900">
               {referralLink || "Generating referral link..."}
             </p>
             <button
@@ -104,7 +104,7 @@ export function ReferralPanel({
             </button>
           </div>
           <p className="mt-3 text-xs text-neutral-500">
-            Referral code: <span className="font-semibold text-neutral-800">{referralCode || "-"}</span>
+            Referral code: <span data-copy-allowed className="font-semibold text-neutral-800">{referralCode || "-"}</span>
           </p>
         </section>
 

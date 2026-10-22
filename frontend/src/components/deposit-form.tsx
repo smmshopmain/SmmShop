@@ -443,7 +443,7 @@ function PaymentRow({ label, value }: { label: string; value: string }) {
           <Clipboard className="size-4" />
         </button>
       </div>
-      <span className="break-words font-semibold text-neutral-900">{value}</span>
+      <span data-copy-allowed className="break-words font-semibold text-neutral-900">{value}</span>
     </div>
   );
 }
