@@ -250,14 +250,15 @@ export function WalletAdjustForm({ userId }: { userId: string }) {
   );
 }
 
-export function PromoCodeForm() {
+export function PromoCodeForm({ onCreated }: { onCreated?: () => void }) {
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true);
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     try {
       const response = await apiFetch("/api/admin/promo-codes", {
         method: "POST",
@@ -274,8 +275,9 @@ export function PromoCodeForm() {
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to create promo code.");
-      setMessage("Promo code saved. Refreshing the list...");
-      window.location.reload();
+      setMessage("Promo code saved.");
+      formElement.reset();
+      onCreated?.();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create promo code.");
     } finally {
