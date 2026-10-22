@@ -252,26 +252,35 @@ export function WalletAdjustForm({ userId }: { userId: string }) {
 
 export function PromoCodeForm() {
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSaving(true);
     const form = new FormData(event.currentTarget);
-    const response = await apiFetch("/api/admin/promo-codes", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        code: form.get("code"),
-        discountType: form.get("discountType"),
-        discountValue: Number(form.get("discountValue")),
-        maxUses: form.get("maxUses") ? Number(form.get("maxUses")) : undefined,
-        minOrderAmount: Number(form.get("minOrderAmount") || 0),
-        active: form.get("active") === "on",
-        expiresAt: form.get("expiresAt") || undefined,
-      }),
-    });
-    const result = await response.json();
-    setMessage(response.ok ? "Promo code created." : result.message);
-    if (response.ok) window.location.reload();
+    try {
+      const response = await apiFetch("/api/admin/promo-codes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code: form.get("code"),
+          discountType: form.get("discountType"),
+          discountValue: Number(form.get("discountValue")),
+          maxUses: form.get("maxUses") ? Number(form.get("maxUses")) : undefined,
+          minOrderAmount: Number(form.get("minOrderAmount") || 0),
+          active: form.get("active") === "on",
+          expiresAt: form.get("expiresAt") || undefined,
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "Unable to create promo code.");
+      setMessage("Promo code saved. Refreshing the list...");
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to create promo code.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -292,8 +301,10 @@ export function PromoCodeForm() {
       <label className="flex items-center gap-2 text-sm font-medium">
         <input name="active" type="checkbox" defaultChecked /> Active
       </label>
-      {message && <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
-      <button className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white">Save promo</button>
+      {message && <p role="status" className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
+      <button disabled={saving} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+        {saving ? "Saving..." : "Save promo"}
+      </button>
     </form>
   );
 }

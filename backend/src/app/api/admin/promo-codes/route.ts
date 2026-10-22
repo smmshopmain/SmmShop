@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
+import { dbConnect } from "@/lib/db";
 import { AuditLog, PromoCode, WalletTransaction } from "@/models";
 
 const schema = z.object({
@@ -16,6 +17,7 @@ const schema = z.object({
 export async function GET() {
   try {
     await requireAdmin();
+    await dbConnect();
     const [promoCodes, discounts] = await Promise.all([
       PromoCode.find().sort({ createdAt: -1 }).limit(100).lean(),
       WalletTransaction.aggregate([
@@ -32,6 +34,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
+    await dbConnect();
     const input = await parseBody(request, schema);
     const promoCode = await PromoCode.create({
       ...input,
@@ -54,6 +57,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
+    await dbConnect();
     const body = await request.json();
     const id = z.string().parse(body.id);
     const input = schema.partial().parse(body);

@@ -18,13 +18,15 @@ export default async function PromoCodesPage() {
     expiresAt?: Date;
   }> = [];
   let promoDiscounts: Record<string, number> = {};
+  let loadError = "";
 
   try {
     const data = await serverApiJson("/api/admin/promo-codes");
     promoCodes = data.promoCodes ?? [];
     promoDiscounts = data.promoDiscounts ?? {};
-  } catch {
+  } catch (error) {
     promoCodes = [];
+    loadError = error instanceof Error ? error.message : "Unable to load promo codes.";
   }
 
   return (
@@ -37,6 +39,11 @@ export default async function PromoCodesPage() {
       <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
         <PromoCodeForm />
         <AdminSection title="Active and archived codes" description="Usage, spend and controls" icon={Tags}>
+          {loadError && (
+            <p role="alert" className="m-4 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-800">
+              Promo codes could not be loaded: {loadError}. Check your admin session and try refreshing this page.
+            </p>
+          )}
           {promoCodes.map((promo) => (
             <div key={String(promo._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm md:grid-cols-[1fr_130px_110px_100px]">
               <div>
@@ -67,7 +74,7 @@ export default async function PromoCodesPage() {
               />
             </div>
           ))}
-          {promoCodes.length === 0 && <AdminEmptyState icon={Tags} title="No promo codes yet" description="Create a promo code to start offering order discounts." />}
+          {promoCodes.length === 0 && !loadError && <AdminEmptyState icon={Tags} title="No promo codes yet" description="Create a promo code to start offering order discounts." />}
         </AdminSection>
       </div>
     </AppShell>
