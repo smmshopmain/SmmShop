@@ -1,16 +1,14 @@
 export function apiUrl(path: string) {
   const envBase = process.env.NEXT_PUBLIC_API_URL;
-  const baseUrl = envBase ? envBase.replace(/\/+$/, "") : "";
+  let baseUrl = envBase ? envBase.replace(/\/+$/, "") : "";
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
-  if (typeof window !== "undefined") {
-    if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
-      return cleanPath;
-    }
-    // If NEXT_PUBLIC_API_URL is not set, fall back to relative paths so
-    // same-origin deployments work without additional env configuration.
-    if (!baseUrl) {
-      return cleanPath;
+  if (baseUrl && typeof window !== "undefined") {
+    const apiBase = new URL(baseUrl);
+    const localHosts = ["localhost", "127.0.0.1"];
+    if (localHosts.includes(apiBase.hostname) && localHosts.includes(window.location.hostname)) {
+      apiBase.hostname = window.location.hostname;
+      baseUrl = apiBase.toString().replace(/\/+$/, "");
     }
   }
 

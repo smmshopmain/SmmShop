@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
-import { currentUser, setSessionCookie } from "@/lib/auth";
+import { currentUser, isEnvironmentAdmin, setSessionCookie } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
 import { createUniqueReferralCode } from "@/lib/referral-code";
 import { normalizeRole } from "@/lib/roles";
@@ -14,6 +14,17 @@ const schema = z.object({
 export async function GET() {
   const user = await currentUser();
   if (!user) return fail("Unauthorized", 401);
+  if (isEnvironmentAdmin(user)) {
+    return ok({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      phone: "",
+      role: user.role,
+      referralCode: "",
+      referralEarnings: 0,
+    });
+  }
 
   await dbConnect();
   const dbUser = await User.findById(user.id);
@@ -42,6 +53,11 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
+    const user = await currentUser();
+    if (user && isEnvironmentAdmin(user)) {
+      return fail("Update environment-managed admin details through backend environment variables.", 403);
+    }
+
     const input = await parseBody(request, schema);
     const { auth, dbUser } = await requireUser();
 

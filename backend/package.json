@@ -10,21 +10,19 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "create-admin": "npx tsx ./scripts/create-admin.ts"
+    "migrate-admin-auth": "npx tsx ./scripts/migrate-admin-auth.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.3",
     "mongoose": "^9.6.3",
     "next": "16.2.7",
-    "nodemailer": "^9.0.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "@types/nodemailer": "^8.0.1",
     "@types/react": "^18",
     "tsx": "^4.22.4",
     "typescript": "^5"

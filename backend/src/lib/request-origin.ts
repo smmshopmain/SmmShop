@@ -38,8 +38,14 @@ export function publicOrigin(request: NextRequest) {
 }
 
 export function configuredRequestOrigins() {
+  const developmentOrigins =
+    process.env.NODE_ENV === "production"
+      ? []
+      : ["http://localhost:3000", "http://127.0.0.1:3000"];
+
   return new Set(
     [
+      ...developmentOrigins,
       normalizeOrigin(process.env.FRONTEND_URL),
       ...normalizeMultiOrigins(process.env.ALLOWED_ORIGINS),
     ]

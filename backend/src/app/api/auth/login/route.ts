@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
-import { setSessionCookie, verifyPassword } from "@/lib/auth";
+import { authenticateEnvironmentAdmin, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { User } from "@/models";
 import { rateLimit } from "@/lib/rate-limit";
 
@@ -17,6 +17,17 @@ export async function POST(request: NextRequest) {
 
   try {
     const input = await parseBody(request, schema);
+    const environmentAdmin = authenticateEnvironmentAdmin(input.email, input.password);
+    if (environmentAdmin) {
+      await setSessionCookie(environmentAdmin);
+      return ok({
+        id: environmentAdmin.id,
+        name: environmentAdmin.name,
+        email: environmentAdmin.email,
+        role: environmentAdmin.role,
+      });
+    }
+
     await dbConnect();
     const identifier = input.email.toLowerCase();
     const user = await User.findOne(
@@ -24,7 +35,7 @@ export async function POST(request: NextRequest) {
         ? { email: identifier }
         : { phone: identifier.replace(/\D/g, "") },
     );
-    if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
+    if (!user || user.role === "admin" || !(await verifyPassword(input.password, user.passwordHash))) {
       return fail("Invalid email or password", 401);
     }
     if (user.isBanned) return fail("Your account is banned", 403);

@@ -1,7 +1,3 @@
-import { resolve4 } from "dns/promises";
-import nodemailer from "nodemailer";
-import type SMTPTransport from "nodemailer/lib/smtp-transport";
-
 type MailInput = {
   to: string;
   subject: string;
@@ -17,9 +13,7 @@ type MailResult = {
   response: string;
 };
 
-const DNS_TIMEOUT_MS = 5000;
-const SMTP_TIMEOUT_MS = 15000;
-const SEND_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 15000;
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -27,120 +21,55 @@ function requireEnv(name: string) {
   return value;
 }
 
-function smtpPort() {
-  const port = Number(requireEnv("SMTP_PORT"));
-  if (!Number.isInteger(port) || port <= 0) {
-    throw new Error("SMTP_PORT must be a valid port number");
-  }
-  return port;
-}
+async function sendViaWorker({ to, subject, text, html }: MailInput) {
+  const workerUrl = requireEnv("EMAIL_WORKER_URL");
+  const workerSecret = requireEnv("EMAIL_WORKER_SECRET");
 
-function smtpSecure() {
-  const value = requireEnv("SMTP_SECURE").toLowerCase();
-  if (["true", "1", "yes"].includes(value)) return true;
-  if (["false", "0", "no"].includes(value)) return false;
-  throw new Error("SMTP_SECURE must be true or false");
-}
-
-async function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<never>((_, reject) => {
-    timeoutId = setTimeout(() => reject(new Error(message)), ms);
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    return await Promise.race([promise, timeout]);
+    const response = await fetch(workerUrl, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-email-worker-secret": workerSecret,
+      },
+      signal: controller.signal,
+      body: JSON.stringify({ to, subject, text, html }),
+    });
+
+    let payload: { ok?: boolean; message?: string; messageId?: string } | null = null;
+    try {
+      payload = (await response.json()) as { ok?: boolean; message?: string; messageId?: string };
+    } catch {
+      payload = null;
+    }
+
+    if (!response.ok || !payload?.ok) {
+      throw new Error(payload?.message || `Email worker request failed with status ${response.status}`);
+    }
+
+    return {
+      messageId: payload.messageId,
+    };
   } finally {
-    if (timeoutId) clearTimeout(timeoutId);
-  }
-}
-
-async function resolveSmtpHost(host: string) {
-  try {
-    return (await withTimeout(resolve4(host), DNS_TIMEOUT_MS, "SMTP DNS lookup timed out"))[0] ?? host;
-  } catch {
-    return host;
-  }
-}
-
-function isTimeoutError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  const code = typeof error === "object" && error !== null && "code" in error ? String((error as { code?: unknown }).code) : "";
-  return /timed out|timeout/i.test(message) || ["ETIMEDOUT", "ESOCKET"].includes(code);
-}
-
-function canTrySecureSmtpFallback(host: string, port: number, secure: boolean) {
-  return !secure && port === 587 && /(^|\.)gmail\.com$/i.test(host);
-}
-
-async function createSmtpTransport(smtpHost: string, port: number, secure: boolean) {
-  const resolvedHost = await resolveSmtpHost(smtpHost);
-  const transportOptions: SMTPTransport.Options = {
-    host: resolvedHost,
-    port,
-    secure,
-    connectionTimeout: SMTP_TIMEOUT_MS,
-    greetingTimeout: SMTP_TIMEOUT_MS,
-    socketTimeout: SMTP_TIMEOUT_MS,
-    dnsTimeout: DNS_TIMEOUT_MS,
-    tls: {
-      servername: smtpHost,
-    },
-    auth: {
-      user: requireEnv("SMTP_USER"),
-      pass: requireEnv("SMTP_PASS"),
-    },
-  };
-  return nodemailer.createTransport(transportOptions);
-}
-
-async function deliverMail({
-  from,
-  to,
-  subject,
-  text,
-  html,
-  smtpHost,
-  port,
-  secure,
-}: MailInput & { from: string; smtpHost: string; port: number; secure: boolean }) {
-  const transporter = await createSmtpTransport(smtpHost, port, secure);
-
-  try {
-    return await withTimeout(
-      transporter.sendMail({ from, to, subject, text, html }),
-      SEND_TIMEOUT_MS,
-      "SMTP email delivery timed out",
-    );
-  } finally {
-    transporter.close();
+    clearTimeout(timeoutId);
   }
 }
 
 export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
-  const from = requireEnv("FROM_EMAIL");
-  const smtpHost = requireEnv("SMTP_HOST");
-  const port = smtpPort();
-  const secure = smtpSecure();
-
   try {
-    let info;
-    try {
-      info = await deliverMail({ from, to, subject, text, html, smtpHost, port, secure });
-    } catch (error) {
-      if (!isTimeoutError(error) || !canTrySecureSmtpFallback(smtpHost, port, secure)) throw error;
-      console.warn("SMTP primary port timed out; retrying secure fallback", { smtpHost, port, fallbackPort: 465 });
-      info = await deliverMail({ from, to, subject, text, html, smtpHost, port: 465, secure: true });
-    }
-
+    const workerResponse = await sendViaWorker({ to, subject, text, html });
     const result: MailResult = {
       provider: "smtp",
-      messageId: info.messageId,
-      accepted: info.accepted.map(String),
-      rejected: info.rejected.map(String),
-      response: info.response,
+      messageId: workerResponse.messageId,
+      accepted: [to],
+      rejected: [],
+      response: "Email sent via worker",
     };
-    console.info("SMTP email accepted", {
+
+    console.info("Email worker accepted", {
       messageId: result.messageId,
       accepted: result.accepted,
       rejected: result.rejected,
@@ -148,8 +77,8 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
     });
     return result;
   } catch (error) {
-    const message = error instanceof Error ? error.message : "SMTP email delivery failed";
-    console.error("SMTP email failed", {
+    const message = error instanceof Error ? error.message : "Email delivery failed";
+    console.error("Email worker failed", {
       error: message,
       to,
       subject,

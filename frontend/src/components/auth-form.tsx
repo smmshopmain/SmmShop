@@ -45,20 +45,25 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             password: form.get("password"),
             referralCode: form.get("referralCode") || referralParam || undefined,
           };
-    const response = await apiFetch(`/api/auth/${mode}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    setLoading(false);
-    if (!response.ok) {
-      setError(result.message ?? "Something went wrong");
-      return;
+    try {
+      const response = await apiFetch(`/api/auth/${mode}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.message ?? "Something went wrong");
+        return;
+      }
+      const nextPath = searchParams.get("next");
+      router.push((nextPath?.startsWith("/") ? nextPath : "/dashboard/services") as Route);
+      router.refresh();
+    } catch {
+      setError("Unable to connect to the server. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    const nextPath = searchParams.get("next");
-    router.push((nextPath?.startsWith("/") ? nextPath : "/dashboard/services") as Route);
-    router.refresh();
   }
 
   return (

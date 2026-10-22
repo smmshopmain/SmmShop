@@ -16,7 +16,16 @@ cd frontend && npm install
 cd ../backend && npm install
 ```
 
-2. Copy `.env.example` to `.env.local` and fill real values:
+2. Copy the package-specific environment examples to `.env.local` and fill in the required values:
+
+```bash
+cp frontend/.env.example frontend/.env.local
+cp backend/.env.example backend/.env.local
+```
+
+For local development, set `NEXT_PUBLIC_API_URL=http://localhost:3002` in `frontend/.env.local`. Set the MongoDB and backend secrets in `backend/.env.local`.
+
+The production frontend API URL and backend environment variables include:
 
 ```bash
 NEXT_PUBLIC_API_URL=https://your-backend.onrender.com
@@ -26,6 +35,9 @@ PROVIDER_API_URL=
 PROVIDER_API_KEY=
 MONGODB_URI=
 JWT_SECRET=
+ADMIN_USERNAME=admin@example.com
+ADMIN_PASSWORD=replace-with-a-long-random-password
+ADMIN_NAME=Admin
 CRON_SECRET=
 APP_BASE_URL=
 PAYMENT_WEBHOOK_SECRET=
@@ -40,15 +52,16 @@ SMTP_SECURE=
 SMTP_USER=
 SMTP_PASS=
 FROM_EMAIL=
+EMAIL_WORKER_URL=https://your-frontend.vercel.app/api/internal/send-email
+EMAIL_WORKER_SECRET=replace-with-a-long-random-secret
 ```
 
-3. Start development server:
+3. Start both development servers in separate terminals:
 
 ```bash
-npm run dev
+npm --prefix backend run dev -- --port 3002
+npm --prefix frontend run dev -- --port 3000
 ```
-
-This will run the deployed frontend app from `frontend/` so local development matches Vercel.
 
 Open `http://localhost:3000`.
 
@@ -58,21 +71,27 @@ Open `http://localhost:3000`.
 - Backend: deploy the API routes and cron jobs to Render.
 - The frontend uses `NEXT_PUBLIC_API_URL` for all backend requests.
 - The backend allows CORS for configured Vercel domains via `FRONTEND_URL` and `ALLOWED_ORIGINS`.
+- Configure `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` only in the backend environment. Do not add admin credentials to Vercel/frontend variables.
 
 ### Vercel
 
 Set `NEXT_PUBLIC_API_URL` to your Render backend URL.
 Example: `https://your-backend.onrender.com`
 
+Also add `EMAIL_WORKER_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `FROM_EMAIL` to the Vercel frontend environment. The Vercel route at `/api/internal/send-email` uses these values to send email through SMTP.
+
 ### Render
 
-Use the existing Render service configuration and set backend env vars as shown above. The Render service keeps the backend API, MongoDB access, Telegram integration, and cron sync jobs running.
+Use the existing Render service configuration and set backend env vars as shown above. The Render service keeps the backend API, MongoDB access, Telegram integration, and cron sync jobs running. Set `EMAIL_WORKER_URL` and `EMAIL_WORKER_SECRET` there so the backend calls the Vercel worker instead of attempting direct SMTP from Render.
 
 ## Auth Notes
 
 - Public registration always creates a normal user account.
 - Login accepts email or mobile number when a user has `phone` saved.
-- Forgot password sends a 6 digit OTP to the user's email through SMTP.
+- The main admin signs in using `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the backend environment; `ADMIN_NAME` is optional. Changing these values invalidates existing environment-admin sessions. Unsetting either username or password disables environment-admin login.
+- Main admin credentials are not stored in MongoDB. Existing MongoDB accounts with the `admin` role must be disabled once with `npm --prefix backend run migrate-admin-auth -- --apply`; the migration keeps the records but downgrades and bans those accounts and replaces their password hashes. Staff and secondary-admin roles are unchanged.
+- Remove the old hard-coded main-admin setup; use only the backend environment variables for main-admin access.
+- Forgot password sends a 6 digit OTP to the user's email through a Vercel worker endpoint because Render free-tier SMTP is blocked.
 - OTPs are hashed before storing in MongoDB, expire after 10 minutes, and allow 5 attempts.
 
 ## Render Deploy
