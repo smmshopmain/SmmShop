@@ -15,19 +15,19 @@ export default async function RegisterPage() {
             <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm">SP</span>
             <span>
               <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
-              <span className="block text-sm text-neutral-600">Reseller platform</span>
+              <span className="block text-sm text-neutral-600">Your social growth starts here</span>
             </span>
           </Link>
           <div className="mt-12 max-w-xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-800">
-              <ShieldCheck className="size-3.5" /> Secure account setup
+              <ShieldCheck className="size-3.5" /> A better way to grow
             </p>
-            <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Create your panel account and start ordering faster.</h1>
+            <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Your next chapter starts with a stronger presence.</h1>
             <p className="mt-5 text-lg leading-8 text-neutral-700">
-              Clean dashboard, easy service browsing, wallet deposits, and support tickets in one place.
+              Create your free account to discover services, follow your orders, and manage everything with ease.
             </p>
             <div className="mt-8 grid max-w-lg gap-3">
-              {["Fast onboarding", "Simple mobile layout", "Admin-ready first account"].map((item) => (
+              {["Get started in minutes", "Your progress, all in one place", "Friendly help whenever you need it"].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-md border border-white bg-white/70 p-3 shadow-sm">
                   <BadgeCheck className="size-5 text-teal-700" />
                   <span className="text-sm font-semibold text-neutral-800">{item}</span>
@@ -48,7 +48,7 @@ export default async function RegisterPage() {
             </span>
           </div>
           <h2 className="text-2xl font-bold text-neutral-950">Create account</h2>
-          <p className="mt-2 text-sm leading-6 text-neutral-600">After creating an account, the services page opens directly.</p>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">Join us today and find the right services for your goals.</p>
           <div className="mt-7">
             <AuthForm mode="register" />
           </div>

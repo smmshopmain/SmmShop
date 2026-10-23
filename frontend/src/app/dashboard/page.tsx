@@ -13,9 +13,9 @@ const quickActions: Array<{
   text: string;
   icon: typeof ShoppingBag;
 }> = [
-  { href: "/dashboard/services", title: "Browse services", text: "Choose a platform and place a service order.", icon: ShoppingBag },
-  { href: "/dashboard/orders", title: "Track orders", text: "Check running and completed orders.", icon: Clock3 },
-  { href: "/dashboard/tickets", title: "Need help?", text: "Create a support ticket.", icon: Headphones },
+  { href: "/dashboard/services", title: "Find your next service", text: "Explore options and get started in just a few clicks.", icon: ShoppingBag },
+  { href: "/dashboard/orders", title: "Follow your progress", text: "See the latest updates on all your orders.", icon: Clock3 },
+  { href: "/dashboard/tickets", title: "We’re here to help", text: "Our support team is ready when you need us.", icon: Headphones },
 ];
 
 export default async function DashboardPage() {
@@ -25,11 +25,11 @@ export default async function DashboardPage() {
         <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="max-w-2xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-teal-100">
-              <Sparkles className="size-3.5" /> Your workspace
+              <Sparkles className="size-3.5" /> Welcome to your SMM Panel
             </p>
-            <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Everything you need, in one place.</h1>
+            <h1 className="mt-5 text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">Ready to grow? Let’s make it happen.</h1>
             <p className="mt-3 max-w-xl text-sm leading-6 text-teal-50/85 sm:text-base">
-              Keep an eye on your wallet, track orders, and get back to what matters with a clearer, faster dashboard.
+              Your services, orders, and balance are all here. Choose your next step and we’ll take it together.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
               className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-teal-900 shadow-lg shadow-slate-950/15 transition hover:-translate-y-0.5 hover:bg-teal-50"
             >
               <PlusCircle className="size-4" />
-              New order
+              Explore services
             </Link>
             <Link
               href="/dashboard/wallet"
@@ -75,7 +75,7 @@ export default async function DashboardPage() {
         </section>
 
         <section className="surface-card p-5">
-          <h2 className="font-semibold">Quick actions</h2>
+          <h2 className="font-semibold">Let’s get started</h2>
           <div className="mt-4 grid gap-3">
             {quickActions.map((item) => (
               <Link

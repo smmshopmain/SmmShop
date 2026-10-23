@@ -37,15 +37,15 @@ type NavItem = {
 };
 
 const userLinks: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/dashboard/services", label: "Services", icon: Layers3 },
-  { href: "/dashboard/orders", label: "Orders", icon: History },
+  { href: "/dashboard", label: "Home", icon: Gauge },
+  { href: "/dashboard/services", label: "Explore", icon: Layers3 },
+  { href: "/dashboard/orders", label: "My orders", icon: History },
   { href: "/dashboard/refills", label: "Refills", icon: RefreshCcw },
-  { href: "/dashboard/wallet", label: "Wallet", icon: Wallet },
-    { href: "/dashboard/referrals", label: "Referrals", icon: BadgeIndianRupee },
-  { href: "/dashboard/tickets", label: "Tickets", icon: Ticket },
-  { href: "/dashboard/notifications", label: "Notifications", icon: Bell },
-  { href: "/dashboard/profile", label: "Profile", icon: UserRound },
+  { href: "/dashboard/wallet", label: "My wallet", icon: Wallet },
+  { href: "/dashboard/referrals", label: "Invite & earn", icon: BadgeIndianRupee },
+  { href: "/dashboard/tickets", label: "Get help", icon: Ticket },
+  { href: "/dashboard/notifications", label: "Updates", icon: Bell },
+  { href: "/dashboard/profile", label: "My account", icon: UserRound },
 ];
 
 const adminLinks: NavItem[] = [
@@ -149,7 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </span>
           <span>
             <span className="block text-sm font-semibold">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
-            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : "Reseller platform"}</span>
+            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : "Your growth, made simple"}</span>
           </span>
         </Link>
         <nav className="mt-8 space-y-1 pb-6">
@@ -240,7 +240,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mobile-menu-panel absolute inset-y-0 right-0 flex w-[min(24rem,92vw)] flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4">
               <div className="min-w-0">
-                <p className="font-semibold text-neutral-950">SMM Panel</p>
+                <p className="font-semibold text-neutral-950">Your SMM Panel</p>
                 <p className="truncate text-xs text-neutral-500">{loading ? "Loading..." : user?.email ?? "Account"}</p>
               </div>
               <button

@@ -86,7 +86,7 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
   return (
     <AdminSection
       title="Website design & animations"
-      description="Preview and apply a site-wide design, then tune its motion, colour, and speed."
+      description="Choose the design that becomes the site-wide default, then tune its motion, colour, and speed."
       icon={Sparkles}
     >
       <form onSubmit={save} className="grid gap-5 p-4 sm:p-6">
@@ -101,9 +101,15 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
             {([
               {
                 id: "default",
-                title: "Default Design",
-                description: "Current light, teal-accented website design.",
+                title: "Classic · Original",
+                description: "Keep the existing light panel design.",
                 swatches: ["#f4f7f7", "#ffffff", "#0f766e"],
+              },
+              {
+                id: "studio",
+                title: "Studio · Redesigned",
+                description: "A fresh, polished workspace across user pages.",
+                swatches: ["#eaf3f2", "#ffffff", "#0e7490"],
               },
               {
                 id: "midnight",

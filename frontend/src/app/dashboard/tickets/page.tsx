@@ -56,7 +56,7 @@ export default async function TicketsPage() {
               <div className="mt-3 grid gap-2 rounded-md border border-neutral-200 bg-neutral-50 p-3">
                 {(ticket.messages ?? []).slice(-3).map((message, index) => (
                   <div key={`${ticket._id}-${index}`} className="rounded-md bg-white p-3">
-                    <p className="text-xs font-semibold uppercase text-neutral-500">{message.isAdmin ? "Admin" : "You"}</p>
+                    <p className="text-xs font-semibold uppercase text-neutral-500">{message.isAdmin ? "Support team" : "You"}</p>
                     <p className="mt-1 text-neutral-700">{message.body}</p>
                   </div>
                 ))}
@@ -68,7 +68,7 @@ export default async function TicketsPage() {
             <div className="grid place-items-center px-4 py-12 text-center">
               <MessageSquareText className="size-10 text-neutral-300" />
               <p className="mt-3 text-sm font-semibold text-neutral-800">No tickets yet</p>
-              <p className="mt-1 max-w-md text-sm text-neutral-500">Create a ticket from the form if you need help.</p>
+              <p className="mt-1 max-w-md text-sm text-neutral-500">Need a hand? Send our team a message and we’ll be happy to help.</p>
             </div>
           )}
         </section>

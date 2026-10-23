@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { apiJson } from "@/lib/client-api";
 
 export type MotionSettings = {
-  designPreset: "default" | "midnight";
+  designPreset: "default" | "studio" | "midnight";
   animationsEnabled: boolean;
   entranceEnabled: boolean;
   floatingEnabled: boolean;

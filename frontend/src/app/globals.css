@@ -543,6 +543,167 @@ html[data-design="midnight"] body .mobile-menu-panel {
   color: #e5e7eb;
 }
 
+html[data-design="studio"] body {
+  background:
+    radial-gradient(ellipse at 5% 0%, rgb(153 246 228 / 28%), transparent 34rem),
+    radial-gradient(ellipse at 98% 8%, rgb(186 230 253 / 28%), transparent 32rem),
+    #f1f6f7;
+  color: #10212b;
+}
+
+html[data-design="studio"] .app-shell {
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 4% 0%, rgb(153 246 228 / 18%), transparent 34rem),
+    radial-gradient(ellipse at 100% 0%, rgb(186 230 253 / 18%), transparent 34rem),
+    #f1f6f7;
+  color: #10212b;
+}
+
+html[data-design="studio"] .app-sidebar {
+  border-color: rgb(203 213 225 / 65%);
+  background: rgb(255 255 255 / 90%);
+  box-shadow: 16px 0 46px -38px rgb(15 23 42 / 35%);
+  backdrop-filter: blur(22px);
+}
+
+html[data-design="studio"] .app-sidebar > a,
+html[data-design="studio"] .app-header {
+  border-color: rgb(203 213 225 / 65%);
+}
+
+html[data-design="studio"] .app-sidebar nav a {
+  border-radius: 0.9rem;
+}
+
+html[data-design="studio"] .app-sidebar nav a[class~="bg-teal-50"],
+html[data-design="studio"] .app-shell nav a[class~="bg-teal-50"] {
+  background: linear-gradient(110deg, #d9f4ef, #e6f4fa);
+  color: #0b625f;
+  box-shadow: inset 0 0 0 1px rgb(13 148 136 / 10%);
+}
+
+html[data-design="studio"] .app-header {
+  background: rgb(248 251 251 / 88%);
+  box-shadow: 0 10px 32px -30px rgb(15 23 42 / 40%);
+  backdrop-filter: blur(22px);
+}
+
+html[data-design="studio"] .app-header nav {
+  background: rgb(248 251 251 / 94%);
+}
+
+html[data-design="studio"] .app-header button,
+html[data-design="studio"] .app-header form button {
+  border-radius: 0.85rem;
+}
+
+html[data-design="studio"] .app-shell main {
+  padding-top: clamp(1.25rem, 3vw, 2rem);
+}
+
+html[data-design="studio"] .app-shell main h1 {
+  letter-spacing: -0.035em;
+}
+
+html[data-design="studio"] .app-shell main .surface-card,
+html[data-design="studio"] .app-shell main section[class*="rounded-"][class*="border"][class*="bg-white"],
+html[data-design="studio"] .app-shell main > div[class*="rounded-"][class*="border"][class*="bg-white"] {
+  border: 1px solid rgb(213 225 229 / 78%);
+  border-radius: 1.35rem;
+  background: rgb(255 255 255 / 90%);
+  box-shadow:
+    0 4px 12px rgb(15 23 42 / 3%),
+    0 22px 55px -42px rgb(15 23 42 / 24%);
+  backdrop-filter: blur(10px);
+}
+
+html[data-design="studio"] .app-shell main .surface-card:hover {
+  border-color: rgb(94 190 178 / 55%);
+  box-shadow:
+    0 8px 20px rgb(15 23 42 / 4%),
+    0 28px 64px -42px rgb(15 118 110 / 30%);
+}
+
+html[data-design="studio"] .app-shell main .workspace-hero {
+  border: 1px solid rgb(255 255 255 / 55%);
+  border-radius: 1.8rem;
+  background:
+    radial-gradient(ellipse at 84% 12%, rgb(94 234 212 / 22%), transparent 28rem),
+    radial-gradient(ellipse at 100% 100%, rgb(56 189 248 / 20%), transparent 30rem),
+    linear-gradient(125deg, #102a35 0%, #124e4a 53%, #0e7490 100%);
+  box-shadow: 0 28px 64px -38px rgb(15 118 110 / 48%);
+}
+
+html[data-design="studio"] .app-shell main .workspace-link {
+  border-color: #dbe7e8;
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #fff, #f7fbfb);
+}
+
+html[data-design="studio"] .app-shell main .workspace-link:hover {
+  border-color: #91d8cc;
+  box-shadow: 0 20px 38px -32px rgb(15 118 110 / 55%);
+}
+
+html[data-design="studio"] .app-shell main [class~="rounded-md"][class~="bg-neutral-100"],
+html[data-design="studio"] .app-shell main [class~="rounded-xl"][class~="bg-neutral-100"] {
+  border-radius: 0.85rem;
+  background-color: #edf4f4;
+}
+
+html[data-design="studio"] .app-shell main table {
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+html[data-design="studio"] .app-shell main th {
+  background: #edf5f5;
+  color: #49606b;
+}
+
+html[data-design="studio"] .app-shell main tbody tr:hover {
+  background-color: rgb(20 184 166 / 5%);
+}
+
+html[data-design="studio"] .app-shell main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="studio"] .app-shell main select,
+html[data-design="studio"] .app-shell main textarea {
+  border-color: #d6e2e5;
+  border-radius: 0.85rem;
+  background-color: #fff;
+}
+
+html[data-design="studio"] .app-shell main input:focus,
+html[data-design="studio"] .app-shell main select:focus,
+html[data-design="studio"] .app-shell main textarea:focus {
+  border-color: #0f8a82;
+  box-shadow: 0 0 0 4px rgb(15 138 130 / 12%);
+}
+
+html[data-design="studio"] .app-shell .mobile-menu-panel {
+  background: #f8fbfb;
+}
+
+html[data-design="studio"] .brand-mark {
+  background: linear-gradient(145deg, #2dd4bf 0%, #0f8a82 52%, #0e7490 100%);
+  box-shadow: 0 9px 22px rgb(15 118 110 / 26%);
+}
+
+html[data-design="studio"] .auth-page {
+  background:
+    radial-gradient(ellipse at 12% 18%, rgb(45 212 191 / 22%), transparent 32rem),
+    radial-gradient(ellipse at 95% 82%, rgb(56 189 248 / 16%), transparent 28rem),
+    #f1f6f7;
+}
+
+html[data-design="studio"] .auth-card {
+  border-radius: 1.7rem;
+  box-shadow:
+    0 36px 90px -48px rgb(15 23 42 / 34%),
+    0 12px 28px -20px rgb(15 23 42 / 20%);
+}
+
 .home-preview {
   background:
     radial-gradient(ellipse at 100% 0%, rgb(45 212 191 / 24%), transparent 60%),

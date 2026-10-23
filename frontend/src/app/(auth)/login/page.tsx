@@ -16,19 +16,19 @@ export default async function LoginPage() {
             <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm">SP</span>
             <span>
               <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
-              <span className="block text-sm text-neutral-600">Fast reseller workspace</span>
+              <span className="block text-sm text-neutral-600">Your social growth starts here</span>
             </span>
           </Link>
           <div className="mt-12 max-w-xl">
             <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-800">
-              <Sparkles className="size-3.5" /> User-friendly panel
+              <Sparkles className="size-3.5" /> Your next big step
             </p>
-            <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Manage services, wallet and orders without confusion.</h1>
+            <h1 className="mt-5 text-5xl font-bold leading-tight text-neutral-950">Grow your presence. We’ll make it simple.</h1>
             <p className="mt-5 text-lg leading-8 text-neutral-700">
-              After login, users go directly to the services page with search, filters, and the order form ready.
+              Discover the services you need, place an order in moments, and follow every update from one easy place.
             </p>
             <div className="mt-8 grid max-w-lg gap-3">
-              {["Mobile friendly navigation", "Clear wallet and order status", "Secure session access"].map((item) => (
+              {["Find the right service in seconds", "Stay on top of orders and wallet", "Simple, secure account access"].map((item) => (
                 <div key={item} className="flex items-center gap-3 rounded-md border border-white bg-white/70 p-3 shadow-sm">
                   <CheckCircle2 className="size-5 text-teal-700" />
                   <span className="text-sm font-semibold text-neutral-800">{item}</span>
@@ -49,7 +49,7 @@ export default async function LoginPage() {
             </span>
           </div>
           <h2 className="text-2xl font-bold text-neutral-950">Welcome back</h2>
-          <p className="mt-2 text-sm leading-6 text-neutral-600">Log in to start placing orders directly from the services page.</p>
+          <p className="mt-2 text-sm leading-6 text-neutral-600">Sign in and pick up right where your growth journey left off.</p>
           <div className="mt-7">
             <AuthForm mode="login" />
           </div>

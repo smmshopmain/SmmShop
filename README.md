@@ -94,6 +94,10 @@ Use the existing Render service configuration and set backend env vars as shown 
 - Forgot password sends a 6 digit OTP to the user's email through a Vercel worker endpoint because Render free-tier SMTP is blocked.
 - OTPs are hashed before storing in MongoDB, expire after 10 minutes, and allow 5 attempts.
 
+## User-facing design
+
+Administrators can preview and save the site-wide appearance from **Admin > Settings > Website design & animations**. **Classic · Original** retains the existing design, **Studio · Redesigned** applies the refreshed styling across signed-in dashboard pages, and **Midnight Studio** remains available. Saving a preset sets the default for users and visitors.
+
 ## Render Deploy
 
 Use these settings if you create the service manually on Render:

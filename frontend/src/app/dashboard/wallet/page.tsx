@@ -96,10 +96,10 @@ export default function WalletPage() {
       <div className="mb-6 rounded-lg border border-teal-900/10 bg-white p-5 shadow-sm sm:p-6">
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
           <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Wallet center</p>
-            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Wallet</h1>
+            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Your balance, at a glance</p>
+            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">My wallet</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Manage funds, deposit status, and wallet transactions in a clean workspace.
+              Add funds when you’re ready, check deposit updates, and see how you’ve been spending.
             </p>
           </div>
           <div className="rounded-md bg-neutral-950 p-4 text-white">
