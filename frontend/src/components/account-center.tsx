@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, UserRound } from "lucide-react";
 import { ChangePasswordForm, ProfileSettingsForm } from "@/components/change-password-form";
+import { ContentLoading } from "@/components/content-loading";
 import { apiJson } from "@/lib/client-api";
 import { roleLabel, UserRole } from "@/lib/roles";
 
@@ -62,12 +63,8 @@ export function AccountCenter() {
 
   if (loading) {
     return (
-      <div className="grid gap-4" role="status" aria-label="Loading account details">
-        <div className="h-36 animate-pulse rounded-[1.7rem] bg-neutral-200" />
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[0, 1, 2, 3].map((item) => <div key={item} className="h-24 animate-pulse rounded-2xl bg-neutral-200" />)}
-        </div>
-        <p className="text-center text-sm text-neutral-500">Loading your account details...</p>
+      <div className="grid min-h-72 place-items-center">
+        <ContentLoading label="Loading your account details..." />
       </div>
     );
   }

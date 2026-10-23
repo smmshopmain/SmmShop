@@ -27,6 +27,7 @@ import {
 import { SiAudiomack, SiKuaishou, SiOdnoklassniki, SiRumble, SiShazam, SiTidal } from "react-icons/si";
 import { WARNING_EN, WARNING_HI } from "@/lib/constants";
 import { SERVICE_PLATFORMS, type ServicePlatformId } from "@/lib/service-platforms";
+import { ContentLoading } from "@/components/content-loading";
 
 type ServiceItem = {
   _id: string;
@@ -337,7 +338,9 @@ export function ServiceBrowser() {
           })}
           {services.length === 0 && (
             <div className="grid min-h-64 place-items-center px-6 py-12 text-center">
-              <span className="grid size-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-400"><Search className="size-5" /></span>
+              {serviceLoading
+                ? <ContentLoading compact label="Loading services..." />
+                : <span className="grid size-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-400"><Search className="size-5" /></span>}
               <span className="mt-3 text-sm font-semibold text-neutral-800">{serviceLoading ? "Loading service catalog..." : "No matching services"}</span>
               <span className="mt-1 max-w-sm text-xs leading-5 text-neutral-500">{serviceLoading ? "Fetching the latest options for you." : message || "Try another platform or clear your search and filters."}</span>
             </div>

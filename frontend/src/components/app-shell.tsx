@@ -30,6 +30,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiJson, apiUrl } from "@/lib/client-api";
 import { isAdminRole } from "@/lib/roles";
+import { ContentLoading } from "@/components/content-loading";
 
 type NavItem = {
   href: Route;
@@ -65,7 +66,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/analytics", label: "Analytics", icon: LineChart },
   { href: "/admin/errors" as Route, label: "Errors", icon: AlertTriangle },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
-  { href: "/admin/settings#animation-settings" as Route, label: "Design & motion", icon: Palette },
+  { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Palette },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -105,8 +106,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <main className="grid min-h-screen place-items-center px-4" role="status">
-        <p className="animate-pulse text-sm font-medium text-neutral-600">Loading your workspace...</p>
+      <main className="grid min-h-screen place-items-center px-4">
+        <ContentLoading label="Loading your workspace..." />
       </main>
     );
   }

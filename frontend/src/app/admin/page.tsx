@@ -96,8 +96,8 @@ export default function AdminPage() {
         <Link href="/admin/settings#animation-settings" className="workspace-link surface-card flex items-center gap-4 p-5">
           <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-violet-50 text-violet-700"><Sparkles className="size-5" /></span>
           <span className="min-w-0 flex-1">
-            <span className="block font-bold text-neutral-950">Customize website</span>
-            <span className="mt-1 block text-sm text-neutral-600">Apply a design and tune site animations.</span>
+            <span className="block font-bold text-neutral-950">Animations & appearance</span>
+            <span className="mt-1 block text-sm text-neutral-600">Choose from 20 themed loaders, set random or specific mode, and manage site motion.</span>
           </span>
           <ArrowRight className="size-4 text-neutral-400" />
         </Link>

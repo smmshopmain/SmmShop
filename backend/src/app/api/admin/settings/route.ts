@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib/loading-animations";
 import { getSettings, Setting } from "@/models";
 
 const schema = z.object({
@@ -18,6 +19,30 @@ const appearanceSchema = z.object({
   hoverEnabled: z.boolean(),
   animationColor: z.string().regex(/^#[\da-fA-F]{6}$/),
   animationSpeed: z.number().min(0.5).max(2),
+  loadingAnimationsEnabled: z.boolean().default(true),
+  loadingAnimationMode: z.enum(["random", "specific"]).default("random"),
+  selectedLoadingAnimation: z.enum(LOADING_ANIMATION_IDS).default(LOADING_ANIMATION_IDS[0]),
+  enabledLoadingAnimations: z.array(z.enum(LOADING_ANIMATION_IDS)).default(DEFAULT_ENABLED_LOADING_ANIMATIONS),
+}).superRefine((appearance, context) => {
+  if (appearance.animationsEnabled && appearance.loadingAnimationsEnabled && appearance.enabledLoadingAnimations.length === 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["enabledLoadingAnimations"],
+      message: "Enable at least one loading animation, or turn loading animations off.",
+    });
+  }
+  if (
+    appearance.animationsEnabled
+    && appearance.loadingAnimationsEnabled
+    && appearance.loadingAnimationMode === "specific"
+    && !appearance.enabledLoadingAnimations.includes(appearance.selectedLoadingAnimation)
+  ) {
+    context.addIssue({
+      code: "custom",
+      path: ["selectedLoadingAnimation"],
+      message: "The selected loading animation must be enabled.",
+    });
+  }
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {

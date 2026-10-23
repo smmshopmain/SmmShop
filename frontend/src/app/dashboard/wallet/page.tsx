@@ -5,6 +5,7 @@ import { DepositForm } from "@/components/deposit-form";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { LiveWalletBalance } from "@/components/wallet-balance";
+import { ContentLoading } from "@/components/content-loading";
 import { apiJson } from "@/lib/client-api";
 import { ArrowDownToLine, ArrowUpRight, History, ShieldCheck, WalletCards } from "lucide-react";
 
@@ -161,8 +162,8 @@ export default function WalletPage() {
       </div>
 
       {isLoading ? (
-        <div className="rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
-          <p className="text-center text-sm text-neutral-500">Loading wallet history…</p>
+        <div className="wallet-history mt-6 grid min-h-40 place-items-center rounded-lg border border-neutral-200 bg-white p-8 shadow-sm">
+          <ContentLoading label="Loading wallet history..." />
         </div>
       ) : (
         <section className="wallet-history mt-6 rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">

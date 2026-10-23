@@ -96,7 +96,7 @@ Use the existing Render service configuration and set backend env vars as shown 
 
 ## User-facing design
 
-Administrators can preview and save the site-wide appearance from **Admin > Settings > Website design & animations**. **Classic · Original** keeps the original light theme, **Studio · Redesigned** applies the redesigned navigation and page layouts across the signed-in dashboard (services, orders, wallet, support, refills, referrals, notifications, and profile), and **Midnight Studio** applies the dark workspace theme. Saving a preset sets the default for users and visitors.
+Administrators can manage the site-wide appearance and loading animations from **Admin > Animations** or **Admin > Settings**. Choose **Classic · Original**, **Studio · Redesigned**, or **Midnight Studio**. Studio applies redesigned navigation and page layouts across the signed-in dashboard (services, orders, wallet, support, refills, referrals, notifications, and profile). Admins can enable or disable loading animations, choose a specific animation or random rotation, and individually enable or disable each of 20 themed animations. The reduced-motion browser preference is always respected.
 
 ## Render Deploy
 
@@ -121,7 +121,7 @@ Open Admin > Settings, then scroll to **Payment details shown to users**. Add th
 
 ### Website Design and Animation Controls
 
-Admins can open **Admin > Design & motion** (or Admin > Settings) to preview and apply **Classic · Original**, **Studio · Redesigned**, or **Midnight Studio**. The selected design is saved site-wide for visitors and logged-in user/admin panels. Admins can also enable or disable website motion, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
+Admins can open **Admin > Animations** (or Admin > Settings) to manage 20 content-themed loaders. Enable or disable loading animations, choose a specific animation or random rotation from the individually enabled set, preview the selection, and save it site-wide. The same section lets admins apply **Classic · Original**, **Studio · Redesigned**, or **Midnight Studio**, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
 
 ### Content Copy Deterrents
 

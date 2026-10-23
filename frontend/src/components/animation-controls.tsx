@@ -5,10 +5,12 @@ import { Activity, Check, Sparkles, Wind } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 import { AdminSection } from "@/components/admin-ui";
 import {
-  DEFAULT_MOTION_SETTINGS,
+  normalizeMotionSettings,
   type MotionSettings,
   useMotionSettings,
 } from "@/components/motion-settings-provider";
+import { ContentLoading } from "@/components/content-loading";
+import { LOADING_ANIMATIONS } from "@/lib/loading-animations";
 
 function Toggle({
   checked,
@@ -42,10 +44,7 @@ function Toggle({
 
 export function AnimationControls({ initialSettings }: { initialSettings: MotionSettings }) {
   const { setSettings: setGlobalSettings } = useMotionSettings();
-  const [settings, setSettings] = useState<MotionSettings>({
-    ...DEFAULT_MOTION_SETTINGS,
-    ...initialSettings,
-  });
+  const [settings, setSettings] = useState<MotionSettings>(() => normalizeMotionSettings(initialSettings));
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -85,8 +84,8 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
 
   return (
     <AdminSection
-      title="Website design & animations"
-      description="Choose the design that becomes the site-wide default, then tune its motion, colour, and speed."
+      title="Animations & appearance"
+      description="Manage themed loading animations, choose a site-wide design, and tune motion, colour, and speed."
       icon={Sparkles}
     >
       <form onSubmit={save} className="grid gap-5 p-4 sm:p-6">
@@ -178,6 +177,102 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
             description="Small transitions on buttons, cards, and navigation items."
           />
         </div>
+
+        <section className="grid gap-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5" aria-labelledby="loading-animation-title">
+          <div>
+            <h3 id="loading-animation-title" className="text-sm font-bold text-slate-900">Loading animations</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-500">
+              Choose one animation for every loading state, or rotate randomly through the animations you enable below.
+            </p>
+          </div>
+          <Toggle
+            checked={settings.loadingAnimationsEnabled}
+            disabled={!settings.animationsEnabled}
+            onChange={(loadingAnimationsEnabled) => update({ loadingAnimationsEnabled })}
+            label="Enable loading animations"
+            description="Show themed animated loaders while services, orders, wallet, and account content is loading."
+          />
+          <fieldset disabled={!settings.animationsEnabled || !settings.loadingAnimationsEnabled} className="grid gap-3 sm:grid-cols-2">
+            <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">Animation mode</legend>
+            {([
+              { id: "random", title: "Random rotation", description: "Pick a different enabled animation whenever a loader appears." },
+              { id: "specific", title: "Use one animation", description: "Use the chosen animation consistently for every loader." },
+            ] as const).map((mode) => (
+              <label key={mode.id} className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 p-4">
+                <input
+                  type="radio"
+                  name="loadingAnimationMode"
+                  checked={settings.loadingAnimationMode === mode.id}
+                  onChange={() => update({ loadingAnimationMode: mode.id })}
+                  className="mt-1 size-4 accent-teal-700"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">{mode.title}</span>
+                  <span className="mt-1 block text-xs leading-5 text-slate-500">{mode.description}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+              Animations enabled ({settings.enabledLoadingAnimations.length}/{LOADING_ANIMATIONS.length})
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+              {LOADING_ANIMATIONS.map(({ id, label, Icon }) => {
+                const enabled = settings.enabledLoadingAnimations.includes(id);
+                const selected = settings.selectedLoadingAnimation === id;
+                return (
+                  <div key={id} className={`flex min-w-0 items-center gap-2 rounded-xl border p-2.5 ${selected && settings.loadingAnimationMode === "specific" ? "border-teal-400 bg-teal-50" : "border-slate-200"}`}>
+                    <input
+                      type="checkbox"
+                      checked={enabled}
+                      disabled={!settings.animationsEnabled || !settings.loadingAnimationsEnabled}
+                      onChange={(event) => {
+                        const nextEnabled = event.target.checked;
+                        const enabledLoadingAnimations = nextEnabled
+                          ? [...settings.enabledLoadingAnimations, id]
+                          : settings.enabledLoadingAnimations.filter((animationId) => animationId !== id);
+                        if (!enabledLoadingAnimations.length) {
+                          setError("Enable at least one loading animation, or turn loading animations off.");
+                          return;
+                        }
+                        const selectedLoadingAnimation = enabledLoadingAnimations.includes(settings.selectedLoadingAnimation)
+                          ? settings.selectedLoadingAnimation
+                          : enabledLoadingAnimations[0];
+                        update({ enabledLoadingAnimations, selectedLoadingAnimation });
+                      }}
+                      aria-label={`Enable ${label}`}
+                      className="size-4 shrink-0 accent-teal-700"
+                    />
+                    <Icon className="size-4 shrink-0 text-teal-700" aria-hidden="true" />
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-slate-800">{label}</span>
+                    {settings.loadingAnimationMode === "specific" && (
+                      <input
+                        type="radio"
+                        name="selectedLoadingAnimation"
+                        checked={selected}
+                        disabled={!enabled || !settings.animationsEnabled || !settings.loadingAnimationsEnabled}
+                        onChange={() => update({ selectedLoadingAnimation: id })}
+                        aria-label={`Use ${label}`}
+                        className="size-4 shrink-0 accent-teal-700"
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="flex flex-col gap-3 rounded-xl bg-slate-950 p-4 text-white sm:flex-row sm:items-center">
+            <ContentLoading
+              compact
+              label="Loading preview"
+              animationId={settings.loadingAnimationMode === "specific" ? settings.selectedLoadingAnimation : undefined}
+            />
+            <p className="text-xs leading-5 text-slate-300">
+              Preview uses the selected animation or a random enabled animation. Site motion settings and reduced-motion preferences are respected.
+            </p>
+          </div>
+        </section>
 
         <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2 sm:p-5">
           <label className="grid gap-2 text-sm font-semibold text-slate-800">

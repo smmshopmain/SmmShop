@@ -5,6 +5,7 @@ import {
   ORDER_STATUSES,
   REFILL_STATUSES,
 } from "@/lib/constants";
+import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib/loading-animations";
 import { generateReferralCode } from "@/lib/referral-code";
 
 const money = { type: Number, default: 0, min: 0 };
@@ -329,6 +330,10 @@ export type PlatformSettings = {
     hoverEnabled: boolean;
     animationColor: string;
     animationSpeed: number;
+    loadingAnimationsEnabled: boolean;
+    loadingAnimationMode: "random" | "specific";
+    selectedLoadingAnimation: (typeof LOADING_ANIMATION_IDS)[number];
+    enabledLoadingAnimations: Array<(typeof LOADING_ANIMATION_IDS)[number]>;
   };
   pricing: {
     globalMarginPercent: number;
@@ -370,6 +375,10 @@ export async function getSettings() {
       hoverEnabled: true,
       animationColor: "#14b8a6",
       animationSpeed: 1,
+      loadingAnimationsEnabled: true,
+      loadingAnimationMode: "random",
+      selectedLoadingAnimation: LOADING_ANIMATION_IDS[0],
+      enabledLoadingAnimations: DEFAULT_ENABLED_LOADING_ANIMATIONS,
     },
     pricing: { globalMarginPercent: 20, categoryMargins: {}, serviceMargins: {} },
     deposits: {
