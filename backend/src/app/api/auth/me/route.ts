@@ -23,6 +23,9 @@ export async function GET() {
       role: user.role,
       referralCode: "",
       referralEarnings: 0,
+      walletBalance: 0,
+      createdAt: null,
+      lastLoginAt: null,
     });
   }
 
@@ -48,6 +51,9 @@ export async function GET() {
     role,
     referralCode: dbUser.referralCode ?? "",
     referralEarnings: dbUser.referralEarnings ?? 0,
+    walletBalance: dbUser.walletBalance ?? 0,
+    createdAt: dbUser.createdAt ?? null,
+    lastLoginAt: dbUser.lastLoginAt ?? null,
   });
 }
 
