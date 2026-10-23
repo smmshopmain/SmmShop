@@ -24,16 +24,27 @@ export default async function TicketsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Support center</p>
-        <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Support tickets</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Create tickets for payment, order, refill, and account issues, then track replies here.
-        </p>
-      </div>
-      <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+      <section className="support-command mb-6 grid gap-5 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+        <div>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
+            <Headphones className="size-3.5" /> Support desk
+          </p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-neutral-950">We’re here to help.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
+            Open a conversation about payments, orders, refills, or your account and follow every reply here.
+          </p>
+        </div>
+        <div className="support-promise rounded-2xl border border-teal-100 bg-teal-50/70 p-4">
+          <span className="grid size-9 place-items-center rounded-xl bg-white text-teal-800 shadow-sm">
+            <MessageSquareText className="size-[18px]" />
+          </span>
+          <p className="mt-3 text-xs font-bold text-neutral-900">All in one conversation</p>
+          <p className="mt-1 text-[11px] leading-5 text-neutral-600">Keep your issue details and support replies together for faster follow-up.</p>
+        </div>
+      </section>
+      <div className="support-workspace grid gap-6 xl:grid-cols-[minmax(340px,0.78fr)_minmax(0,1.22fr)]">
         <TicketForm />
-        <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <section className="support-conversations rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
             <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
               <Headphones className="size-5" />

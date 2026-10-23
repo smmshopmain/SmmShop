@@ -6,7 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { LiveWalletBalance } from "@/components/wallet-balance";
 import { apiJson } from "@/lib/client-api";
-import { ArrowDownToLine, History, WalletCards } from "lucide-react";
+import { ArrowDownToLine, ArrowUpRight, History, ShieldCheck, WalletCards } from "lucide-react";
 
 type PaymentDetails = {
   qrImageUrl: string;
@@ -93,31 +93,41 @@ export default function WalletPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 rounded-lg border border-teal-900/10 bg-white p-5 shadow-sm sm:p-6">
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Your balance, at a glance</p>
-            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">My wallet</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Add funds when you’re ready, check deposit updates, and see how you’ve been spending.
+      <section className="wallet-command mb-6 overflow-hidden rounded-[1.8rem] bg-slate-950 text-white shadow-xl shadow-slate-900/10">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div className="wallet-intro p-5 sm:p-8">
+            <p className="inline-flex items-center gap-2 rounded-full border border-teal-200/20 bg-teal-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.17em] text-teal-100">
+              <WalletCards className="size-3.5" /> Wallet center
             </p>
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">Your funds, in focus.</h1>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
+              Add funds securely, keep tabs on pending deposits, and review every wallet movement.
+            </p>
+            <div className="mt-5 inline-flex items-center gap-2 text-xs font-medium text-teal-100">
+              <ShieldCheck className="size-4" /> Deposit requests are reviewed before wallet credit
+            </div>
           </div>
-          <div className="rounded-md bg-neutral-950 p-4 text-white">
-            <p className="text-sm text-neutral-300">Available balance</p>
-            <p className="mt-2 text-3xl font-bold">
+          <div className="wallet-balance-card relative flex flex-col justify-between overflow-hidden border-t border-white/10 bg-gradient-to-br from-teal-800 to-cyan-900 p-5 sm:p-7 lg:border-l lg:border-t-0">
+            <span className="pointer-events-none absolute -right-8 -top-10 size-40 rounded-full border border-white/15 shadow-[0_0_0_22px_rgba(255,255,255,0.035),0_0_0_44px_rgba(255,255,255,0.025)]" />
+            <div className="relative flex items-center justify-between text-xs font-semibold text-teal-50/80">
+              <span>Available balance</span>
+              <ArrowUpRight className="size-4" />
+            </div>
+            <p className="relative mt-5 text-4xl font-extrabold tracking-tight">
               <LiveWalletBalance initialBalance={balance} />
             </p>
+            <p className="relative mt-2 text-xs text-teal-50/70">Ready to use for your next campaign</p>
           </div>
         </div>
-      </div>
+      </section>
       {loadError && (
         <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Some wallet details could not be loaded right now. Please try again later or contact support.
         </div>
       )}
-      <div className="grid gap-6 xl:grid-cols-[420px_1fr]">
+      <div className="wallet-workspace grid gap-6 xl:grid-cols-[minmax(340px,0.82fr)_minmax(0,1.18fr)]">
         <DepositForm payment={payment} minimumWalletAddAmount={minimumWalletAddAmount} />
-        <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <section className="wallet-deposits rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
             <span className="grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
               <ArrowDownToLine className="size-5" />
@@ -155,7 +165,7 @@ export default function WalletPage() {
           <p className="text-center text-sm text-neutral-500">Loading wallet history…</p>
         </div>
       ) : (
-        <section className="mt-6 rounded-lg border border-neutral-200 bg-white shadow-sm">
+        <section className="wallet-history mt-6 rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
           <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
             <span className="grid size-10 place-items-center rounded-md bg-neutral-100 text-neutral-700">
               <History className="size-5" />

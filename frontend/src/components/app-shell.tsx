@@ -24,6 +24,7 @@ import {
   Users,
   Wallet,
   X,
+  Search,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -33,7 +34,7 @@ import { isAdminRole } from "@/lib/roles";
 type NavItem = {
   href: Route;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 };
 
 const userLinks: NavItem[] = [
@@ -71,7 +72,7 @@ const adminLinks: NavItem[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string; role?: string } | null>(null);
+  const [user, setUser] = useState<{ email?: string; name?: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -114,6 +115,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const isAdmin = isAdminRole(user?.role);
   const links = isAdmin ? adminLinks : userLinks;
+  const navigationGroups = isAdmin
+    ? [{ label: "Workspace", items: links }]
+    : [
+        { label: "Workspace", items: links.slice(0, 2) },
+        { label: "Manage", items: links.slice(2, 6) },
+        { label: "Account", items: links.slice(6) },
+      ];
   const primaryLinks = links.filter((item) =>
     (isAdmin
       ? ["/admin", "/admin/orders", "/admin/deposits", "/admin/users"]
@@ -143,47 +151,102 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell min-h-screen">
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
-        <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex items-center gap-3 px-2">
-          <span className="brand-mark grid size-10 place-items-center rounded-xl text-sm font-bold text-white">
-            SP
-          </span>
-          <span>
-            <span className="block text-sm font-semibold">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
-            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : "Your growth, made simple"}</span>
-          </span>
-        </Link>
-        <nav className="mt-8 space-y-1 pb-6">
-          {links.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                isActive(item.href)
-                  ? "bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-700/10"
-                  : "text-neutral-600 hover:translate-x-0.5 hover:bg-neutral-100/80 hover:text-neutral-950"
-              }`}
-            >
-              <item.icon className="size-4" />
-              {item.label}
+        <div className="flex h-full flex-col">
+          <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="app-brand flex items-center gap-3 px-2 py-1">
+            <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-extrabold tracking-tight text-white">
+              SP
+            </span>
+            <span>
+              <span className="block text-sm font-bold tracking-tight">{isAdmin ? "Admin Panel" : "SMM Studio"}</span>
+              <span className="mt-0.5 block text-[11px] font-medium text-neutral-500">
+                {isAdmin ? "Operations console" : "Your growth workspace"}
+              </span>
+            </span>
+          </Link>
+          <div className="mt-7 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-sky-50 p-3">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-teal-800">
+              <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
+              Workspace active
+            </div>
+            <p className="mt-2 truncate text-xs text-neutral-600">{user?.name || user?.email || "Your account"}</p>
+          </div>
+          <nav className="mt-7 flex-1 space-y-6 pb-6">
+            {navigationGroups.map((group) => (
+              <div key={group.label}>
+                <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+                  {group.label}
+                </p>
+                <div className="space-y-1">
+                  {group.items.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`app-nav-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
+                        isActive(item.href)
+                          ? "bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-700/10"
+                          : "text-neutral-600 hover:translate-x-0.5 hover:bg-neutral-100/80 hover:text-neutral-950"
+                      }`}
+                    >
+                      <item.icon className="size-[17px]" strokeWidth={1.8} />
+                      {item.label}
+                      {item.href === "/dashboard/services" && (
+                        <span className="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800">New</span>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </nav>
+          {!isAdmin && (
+            <Link href="/dashboard/tickets" className="app-support-card mb-4 rounded-2xl bg-slate-950 p-4 text-white">
+              <span className="grid size-9 place-items-center rounded-xl bg-white/10 text-teal-200">
+                <CircleHelp className="size-4" />
+              </span>
+              <span className="mt-3 block text-xs font-bold">Need a hand?</span>
+              <span className="mt-1 block text-[11px] leading-5 text-slate-300">Our support team is one message away.</span>
             </Link>
-          ))}
-        </nav>
+          )}
+          <div className="border-t border-neutral-200 pt-3 text-[10px] font-medium text-neutral-400">
+            SMM Studio <span className="float-right">v1.0</span>
+          </div>
+        </div>
       </aside>
 
       <div className="min-w-0 lg:pl-64">
-        <header className="app-header sticky top-0 z-20 border-b px-3 py-3 sm:px-4">
-          <div className="mx-auto max-w-7xl">
+        <header className="app-header sticky top-0 z-20 border-b px-3 py-3 sm:px-6">
+          <div className="mx-auto max-w-[1440px]">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
                 <span className="brand-mark grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold text-white">SP</span>
                 <span className="truncate">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
               </Link>
-              <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
-                <span className="hidden max-w-72 truncate rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-600 sm:block">
-                  {loading ? "Loading..." : user?.email ?? ""}
+              <div className="hidden min-w-0 items-center gap-2 text-xs font-medium text-neutral-500 lg:flex">
+                <span>Workspace</span>
+                <span className="text-neutral-300">/</span>
+                <span className="truncate font-semibold text-neutral-800">
+                  {links.find((item) => isActive(item.href))?.label ?? "Overview"}
                 </span>
+              </div>
+              <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
+                {!isAdmin && (
+                  <Link href="/dashboard/services" className="hidden items-center gap-2 rounded-xl border border-neutral-200 bg-white px-3 py-2 text-xs font-semibold text-neutral-600 shadow-sm transition hover:border-teal-200 hover:text-teal-800 md:inline-flex">
+                    <Search className="size-3.5" />
+                    Find a service
+                    <kbd className="ml-2 rounded-md bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500">⌘ K</kbd>
+                  </Link>
+                )}
+                <Link href={isAdmin ? "/admin" : "/dashboard/profile"} className="hidden min-w-0 items-center gap-2 rounded-xl px-2 py-1.5 transition hover:bg-neutral-100 sm:flex">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-gradient-to-br from-teal-600 to-cyan-700 text-xs font-bold uppercase text-white">
+                    {(user?.name || user?.email || "U").slice(0, 1)}
+                  </span>
+                  <span className="hidden min-w-0 text-left xl:block">
+                    <span className="block max-w-44 truncate text-xs font-semibold text-neutral-800">{user?.name || "Account"}</span>
+                    <span className="block max-w-44 truncate text-[10px] text-neutral-500">{user?.email}</span>
+                  </span>
+                </Link>
                 <form onSubmit={logout} className="shrink-0">
-                  <button className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/80 px-3 py-2 text-sm font-semibold shadow-sm hover:border-neutral-300 hover:bg-white">
+                  <button aria-label="Logout" className="inline-flex items-center gap-2 rounded-xl border border-neutral-200 bg-white/80 px-2.5 py-2 text-sm font-semibold shadow-sm hover:border-neutral-300 hover:bg-white sm:px-3">
                     <LogOut className="size-4" />
                     <span className="hidden sm:inline">Logout</span>
                   </button>

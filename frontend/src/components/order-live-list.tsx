@@ -112,7 +112,7 @@ export function OrderLiveList({
   }, [orders, q, status]);
 
   return (
-    <section className="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
+    <section className="order-list-panel overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm text-neutral-600">
           <Wifi className="size-4 text-teal-700" />
@@ -149,7 +149,7 @@ export function OrderLiveList({
         {visibleOrders.map((order) => (
           <div
             key={String(order._id)}
-            className="grid gap-4 p-4 text-sm xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px] xl:items-center"
+            className="order-list-row grid gap-4 p-4 text-sm xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px] xl:items-center"
           >
             <div className="min-w-0">
               <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>

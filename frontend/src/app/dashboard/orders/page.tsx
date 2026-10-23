@@ -1,7 +1,7 @@
 import { AppShell } from "@/components/app-shell";
 import { OrderLiveList, type LiveOrder } from "@/components/order-live-list";
 import { serverApiJson } from "@/lib/server-api";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { ArrowUpRight, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 
 export default async function OrdersPage({ searchParams }: { searchParams?: Promise<{ q?: string; status?: string }> }) {
   const params = await searchParams;
@@ -65,16 +65,30 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
 
   return (
     <AppShell>
-      <div className="mb-6 overflow-hidden rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Order center</p>
-            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Order history</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Link, provider order ID, quantity, status, and refill/cancel actions in one clean view.
+      <section className="orders-command mb-6 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white shadow-sm">
+        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(450px,1.15fr)]">
+          <div className="orders-intro p-5 sm:p-7">
+            <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
+              <Sparkles className="size-3.5" /> Campaign control
             </p>
-        </div>
-          <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_170px_auto]" action="/dashboard/orders">
+            <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-950 sm:text-3xl">Order activity</h1>
+            <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600">
+              Follow delivery progress, check provider updates, and manage eligible orders from one place.
+            </p>
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900">
+              <span className="size-2 rounded-full bg-emerald-500" />
+              Live status updates every 15 seconds
+            </div>
+          </div>
+          <div className="orders-filter-wrap border-t border-neutral-200 bg-slate-50/80 p-5 sm:p-7 lg:border-l lg:border-t-0">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-bold text-neutral-900">Find an order</p>
+                <p className="mt-0.5 text-[11px] text-neutral-500">Search by link or order ID, or filter by status.</p>
+              </div>
+              <ArrowUpRight className="size-4 text-teal-700" />
+            </div>
+            <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_150px_auto]" action="/dashboard/orders">
             <label className="relative min-w-0">
               <Search className="pointer-events-none absolute left-3 top-3 size-4 text-neutral-400" />
               <input
@@ -101,8 +115,9 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
               Filter
             </button>
           </form>
+          </div>
         </div>
-      </div>
+      </section>
       <OrderLiveList initialOrders={liveOrders} q={q} status={status} />
     </AppShell>
   );

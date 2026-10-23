@@ -21,14 +21,23 @@ export default async function RefillsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Refill tracking</p>
-        <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Refills</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Track refill requests for eligible completed orders. Status updates appear when the provider returns a refill ID.
-        </p>
-      </div>
-      <section className="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
+      <section className="refills-command mb-6 grid gap-5 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+        <div>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
+            <RefreshCcw className="size-3.5" /> Delivery care
+          </p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-neutral-950">Refill requests</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
+            Track refill requests for eligible completed orders. Status updates appear when the provider returns a refill ID.
+          </p>
+        </div>
+        <div className="rounded-2xl bg-slate-950 px-5 py-4 text-white">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-teal-100">Requests</p>
+          <p className="mt-1 text-2xl font-extrabold">{refills.length}</p>
+          <p className="text-[11px] text-slate-300">in your refill history</p>
+        </div>
+      </section>
+      <section className="refills-list overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
         <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 md:grid md:grid-cols-[minmax(0,1fr)_140px_140px_170px]">
           <span>Order</span>
           <span>Status</span>

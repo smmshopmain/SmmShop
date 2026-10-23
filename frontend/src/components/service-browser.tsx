@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Search, ShoppingCart } from "lucide-react";
+import { BadgeCheck, Filter, Info, Search, ShoppingCart, Sparkles, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import { apiFetch } from "@/lib/client-api";
@@ -198,172 +198,176 @@ export function ServiceBrowser() {
   }
 
   return (
-    <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
-      <section className="min-w-0 overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
-        <div className="border-b border-neutral-200 p-3 sm:p-4">
-          <div className="flex gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-5 md:overflow-visible lg:grid-cols-6">
-            {PLATFORM_OPTIONS.map((item) => {
-              const Icon = item.Icon;
-              const active = platform === item.id;
-              return (
-                <button
-                  key={item.id}
-                  type="button"
-                  title={item.label}
-                  aria-label={item.label}
-                  aria-pressed={active}
-                  onClick={() => {
-                    setPlatform(item.id);
-                    setCategory("");
-                    resetSelection();
-                  }}
-                  className={`flex h-11 w-12 shrink-0 items-center justify-center rounded-md border text-lg transition md:w-auto ${
-                    active
-                      ? "border-teal-700 bg-teal-50 shadow-sm ring-1 ring-teal-700/10"
-                      : "border-neutral-200 bg-white hover:border-teal-300 hover:bg-neutral-50"
-                  }`}
-                >
-                  <Icon className={active ? "text-teal-800" : item.color} />
-                </button>
-              );
-            })}
+    <div className="service-studio grid min-w-0 items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_390px]">
+      <section className="service-catalog min-w-0 overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-sm">
+        <div className="service-catalog-header border-b border-neutral-200 p-4 sm:p-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-teal-800">
+                <span className="grid size-7 place-items-center rounded-lg bg-teal-100"><Sparkles className="size-3.5" /></span>
+                Service library
+              </div>
+              <h2 className="mt-3 text-xl font-bold tracking-tight text-neutral-950 sm:text-2xl">Find the right boost</h2>
+              <p className="mt-1 text-sm text-neutral-500">Compare options, choose a service, then build your order.</p>
+            </div>
+            <div className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
+              <span className={`size-2 rounded-full ${serviceLoading ? "animate-pulse bg-amber-400" : "bg-emerald-500"}`} />
+              {serviceLoading ? "Updating catalog" : `${services.length} services available`}
+            </div>
           </div>
-        </div>
-        <div className="grid gap-3 border-b border-neutral-200 p-3 sm:p-4 md:grid-cols-[minmax(0,1fr)_240px]">
-          <label className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3 size-4 text-neutral-400" />
+
+          <label className="service-search relative mt-5 block">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-neutral-400" />
             <input
               value={query}
               onChange={(event) => {
                 setQuery(event.target.value);
                 resetSelection();
               }}
-              placeholder="Search services"
-              className="w-full rounded-md border border-neutral-300 py-2.5 pl-9 pr-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+              placeholder="Search services, categories or keywords..."
+              className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50/80 pl-11 pr-4 text-sm shadow-none focus:bg-white"
             />
+            <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-[10px] font-medium text-neutral-400 sm:block">
+              Search catalog
+            </span>
           </label>
+
+          <div className="mt-5">
+            <div className="mb-2.5 flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-neutral-400">Choose a platform</p>
+              <span className="text-[11px] text-neutral-400">{activePlatform.label}</span>
+            </div>
+            <div className="service-platforms flex gap-2 overflow-x-auto pb-1">
+              {PLATFORM_OPTIONS.map((item) => {
+                const Icon = item.Icon;
+                const active = platform === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setPlatform(item.id);
+                      setCategory("");
+                      resetSelection();
+                    }}
+                    className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl border px-3 text-xs font-semibold transition ${
+                      active
+                        ? "border-teal-700 bg-teal-700 text-white shadow-md shadow-teal-900/15"
+                        : "border-neutral-200 bg-white text-neutral-600 hover:border-teal-300 hover:bg-teal-50/50"
+                    }`}
+                  >
+                    <Icon className={`text-sm ${active ? "text-white" : item.color}`} />
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="service-filter-row flex flex-wrap items-center gap-3 border-b border-neutral-100 bg-neutral-50/65 px-4 py-3 sm:px-6">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+            <Filter className="size-3.5" /> Refine
+          </span>
           <select
             value={category}
             onChange={(event) => {
               setCategory(event.target.value);
               resetSelection();
             }}
-            className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+            className="h-9 min-w-44 rounded-xl border border-neutral-200 bg-white px-3 text-xs font-semibold text-neutral-700 shadow-none"
           >
             <option value="">{platform ? `${activePlatform.label} categories` : "All categories"}</option>
-            {categories.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
+            {categories.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
+          {category && (
+            <button type="button" onClick={() => setCategory("")} className="text-xs font-semibold text-teal-800 hover:underline">
+              Clear filters
+            </button>
+          )}
+          <span className="ml-auto hidden items-center gap-1.5 text-[11px] text-neutral-400 sm:inline-flex">
+            <BadgeCheck className="size-3.5 text-emerald-600" /> Rates shown per 1,000
+          </span>
         </div>
-        <div className="grid gap-4 p-3 sm:p-4">
-          <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-            Service
-            <select
-              value={selected?._id ?? ""}
-              onChange={(event) => {
-                const service = services.find((item) => item._id === event.target.value) ?? null;
-                setSelected(service);
-                setQuantity(service?.min ?? 0);
-                setPromoPreview(null);
-                setMessage("");
-              }}
-              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 text-sm font-normal shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            >
-              <option value="">{services.length ? "Select service" : "No services found"}</option>
-              {services.map((service) => (
-                <option key={service._id} value={service._id}>
-                  {service.name} - Rs.{service.sellingRate}/1k
-                </option>
-              ))}
-            </select>
-          </label>
 
-          <div className="rounded-md border border-neutral-200 bg-neutral-50 p-3 text-sm">
-            <div className="flex items-center gap-2 font-semibold text-neutral-900">
-              <Info className="size-4 text-teal-700" />
-              Description
-            </div>
-            {selected ? (
-              <div className="mt-3 grid gap-2 text-neutral-700 sm:grid-cols-2">
-                <p>
-                  <span className="font-medium text-neutral-950">Category:</span> {selected.category}
-                </p>
-                <p>
-                  <span className="font-medium text-neutral-950">Rate:</span> Rs.{rate}/1000
-                </p>
-                <p>
-                  <span className="font-medium text-neutral-950">Quantity:</span> {selected.min} - {selected.max}
-                </p>
-                <p>
-                  <span className="font-medium text-neutral-950">Refill:</span> {selected.refill ? "Available" : "Not available"}
-                </p>
-              </div>
-            ) : (
-              <p className="mt-3 text-neutral-500">
-                {platform ? `${activePlatform.label} platform services are ready to choose.` : "Choose a platform or search to find services."}
-              </p>
-            )}
-          </div>
-
-          <div className="max-h-[28rem] divide-y divide-neutral-100 overflow-y-auto rounded-md border border-neutral-200">
-            {services.slice(0, 80).map((service) => {
-              const active = selected?._id === service._id;
-              return (
-                <button
-                  key={service._id}
-                  type="button"
-                  onClick={() => {
-                    setSelected(service);
-                    setQuantity(service.min);
-                    setPromoPreview(null);
-                    setMessage("");
-                  }}
-                  className={`grid w-full min-w-0 gap-2 px-3 py-3 text-left transition sm:grid-cols-[minmax(0,1fr)_120px_130px] sm:px-4 ${
-                    active ? "bg-teal-50" : "hover:bg-amber-50"
-                  }`}
-                >
+        <div className="service-list-heading hidden grid-cols-[minmax(0,1fr)_110px_90px] gap-3 px-6 py-3 text-[10px] font-bold uppercase tracking-[0.14em] text-neutral-400 sm:grid">
+          <span>Service details</span><span>Starting at</span><span>Min / max</span>
+        </div>
+        <div className="service-list max-h-[min(66vh,720px)] divide-y divide-neutral-100 overflow-y-auto">
+          {services.slice(0, 80).map((service) => {
+            const active = selected?._id === service._id;
+            const PlatformIcon = activePlatform.Icon;
+            return (
+              <button
+                key={service._id}
+                type="button"
+                onClick={() => {
+                  setSelected(service);
+                  setQuantity(service.min);
+                  setPromoPreview(null);
+                  setMessage("");
+                }}
+                className={`service-row grid w-full min-w-0 items-center gap-3 px-4 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_110px_90px] sm:px-6 ${
+                  active ? "bg-teal-50/80 ring-1 ring-inset ring-teal-200" : "hover:bg-slate-50"
+                }`}
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${active ? "bg-teal-700 text-white" : "bg-neutral-100"}`}>
+                    <PlatformIcon className={active ? "text-lg text-white" : `text-lg ${activePlatform.color}`} />
+                  </span>
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium">{service.name}</span>
-                    <span className="block truncate text-xs text-neutral-500">{service.category}</span>
+                    <span className="block truncate text-[13px] font-bold text-neutral-900">{service.name}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
+                      <span className="truncate">{service.category}</span>
+                      {service.refill && <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">Refill</span>}
+                    </span>
                   </span>
-                  <span className="text-sm font-semibold">Rs.{service.sellingRate}/1k</span>
-                  <span className="text-xs text-neutral-500">
-                    {service.min} - {service.max}
-                  </span>
-                </button>
-              );
-            })}
-            {services.length === 0 && (
-              <p className="p-6 text-sm text-neutral-500">
-                {serviceLoading ? "Loading services..." : message || "No services found."}
-              </p>
-            )}
-          </div>
+                </span>
+                <span className="flex items-center justify-between gap-2 sm:block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 sm:hidden">Rate</span>
+                  <span className="text-xs font-bold text-neutral-900">Rs.{service.sellingRate}<span className="font-medium text-neutral-400"> / 1k</span></span>
+                </span>
+                <span className="flex items-center justify-between gap-2 sm:block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 sm:hidden">Quantity</span>
+                  <span className="text-xs font-semibold text-neutral-600">{service.min} / {service.max}</span>
+                </span>
+              </button>
+            );
+          })}
+          {services.length === 0 && (
+            <div className="grid min-h-64 place-items-center px-6 py-12 text-center">
+              <span className="grid size-12 place-items-center rounded-2xl bg-neutral-100 text-neutral-400"><Search className="size-5" /></span>
+              <span className="mt-3 text-sm font-semibold text-neutral-800">{serviceLoading ? "Loading service catalog..." : "No matching services"}</span>
+              <span className="mt-1 max-w-sm text-xs leading-5 text-neutral-500">{serviceLoading ? "Fetching the latest options for you." : message || "Try another platform or clear your search and filters."}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex items-center justify-between gap-3 border-t border-neutral-100 px-4 py-3 text-[11px] text-neutral-400 sm:px-6">
+          <span>Showing {Math.min(services.length, 80)} of {services.length} services</span>
+          <span>Catalog updates automatically</span>
         </div>
       </section>
 
-      <section className="min-w-0 rounded-md border border-neutral-200 bg-white p-3 shadow-sm sm:p-4 xl:sticky xl:top-20">
-        <div className="flex items-center gap-2">
-          <ShoppingCart className="size-5 text-teal-700" />
-          <h2 className="text-lg font-semibold">Place order</h2>
+      <aside className="order-builder min-w-0 overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-lg shadow-slate-900/5 2xl:sticky 2xl:top-24">
+        <div className="order-builder-header relative overflow-hidden bg-slate-950 p-5 text-white sm:p-6">
+          <div className="pointer-events-none absolute -right-6 -top-10 size-36 rounded-full border border-white/10 bg-teal-400/10 shadow-[0_0_0_24px_rgba(255,255,255,0.025),0_0_0_48px_rgba(255,255,255,0.02)]" />
+          <div className="relative flex items-center justify-between gap-3">
+            <span className="grid size-11 place-items-center rounded-2xl bg-teal-400/15 text-teal-200"><ShoppingCart className="size-5" /></span>
+            <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-300">Order builder</span>
+          </div>
+          <h2 className="relative mt-4 text-xl font-bold tracking-tight">Create your order</h2>
+          <p className="relative mt-1 text-xs leading-5 text-slate-300">
+            {selected ? selected.name : "Choose any service to get started."}
+          </p>
         </div>
-        <p className="mt-2 break-words text-sm text-neutral-600">
-          {selected ? selected.name : "Select a service from the list to start."}
-        </p>
-        <form onSubmit={order} className="mt-5 grid gap-4">
-          <label className="grid gap-2 text-sm font-medium">
-            Link
-            <input
-              name="link"
-              type="url"
-              required
-              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
+
+        <form onSubmit={order} className="grid gap-4 p-4 sm:p-5">
+          <label className="grid gap-1.5 text-xs font-bold text-neutral-700">
+            Target link
+            <input name="link" type="url" required placeholder="https://..." className="h-11 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50/60 px-3 text-sm font-normal shadow-none focus:bg-white" />
           </label>
-          <label className="grid gap-2 text-sm font-medium">
+          <label className="grid gap-1.5 text-xs font-bold text-neutral-700">
             Quantity
             <input
               name="quantity"
@@ -376,63 +380,68 @@ export function ServiceBrowser() {
                 setPromoPreview(null);
               }}
               required
-              className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+              placeholder={selected ? `${selected.min} – ${selected.max}` : "Select a service first"}
+              className="h-11 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50/60 px-3 text-sm font-normal shadow-none focus:bg-white"
             />
           </label>
-          <div className="grid gap-2 text-sm font-medium">
-            Promo code
-            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          {selected && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-neutral-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Rate / 1k</p>
+                <p className="mt-1 text-sm font-bold text-neutral-800">Rs.{rate}</p>
+              </div>
+              <div className="rounded-xl bg-neutral-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Delivery range</p>
+                <p className="mt-1 text-sm font-bold text-neutral-800">{selected.min}–{selected.max}</p>
+              </div>
+            </div>
+          )}
+          <div className="grid gap-1.5 text-xs font-bold text-neutral-700">
+            Promo code <span className="text-[10px] font-medium text-neutral-400">Optional discount</span>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
               <input
                 value={promoCode}
                 onChange={(event) => {
                   setPromoCode(event.target.value);
                   setPromoPreview(null);
                 }}
-                className="min-w-0 rounded-md border border-neutral-300 px-3 py-2.5 shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+                placeholder="Enter code"
+                className="h-10 min-w-0 rounded-xl border border-neutral-200 bg-neutral-50/60 px-3 text-sm font-normal shadow-none focus:bg-white"
               />
-              <button
-                type="button"
-                onClick={applyPromo}
-                disabled={!selected || loading}
-                className="rounded-md border border-teal-700 px-4 py-2.5 text-sm font-semibold text-teal-800 hover:bg-teal-50 disabled:opacity-60"
-              >
+              <button type="button" onClick={applyPromo} disabled={!selected || loading} className="rounded-xl border border-neutral-200 px-3 text-xs font-bold text-teal-800 transition hover:bg-teal-50 disabled:opacity-50">
                 Apply
               </button>
             </div>
           </div>
-          <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-            <p>{WARNING_EN}</p>
-            <p className="mt-2">{WARNING_HI}</p>
-            <label className="mt-3 flex gap-2 font-medium">
-              <input name="warningAccepted" type="checkbox" required className="mt-1" /> I accept this warning.
+          <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3">
+            <div className="flex gap-2">
+              <Info className="mt-0.5 size-4 shrink-0 text-amber-700" />
+              <div className="text-[10px] leading-4 text-amber-900">
+                <p className="font-semibold">{WARNING_EN}</p>
+                <p className="mt-1 text-amber-800">{WARNING_HI}</p>
+              </div>
+            </div>
+            <label className="mt-2 flex items-start gap-2 text-[11px] font-semibold text-amber-950">
+              <input name="warningAccepted" type="checkbox" required className="mt-0.5 size-3.5 accent-amber-700" />
+              I understand and accept this notice.
             </label>
           </div>
-          <p className="text-sm text-neutral-600">Selected rate: Rs.{rate} per 1000</p>
-          <div className="rounded-md bg-neutral-50 p-3 text-sm">
-            <div className="flex justify-between gap-3">
-              <span>Estimated total</span>
-              <strong>Rs.{estimatedTotal}</strong>
-            </div>
-            {promoPreview && (
-              <div className="mt-2 flex justify-between gap-3 text-teal-800">
-                <span>Promo discount ({promoPreview.code})</span>
-                <strong>- Rs.{promoPreview.discount.toFixed(2)}</strong>
-              </div>
-            )}
-            <div className="mt-2 flex justify-between gap-3 border-t border-neutral-200 pt-2">
-              <span>Final total</span>
-              <strong>Rs.{finalTotal}</strong>
+          <div className="rounded-2xl bg-neutral-50 p-3.5 text-xs">
+            <div className="flex justify-between gap-3 text-neutral-500"><span>Subtotal</span><strong className="text-neutral-800">Rs.{estimatedTotal}</strong></div>
+            {promoPreview && <div className="mt-2 flex justify-between gap-3 text-emerald-700"><span>Promo · {promoPreview.code}</span><strong>− Rs.{promoPreview.discount.toFixed(2)}</strong></div>}
+            <div className="mt-3 flex items-end justify-between gap-3 border-t border-neutral-200 pt-3">
+              <span className="font-semibold text-neutral-600">Total</span>
+              <strong className="text-xl font-extrabold tracking-tight text-neutral-950">Rs.{finalTotal}</strong>
             </div>
           </div>
-          {message && <p className="rounded-md bg-neutral-100 px-3 py-2 text-sm">{message}</p>}
-          <button
-            disabled={!selected || loading}
-            className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60"
-          >
-            {loading ? "Submitting..." : "Submit order"}
+          {message && <p role="status" className="rounded-xl bg-neutral-100 px-3 py-2.5 text-xs font-medium text-neutral-700">{message}</p>}
+          <button disabled={!selected || loading} className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white shadow-lg shadow-teal-900/15 transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-50">
+            <TrendingUp className="size-4" />
+            {loading ? "Submitting..." : "Place order"}
           </button>
+          <p className="text-center text-[10px] text-neutral-400">Your order will appear in order history as soon as it is placed.</p>
         </form>
-      </section>
+      </aside>
     </div>
   );
 }

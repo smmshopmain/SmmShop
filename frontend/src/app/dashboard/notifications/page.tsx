@@ -21,19 +21,24 @@ export default async function NotificationsPage() {
 
   return (
     <AppShell>
-      <div className="mb-6 rounded-lg border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="notifications-command mb-6 grid gap-5 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white p-5 shadow-sm sm:p-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div>
-            <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Updates</p>
-            <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Notifications</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Order, deposit, ticket, and account updates appear here.</p>
+          <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
+            <Bell className="size-3.5" /> Workspace updates
+          </p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-neutral-950">Your notifications</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Order, deposit, ticket, and account updates appear here.</p>
+          <p className="mt-4 text-xs font-semibold text-neutral-500">
+            {notifications.filter((item) => !item.readAt).length} unread · {notifications.length} total
+          </p>
         </div>
         {notifications.some((item) => !item.readAt) && (
-          <ActionButton label="Mark all read" endpoint="/api/notifications" body={{ action: "read_all" }} />
+          <div className="notifications-mark-all">
+            <ActionButton label="Mark all read" endpoint="/api/notifications" body={{ action: "read_all" }} />
+          </div>
         )}
-        </div>
-      </div>
-      <section className="rounded-lg border border-neutral-200 bg-white shadow-sm">
+      </section>
+      <section className="notifications-list overflow-hidden rounded-[1.5rem] border border-neutral-200 bg-white shadow-sm">
         {notifications.map((notification) => (
           <div
             key={String(notification._id)}
