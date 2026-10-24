@@ -3100,10 +3100,23 @@ html[data-design] .public-login .login-panel .login-brand > span {
   color: var(--public-ink);
 }
 
+html[data-design] .public-login .login-brand > span > span:first-child,
+html[data-design] .public-login .login-benefits > div > span {
+  color: var(--public-ink);
+}
+
 html[data-design] .public-login .login-panel > div:first-child > span {
   border: 1px solid color-mix(in srgb, var(--public-accent) 18%, transparent);
   background: color-mix(in srgb, var(--public-accent) 10%, var(--public-panel));
   color: var(--public-accent-strong);
+}
+
+html[data-design] .public-login .login-panel input:-webkit-autofill,
+html[data-design] .public-login .login-panel input:-webkit-autofill:hover,
+html[data-design] .public-login .login-panel input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px color-mix(in srgb, var(--public-panel) 86%, var(--public-page)) inset;
+  -webkit-text-fill-color: var(--public-ink);
+  caret-color: var(--public-ink);
 }
 
 @media (max-width: 639px) {
