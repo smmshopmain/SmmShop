@@ -71,17 +71,23 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const info = await transporter.sendMail({
-      from: requireEnv("FROM_EMAIL"),
-      to: payload.to,
-      subject: payload.subject,
-      text: payload.text,
-      html: payload.html,
-    });
+    try {
+      const info = await transporter.sendMail({
+        from: requireEnv("FROM_EMAIL"),
+        to: payload.to,
+        subject: payload.subject,
+        text: payload.text,
+        html: payload.html,
+      });
 
-    transporter.close();
+      if (info.accepted.length === 0 || info.rejected.length > 0) {
+        throw new Error("SMTP did not accept the recipient.");
+      }
 
-    return NextResponse.json({ ok: true, messageId: info.messageId });
+      return NextResponse.json({ ok: true, messageId: info.messageId });
+    } finally {
+      transporter.close();
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to send email";
     console.error("Internal email worker failed", { error: message });

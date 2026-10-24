@@ -20,16 +20,31 @@ export async function POST(request: NextRequest) {
     const user = await User.findOne({ email: normalizedEmail });
     if (user) {
       const otp = createPasswordResetOtp();
-      user.passwordResetTokenHash = hashPasswordResetOtp(normalizedEmail, otp);
+      const tokenHash = hashPasswordResetOtp(normalizedEmail, otp);
+      user.passwordResetTokenHash = tokenHash;
       user.passwordResetExpiresAt = new Date(Date.now() + 1000 * 60 * 10);
       user.passwordResetAttempts = 0;
       await user.save();
 
       const emailContent = buildPasswordOtpEmail(otp);
-      await sendMail({
-        to: user.email,
-        ...emailContent,
-      });
+      try {
+        await sendMail({
+          to: user.email,
+          ...emailContent,
+        });
+      } catch (error) {
+        await User.updateOne(
+          { _id: user._id, passwordResetTokenHash: tokenHash },
+          {
+            $unset: {
+              passwordResetTokenHash: 1,
+              passwordResetExpiresAt: 1,
+            },
+            $set: { passwordResetAttempts: 0 },
+          },
+        );
+        throw error;
+      }
     }
     return ok({ message: "If the email exists, an OTP has been sent." });
   } catch (error) {

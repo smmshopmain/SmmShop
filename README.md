@@ -65,6 +65,8 @@ npm --prefix frontend run dev -- --port 3000
 
 Open `http://localhost:3000`.
 
+For local password-reset OTP email, set `EMAIL_WORKER_URL=http://localhost:3000/api/internal/send-email` and `EMAIL_WORKER_SECRET` in `backend/.env.local`. Set the same `EMAIL_WORKER_SECRET` plus `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, and `FROM_EMAIL` in `frontend/.env.local`. The worker secret values must match. Restart both dev servers after changing environment files.
+
 ## Frontend and Backend Deployment
 
 - Frontend: deploy the next.js application to Vercel.

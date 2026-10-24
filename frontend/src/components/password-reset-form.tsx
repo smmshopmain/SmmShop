@@ -21,24 +21,29 @@ export function PasswordResetForm() {
     setError("");
     setMessage("");
 
-    const form = new FormData(event.currentTarget);
-    const nextEmail = String(form.get("email") ?? "").trim();
-    const response = await apiFetch("/api/auth/forgot-password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: nextEmail }),
-    });
-    const result = await response.json();
-    setLoading(false);
+    try {
+      const form = new FormData(event.currentTarget);
+      const nextEmail = String(form.get("email") ?? "").trim();
+      const response = await apiFetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: nextEmail }),
+      });
+      const result = await response.json();
 
-    if (!response.ok) {
-      setError(result.message ?? "Unable to send OTP");
-      return;
+      if (!response.ok) {
+        setError(result.message ?? "Unable to send OTP");
+        return;
+      }
+
+      setEmail(nextEmail);
+      setMessage(result.data?.message ?? "OTP sent. Check your email.");
+      setStep("reset");
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to reach the email service.");
+    } finally {
+      setLoading(false);
     }
-
-    setEmail(nextEmail);
-    setMessage(result.data?.message ?? "OTP sent. Check your email.");
-    setStep("reset");
   }
 
   async function resetPassword(event: React.FormEvent<HTMLFormElement>) {
@@ -47,27 +52,32 @@ export function PasswordResetForm() {
     setError("");
     setMessage("");
 
-    const form = new FormData(event.currentTarget);
-    const response = await apiFetch("/api/auth/reset-password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email,
-        otp: form.get("otp"),
-        newPassword: form.get("newPassword"),
-      }),
-    });
-    const result = await response.json();
-    setLoading(false);
+    try {
+      const form = new FormData(event.currentTarget);
+      const response = await apiFetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email,
+          otp: form.get("otp"),
+          newPassword: form.get("newPassword"),
+        }),
+      });
+      const result = await response.json();
 
-    if (!response.ok) {
-      setError(result.message ?? "Unable to reset password");
-      return;
+      if (!response.ok) {
+        setError(result.message ?? "Unable to reset password");
+        return;
+      }
+
+      setStep("done");
+      setMessage("Password reset successful. You can login now.");
+      router.refresh();
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "Unable to reach the password reset service.");
+    } finally {
+      setLoading(false);
     }
-
-    setStep("done");
-    setMessage("Password reset successful. You can login now.");
-    router.refresh();
   }
 
   if (step === "done") {
