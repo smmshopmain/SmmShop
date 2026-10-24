@@ -11,6 +11,13 @@ import { PendingRegistration, User } from "@/models";
 const schema = z.object({
   name: z.string().trim().min(2).max(80),
   email: z.email().transform((email) => email.trim().toLowerCase()),
+  phone: z
+    .string()
+    .trim()
+    .min(6)
+    .max(25)
+    .regex(/^[+()\d\s.-]+$/, "Enter a valid mobile number")
+    .refine((phone) => phone.replace(/\D/g, "").length >= 6, "Enter a valid mobile number"),
   password: z.string().min(8).max(128),
   referralCode: z.string().trim().max(40).optional(),
 });
@@ -31,6 +38,9 @@ export async function POST(request: NextRequest) {
     if (await User.exists({ email: input.email })) {
       return fail("Email is already registered", 409);
     }
+    if (await User.exists({ phone: input.phone })) {
+      return fail("Phone number is already registered", 409);
+    }
 
     const otp = createPasswordResetOtp();
     const otpHash = hashRegistrationOtp(input.email, otp);
@@ -39,6 +49,7 @@ export async function POST(request: NextRequest) {
       {
         $set: {
           name: input.name,
+          phone: input.phone,
           passwordHash: await hashPassword(input.password),
           referralCode: input.referralCode?.trim().toUpperCase() || undefined,
           otpHash,
@@ -52,7 +63,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendMail({
         to: input.email,
-        ...buildRegistrationOtpEmail(otp),
+        ...buildRegistrationOtpEmail(otp, input.phone),
       });
     } catch (error) {
       if (pending) {
@@ -64,6 +75,14 @@ export async function POST(request: NextRequest) {
     return ok({ email: input.email, message: "Verification OTP sent. Check your email." });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      if (
+        "keyPattern" in error &&
+        error.keyPattern &&
+        typeof error.keyPattern === "object" &&
+        "phone" in error.keyPattern
+      ) {
+        return fail("Phone number is already registered", 409);
+      }
       return fail("Email is already registered", 409);
     }
     return fail(error instanceof Error ? error.message : "Unable to start registration");

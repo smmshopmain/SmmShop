@@ -9,6 +9,7 @@ import { apiFetch, apiJson } from "@/lib/client-api";
 type RegistrationPayload = {
   name: string;
   email: string;
+  phone: string;
   password: string;
   referralCode?: string;
 };
@@ -20,6 +21,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [pendingRegistration, setPendingRegistration] = useState<RegistrationPayload | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState<{ path: string; message: string } | null>(null);
   const [otp, setOtp] = useState("");
   const [referralEnabled, setReferralEnabled] = useState(true);
   const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
@@ -51,6 +53,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       ? {
           name: String(form.get("name") ?? "").trim(),
           email: String(form.get("email") ?? "").trim().toLowerCase(),
+          phone: String(form.get("phone") ?? "").trim(),
           password: String(form.get("password") ?? ""),
           referralCode: String(form.get("referralCode") || referralParam || "").trim() || undefined,
         }
@@ -78,6 +81,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       const user = result?.data ?? result;
       const nextPath = searchParams.get("next");
       const defaultPath = user?.role === "admin" ? "/admin" : "/dashboard/services";
+      if (user?.welcomeEmailSent === false) {
+        setRegistrationComplete({
+          path: nextPath?.startsWith("/") ? nextPath : defaultPath,
+          message: user.message ?? "Your account was created, but the welcome email could not be sent.",
+        });
+        return;
+      }
       router.push((nextPath?.startsWith("/") ? nextPath : defaultPath) as Route);
       router.refresh();
     } catch {
@@ -142,6 +152,27 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     }
   }
 
+  if (registrationComplete) {
+    return (
+      <div className="grid gap-4">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p className="font-semibold">Your account has been created.</p>
+          <p className="mt-1">{registrationComplete.message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            router.push(registrationComplete.path as Route);
+            router.refresh();
+          }}
+          className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800"
+        >
+          Continue to your account <ArrowRight className="size-4" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={pendingRegistration ? verifyRegistration : submit} className="grid gap-4">
       {pendingRegistration ? (
@@ -190,6 +221,23 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             />
           </label>
+          {mode === "register" && (
+            <label className="grid gap-2 text-sm font-semibold text-neutral-800">
+              Mobile number
+              <input
+                name="phone"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                minLength={6}
+                maxLength={25}
+                pattern="[+()0-9 .-]{6,25}"
+                required
+                placeholder="Enter your mobile number"
+                className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+              />
+            </label>
+          )}
           <label className="grid gap-2 text-sm font-semibold text-neutral-800">
             Password
             <input

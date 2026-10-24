@@ -7,8 +7,9 @@ import { createUniqueReferralCode } from "@/lib/referral-code";
 import { hashRegistrationOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { dbConnect } from "@/lib/db";
-import { PendingRegistration, Referral, User, getSettings } from "@/models";
+import { buildWelcomeEmail, sendMail } from "@/lib/email";
 import { notifyTelegram } from "@/lib/telegram";
+import { PendingRegistration, Referral, Service, User, getSettings } from "@/models";
 
 const schema = z.object({
   email: z.email().transform((email) => email.trim().toLowerCase()),
@@ -41,6 +42,10 @@ export async function POST(request: NextRequest) {
     if (!pending) {
       return fail("Verification code is invalid or expired. Request a new code.", 400);
     }
+    if (!pending.phone) {
+      await PendingRegistration.deleteOne({ _id: pending._id });
+      return fail("Please start registration again and enter a mobile number.", 400);
+    }
 
     if (pending.attempts >= 5) {
       await PendingRegistration.deleteOne({ _id: pending._id });
@@ -58,6 +63,10 @@ export async function POST(request: NextRequest) {
         await PendingRegistration.deleteOne({ _id: updated._id, attempts: { $gte: 5 } });
       }
       return fail("Verification code is invalid or expired.", 400);
+    }
+
+    if (await User.exists({ phone: pending.phone })) {
+      return fail("Phone number is already registered. Request a new code with another number.", 409);
     }
 
     const registration = await PendingRegistration.findOneAndDelete({
@@ -86,6 +95,7 @@ export async function POST(request: NextRequest) {
     const user = await User.create({
       name: registration.name,
       email: registration.email,
+      phone: registration.phone,
       passwordHash: registration.passwordHash,
       role: isFirstAdmin ? "admin" : "user",
       referralCode,
@@ -96,17 +106,80 @@ export async function POST(request: NextRequest) {
       await Referral.create({ referrer: referrer._id, referredUser: user._id });
     }
 
+    let welcomeEmailSent = true;
+    let welcomeEmailMessage: string | undefined;
+    try {
+      const [activeServiceCount, activeCategories, services] = await Promise.all([
+        Service.countDocuments({ active: true }),
+        Service.distinct("category", { active: true }),
+        Service.find({ active: true })
+          .sort({ sellingRate: 1, category: 1, name: 1 })
+          .limit(5)
+          .select("name category sellingRate")
+          .lean(),
+      ]);
+      const frontendUrl = process.env.FRONTEND_URL?.trim();
+      if (!frontendUrl && process.env.NODE_ENV === "production") {
+        throw new Error("FRONTEND_URL is not configured");
+      }
+      const siteUrl = new URL(frontendUrl || request.nextUrl.origin);
+      if (siteUrl.protocol !== "http:" && siteUrl.protocol !== "https:") {
+        throw new Error("FRONTEND_URL must use HTTP or HTTPS");
+      }
+      const welcomeEmail = buildWelcomeEmail({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        siteUrl: siteUrl.origin,
+        activeServiceCount,
+        activeCategoryCount: activeCategories.length,
+        services,
+      });
+      await sendMail({ to: user.email, ...welcomeEmail });
+    } catch (error) {
+      welcomeEmailSent = false;
+      welcomeEmailMessage = "Your account was created, but the welcome email could not be sent. Please contact support if you need help.";
+      console.error("Welcome email failed after registration", {
+        userId: String(user._id),
+        email: user.email,
+        error: error instanceof Error ? error.message : "Unknown email delivery error",
+      });
+    }
+
     await setSessionCookie({
       id: String(user._id),
       email: user.email,
       name: user.name,
       role: user.role,
     });
-    await notifyTelegram("New User Registration", [user.email, `Role: ${user.role}`]);
+    try {
+      await notifyTelegram("New User Registration", [user.email, `Role: ${user.role}`]);
+    } catch (error) {
+      console.error("Registration Telegram notification failed", {
+        userId: String(user._id),
+        error: error instanceof Error ? error.message : "Unknown notification error",
+      });
+    }
 
-    return ok({ id: user._id, name: user.name, email: user.email, role: user.role, referralCode: user.referralCode });
+    return ok({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      referralCode: user.referralCode,
+      welcomeEmailSent,
+      message: welcomeEmailMessage,
+    });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      if (
+        "keyPattern" in error &&
+        error.keyPattern &&
+        typeof error.keyPattern === "object" &&
+        "phone" in error.keyPattern
+      ) {
+        return fail("Phone number is already registered", 409);
+      }
       return fail("Email is already registered", 409);
     }
     return fail(error instanceof Error ? error.message : "Registration verification failed");
