@@ -4,6 +4,7 @@ import { hashPassword, setSessionCookieOnResponse } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
 import { rateLimit } from "@/lib/rate-limit";
 import { createUniqueReferralCode } from "@/lib/referral-code";
+import { recordLoginSession } from "@/lib/login-session";
 import { notifyTelegram } from "@/lib/telegram";
 import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { getSettings, Referral, User } from "@/models";
@@ -207,8 +208,8 @@ export async function GET(request: NextRequest) {
     }
 
     if (!user.googleSub) user.googleSub = googleProfile.sub;
-    user.lastLoginAt = new Date();
     await user.save();
+    const sessionId = await recordLoginSession(String(user._id), request);
 
     const origin = frontendOrigin(request);
     const nextPath = context ? safeNextPath(context.next, origin) : "";
@@ -219,6 +220,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      sessionId,
       ...(user.role === "admin" ? { authSource: "database" as const } : {}),
     });
     clearStateCookie(response);

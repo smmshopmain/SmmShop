@@ -8,6 +8,7 @@ import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
 import { apiJson } from "@/lib/client-api";
 import { roleLabel } from "@/lib/roles";
+import { LoginHistoryEntry, LoginHistoryList } from "@/components/login-history-list";
 import { Search, Users } from "lucide-react";
 
 export default function UsersPage() {
@@ -21,6 +22,7 @@ export default function UsersPage() {
     walletBalance?: number;
     isBanned?: boolean;
     walletFrozen?: boolean;
+    loginHistory?: LoginHistoryEntry[];
   }>>([]);
   const [currentAdminId, setCurrentAdminId] = useState("");
   const [currentAdminRole, setCurrentAdminRole] = useState("");
@@ -86,6 +88,12 @@ export default function UsersPage() {
               <StatusBadge status={user.isBanned || user.walletFrozen ? "Canceled" : "Approved"} />
               <strong>Rs.{user.walletBalance}</strong>
             </div>
+            <details className="rounded-lg border border-neutral-200 px-3 py-2">
+              <summary className="cursor-pointer text-xs font-semibold text-neutral-700">
+                Recent sign-ins ({user.loginHistory?.length ?? 0})
+              </summary>
+              <LoginHistoryList entries={user.loginHistory ?? []} />
+            </details>
             <div className="flex flex-wrap gap-2">
               {canModify && (
                 <>
@@ -94,7 +102,7 @@ export default function UsersPage() {
                 </>
               )}
               {currentAdminRole === "admin" && !isSelf && !isMainAdminTarget && (
-                <ActionButton label="Delete" endpoint="/api/admin/users" method="DELETE" body={{ id: userId }} danger confirmMessage={`Delete ${user.name} (${user.email})? This cannot be undone.`} />
+                <ActionButton label="Delete permanently" endpoint="/api/admin/users" method="DELETE" body={{ id: userId }} danger confirmMessage={`Permanently delete ${user.name} (${user.email}) and all associated orders, deposits, wallet history, tickets, notifications, and referral data? This cannot be undone. Their email and mobile number will be available for a new account.`} />
               )}
             </div>
             {canMainAdminChangeRole && <UserRoleForm userId={userId} currentRole={user.role ?? "user"} />}

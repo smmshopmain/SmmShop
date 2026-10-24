@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
-import { currentUser, isEnvironmentAdmin, setSessionCookie } from "@/lib/auth";
+import { clearSessionCookie, currentUser, isEnvironmentAdmin, setSessionCookie } from "@/lib/auth";
 import { dbConnect } from "@/lib/db";
 import { createUniqueReferralCode } from "@/lib/referral-code";
 import { normalizeRole } from "@/lib/roles";
@@ -33,6 +33,10 @@ export async function GET() {
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) return fail("Unauthorized", 401);
+  if (!user.sessionId || dbUser.activeSessionId !== user.sessionId) {
+    await clearSessionCookie();
+    return fail("You were signed out because this account was used to sign in on another device.", 401);
+  }
   const role = normalizeRole(dbUser.role);
 
   if (!dbUser.referralCode) {
@@ -46,6 +50,7 @@ export async function GET() {
       email: dbUser.email,
       name: dbUser.name,
       role,
+      sessionId: user.sessionId,
       ...(user.authSource === "database" ? { authSource: "database" as const } : {}),
     });
   }
@@ -62,6 +67,7 @@ export async function GET() {
     walletBalance: dbUser.walletBalance ?? 0,
     createdAt: dbUser.createdAt ?? null,
     lastLoginAt: dbUser.lastLoginAt ?? null,
+    loginHistory: dbUser.loginHistory ?? [],
   });
 }
 
@@ -83,6 +89,7 @@ export async function PATCH(request: NextRequest) {
       email: dbUser.email,
       name: dbUser.name,
       role: auth.role,
+      sessionId: auth.sessionId,
       ...(auth.authSource === "database" ? { authSource: "database" as const } : {}),
     });
 

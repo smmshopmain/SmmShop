@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { apiJson, apiUrl } from "@/lib/client-api";
+import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
 import { isAdminRole } from "@/lib/roles";
 import { ContentLoading } from "@/components/content-loading";
 import { RequiredGooglePhoneModal } from "@/components/required-google-phone-modal";
@@ -126,6 +126,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       mounted = false;
     };
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+    let checking = false;
+    const verifyCurrentSession = async () => {
+      if (checking) return;
+      checking = true;
+      try {
+        const response = await apiFetch("/api/auth/me", { cache: "no-store" });
+        if (active && response.status === 401) {
+          setUser(null);
+          router.replace("/login");
+        }
+      } catch {
+        // Retry on the next interval or focus if the network is temporarily unavailable.
+      } finally {
+        checking = false;
+      }
+    };
+    const interval = window.setInterval(verifyCurrentSession, 30_000);
+    window.addEventListener("focus", verifyCurrentSession);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", verifyCurrentSession);
+    };
+  }, [router, user]);
 
   useEffect(() => {
     if (!user) return;

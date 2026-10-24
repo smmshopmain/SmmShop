@@ -5,6 +5,7 @@ import { dbConnect } from "@/lib/db";
 import { authenticateEnvironmentAdmin, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { User } from "@/models";
 import { rateLimit } from "@/lib/rate-limit";
+import { recordLoginSession } from "@/lib/login-session";
 
 const schema = z.object({
   email: z.string().trim().min(1),
@@ -40,13 +41,13 @@ export async function POST(request: NextRequest) {
     }
     if (user.isBanned) return fail("Your account is banned", 403);
 
-    user.lastLoginAt = new Date();
-    await user.save();
+    const sessionId = await recordLoginSession(String(user._id), request);
     await setSessionCookie({
       id: String(user._id),
       email: user.email,
       name: user.name,
       role: user.role,
+      sessionId,
     });
 
     return ok({ id: user._id, name: user.name, email: user.email, role: user.role });

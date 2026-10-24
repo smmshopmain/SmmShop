@@ -6,6 +6,7 @@ import { ChangePasswordForm, ProfileSettingsForm } from "@/components/change-pas
 import { ContentLoading } from "@/components/content-loading";
 import { apiJson } from "@/lib/client-api";
 import { roleLabel, UserRole } from "@/lib/roles";
+import { LoginHistoryEntry, LoginHistoryList } from "@/components/login-history-list";
 
 type AccountProfile = {
   name: string;
@@ -16,6 +17,7 @@ type AccountProfile = {
   walletBalance: number;
   createdAt: string;
   lastLoginAt: string;
+  loginHistory: LoginHistoryEntry[];
   role: UserRole;
 };
 
@@ -46,6 +48,7 @@ export function AccountCenter() {
           walletBalance: Number(user.walletBalance ?? 0),
           createdAt: user.createdAt ?? "",
           lastLoginAt: user.lastLoginAt ?? "",
+          loginHistory: Array.isArray(user.loginHistory) ? user.loginHistory : [],
           role: user.role ?? "user",
         });
       } catch {
@@ -114,6 +117,13 @@ export function AccountCenter() {
         <ProfileSettingsForm profile={profile} />
         <ChangePasswordForm />
       </div>
+      <section className="mt-6 rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="text-lg font-bold text-neutral-950">Recent login history</h2>
+        <p className="mt-1 text-sm text-neutral-600">
+          Up to 10 recent sign-ins. Location is approximate and depends on information provided by the network.
+        </p>
+        <LoginHistoryList entries={profile.loginHistory} />
+      </section>
     </>
   );
 }

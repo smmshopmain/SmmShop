@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
 import { fail, ok, parseBody } from "@/lib/api";
 import { setSessionCookie } from "@/lib/auth";
+import { recordLoginSession } from "@/lib/login-session";
 import { createUniqueReferralCode } from "@/lib/referral-code";
 import { hashRegistrationOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
@@ -120,11 +121,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const sessionId = await recordLoginSession(String(user._id), request);
     await setSessionCookie({
       id: String(user._id),
       email: user.email,
       name: user.name,
       role: user.role,
+      sessionId,
     });
     try {
       await notifyTelegram("New User Registration", [user.email, `Role: ${user.role}`]);

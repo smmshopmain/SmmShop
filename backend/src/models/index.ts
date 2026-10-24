@@ -27,6 +27,14 @@ const UserSchema = new Schema(
     isBanned: { type: Boolean, default: false },
     walletFrozen: { type: Boolean, default: false },
     lastLoginAt: Date,
+    activeSessionId: String,
+    loginHistory: [
+      {
+        loggedInAt: { type: Date, required: true },
+        device: { type: String, required: true },
+        location: { type: String, required: true },
+      },
+    ],
     passwordResetTokenHash: String,
     passwordResetExpiresAt: Date,
     passwordResetAttempts: { type: Number, default: 0 },

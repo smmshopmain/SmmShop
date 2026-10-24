@@ -22,6 +22,7 @@ export type AuthUser = {
   name: string;
   role: UserRole;
   authSource?: "environment" | "database";
+  sessionId?: string;
 };
 
 function environmentAdminCredentials() {
@@ -119,6 +120,7 @@ export async function verifySession(token?: string): Promise<AuthUser | null> {
       email: String(payload.email),
       name: String(payload.name),
       role: normalizeRole(payload.role),
+      ...(typeof payload.sessionId === "string" ? { sessionId: payload.sessionId } : {}),
     };
     if (payload.authSource === "environment") {
       const credentials = environmentAdminCredentials();
@@ -160,6 +162,10 @@ export async function requireUser(options: { allowMissingGooglePhone?: boolean }
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) throw new Error("Unauthorized");
+  if (!user.sessionId || dbUser.activeSessionId !== user.sessionId) {
+    await clearSessionCookie();
+    throw new Error("You were signed out because this account was used to sign in on another device.");
+  }
   if (!options.allowMissingGooglePhone && dbUser.googleSub && !dbUser.phone) {
     throw new Error("Add your mobile number to continue using your account.");
   }

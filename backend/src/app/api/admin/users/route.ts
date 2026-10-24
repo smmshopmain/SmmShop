@@ -1,7 +1,23 @@
 import { NextRequest } from "next/server";
+import mongoose from "mongoose";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
-import { AuditLog, User } from "@/models";
+import { dbConnect } from "@/lib/db";
+import {
+  AuditLog,
+  Deposit,
+  EmailCampaign,
+  Notification,
+  Order,
+  PendingRegistration,
+  RateLimit,
+  Referral,
+  Refill,
+  Ticket,
+  UploadedFile,
+  User,
+  WalletTransaction,
+} from "@/models";
 import { hashPassword } from "@/lib/auth";
 import { ASSIGNABLE_USER_ROLES, isMainAdmin } from "@/lib/roles";
 
@@ -31,7 +47,7 @@ export async function GET(request: NextRequest) {
       ? { $or: [{ email: pattern }, { name: pattern }, { phone: pattern }] }
       : {};
     const users = await User.find(filter)
-      .select("-passwordHash -passwordResetTokenHash -passwordResetAttempts")
+      .select("-passwordHash -passwordResetTokenHash -passwordResetAttempts -activeSessionId")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
@@ -71,6 +87,7 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
+    await dbConnect();
     const body = deleteSchema.parse(await request.json().catch(() => null));
     if (body.id === auth.id) return fail("You cannot delete your own active admin account.");
 
@@ -78,16 +95,70 @@ export async function DELETE(request: NextRequest) {
     if (!user) return fail("User not found", 404);
     if (!canMutateUser(auth.role, String(user.role), "delete")) return fail("Only the main admin can delete users.", 403);
 
-    await User.deleteOne({ _id: body.id });
-    await AuditLog.create({
-      actor: auth.id,
-      action: "user.delete",
-      entity: "User",
-      entityId: body.id,
-      before: user,
-    });
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        const userId = user._id;
+        const userIdString = String(userId);
+        const orders = await Order.find({ user: userId }).select("_id").session(session).lean();
+        const orderIds = orders.map((order) => order._id);
+        const deposits = await Deposit.find({ user: userId }).select("_id").session(session).lean();
+        const depositIds = deposits.map((deposit) => String(deposit._id));
+        const orderIdStrings = orderIds.map(String);
 
-    return ok({ deleted: true });
+        await WalletTransaction.deleteMany({ user: userId }, { session });
+        await Deposit.deleteMany({ user: userId }, { session });
+        await Order.deleteMany({ user: userId }, { session });
+        await Refill.deleteMany({ $or: [{ user: userId }, { order: { $in: orderIds } }] }, { session });
+        await Ticket.deleteMany({ user: userId }, { session });
+        await Ticket.updateMany(
+          { "messages.sender": userId },
+          { $unset: { "messages.$[message].sender": "" } },
+          { arrayFilters: [{ "message.sender": userId }], session },
+        );
+        await Notification.deleteMany({ user: userId }, { session });
+        await Referral.deleteMany({ $or: [{ referrer: userId }, { referredUser: userId }] }, { session });
+        await PendingRegistration.deleteMany(
+          { $or: [{ email: user.email }, ...(user.phone ? [{ phone: user.phone }] : [])] },
+          { session },
+        );
+        await RateLimit.deleteMany(
+          { key: { $regex: new RegExp(escapeRegExp(user.email), "i") } },
+          { session },
+        );
+        await EmailCampaign.updateMany({ createdBy: userId }, { $unset: { createdBy: 1 } }, { session });
+        await WalletTransaction.updateMany({ createdBy: userId }, { $unset: { createdBy: 1 } }, { session });
+        await Deposit.updateMany({ reviewedBy: userId }, { $unset: { reviewedBy: 1 } }, { session });
+        await UploadedFile.deleteMany({ folder: "deposit-proofs", createdBy: userId }, { session });
+        await UploadedFile.updateMany(
+          { createdBy: userId },
+          { $unset: { createdBy: 1 } },
+          { session },
+        );
+        await User.updateMany({ referredBy: userId }, { $unset: { referredBy: 1 } }, { session });
+        await AuditLog.deleteMany(
+          {
+            $or: [
+              { actor: userId },
+              { entity: "User", entityId: userIdString },
+              { entity: "Order", entityId: { $in: orderIdStrings } },
+              { entity: "Deposit", entityId: { $in: depositIds } },
+            ],
+          },
+          { session },
+        );
+
+        await User.deleteOne({ _id: userId }, { session });
+        await AuditLog.create(
+          [{ actor: auth.id, action: "user.delete", entity: "User" }],
+          { session },
+        );
+      });
+    } finally {
+      await session.endSession();
+    }
+
+    return ok({ deleted: true, message: "User account and associated personal data were permanently deleted." });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to delete user");
   }

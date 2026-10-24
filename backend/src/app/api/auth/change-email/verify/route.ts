@@ -64,6 +64,7 @@ export async function POST(request: NextRequest) {
       email: dbUser.email,
       name: dbUser.name,
       role: auth.role,
+      sessionId: auth.sessionId,
     });
 
     await AuditLog.create({
