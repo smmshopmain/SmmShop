@@ -5,6 +5,7 @@ import { SettingsForm, ActionButton } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { AnimationControls } from "@/components/animation-controls";
+import { GoogleAuthSettings } from "@/components/google-auth-settings";
 import { apiJson } from "@/lib/client-api";
 import {
   DEFAULT_MOTION_SETTINGS,
@@ -29,6 +30,7 @@ type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
+  auth: { googleEnabled: boolean; googleConfigured: boolean };
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -55,6 +57,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     },
   },
   provider: { lowBalanceThreshold: 100 },
+  auth: { googleEnabled: false, googleConfigured: false },
   referrals: {
     enabled: true,
     commissionPercent: 2,
@@ -107,6 +110,12 @@ export default function SettingsPage() {
         <AnimationControls
           key={JSON.stringify(settings.appearance)}
           initialSettings={settings.appearance}
+        />
+      </div>
+      <div className="mb-6">
+        <GoogleAuthSettings
+          enabled={settings.auth.googleEnabled}
+          configured={settings.auth.googleConfigured}
         />
       </div>
       <div className="mb-4 px-4 lg:px-0">

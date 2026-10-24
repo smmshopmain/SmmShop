@@ -372,6 +372,7 @@ export type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
+  auth: { googleEnabled: boolean };
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -412,6 +413,7 @@ export async function getSettings() {
       },
     },
     provider: { lowBalanceThreshold: 100 },
+    auth: { googleEnabled: false },
     referrals: {
       enabled: true,
       commissionPercent: 2,
@@ -441,6 +443,7 @@ export async function getSettings() {
       };
     }
     if (record.key === "provider") settings.provider = { ...settings.provider, ...(record.value as Partial<PlatformSettings["provider"]>) };
+    if (record.key === "auth") settings.auth = { ...settings.auth, ...(record.value as Partial<PlatformSettings["auth"]>) };
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
   }
 

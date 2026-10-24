@@ -7,7 +7,7 @@ import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib
 import { getSettings, Setting } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "referrals"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "referrals"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -71,6 +71,18 @@ function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Reco
 }
 
 function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
+  if (key === "auth") {
+    if (
+      value.googleEnabled === true &&
+      (!process.env.GOOGLE_CLIENT_ID?.trim() ||
+        !process.env.GOOGLE_CLIENT_SECRET?.trim() ||
+        !process.env.APP_BASE_URL?.trim())
+    ) {
+      throw new Error("Configure Google OAuth credentials and APP_BASE_URL in the backend environment first.");
+    }
+    return { googleEnabled: value.googleEnabled === true };
+  }
+
   if (key === "appearance") {
     const appearance = appearanceSchema.parse(value);
     return {
@@ -112,7 +124,17 @@ export async function GET() {
   try {
     await requireAdmin();
     await dbConnect();
-    return ok(await getSettings());
+    const settings = await getSettings();
+    return ok({
+      ...settings,
+      auth: {
+        ...settings.auth,
+        googleConfigured:
+          Boolean(process.env.GOOGLE_CLIENT_ID?.trim()) &&
+          Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim()) &&
+          Boolean(process.env.APP_BASE_URL?.trim()),
+      },
+    });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load settings", 403);
   }

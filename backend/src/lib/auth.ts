@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
@@ -186,6 +187,15 @@ export async function setSessionCookie(user: AuthUser) {
     ...SESSION_COOKIE_OPTIONS,
     maxAge: 60 * 60 * 24 * 7,
   });
+}
+
+export async function setSessionCookieOnResponse(response: NextResponse, user: AuthUser) {
+  const token = await signSession(user);
+  response.cookies.set(COOKIE_NAME, token, {
+    ...SESSION_COOKIE_OPTIONS,
+    maxAge: 60 * 60 * 24 * 7,
+  });
+  return response;
 }
 
 export async function clearSessionCookie() {

@@ -4,7 +4,7 @@ import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-import { apiFetch, apiJson } from "@/lib/client-api";
+import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
 
 type RegistrationPayload = {
   name: string;
@@ -14,10 +14,26 @@ type RegistrationPayload = {
   referralCode?: string;
 };
 
+function googleAuthErrorMessage(errorCode: string | null) {
+  if (!errorCode) return "";
+  const messages: Record<string, string> = {
+    cancelled: "Google sign-in was cancelled.",
+    disabled: "Google sign-in is currently disabled.",
+    not_configured: "Google sign-in is not configured yet. Please contact support.",
+    unverified: "Google could not verify this email address.",
+    account_unavailable: "This account cannot sign in with Google. Use your existing login method.",
+    state: "Google sign-in expired or could not be verified. Please try again.",
+    rate_limited: "Too many Google sign-in attempts. Please try again later.",
+    unavailable: "Google sign-in is temporarily unavailable.",
+    failed: "Google sign-in failed. Please try again.",
+  };
+  return messages[errorCode] ?? "Google sign-in failed. Please try again.";
+}
+
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [error, setError] = useState("");
+  const [error, setError] = useState(() => googleAuthErrorMessage(searchParams.get("google_error")));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [sendingWelcomeEmail, setSendingWelcomeEmail] = useState(false);
@@ -29,6 +45,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   } | null>(null);
   const [otp, setOtp] = useState("");
   const [referralEnabled, setReferralEnabled] = useState(true);
+  const [googleSignInEnabled, setGoogleSignInEnabled] = useState(false);
   const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
 
   useEffect(() => {
@@ -38,10 +55,30 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       .then((result) => {
         if (!mounted) return;
         const referralSettings = result?.referrals ?? result?.data?.referrals;
+        const authSettings = result?.auth ?? result?.data?.auth;
         setReferralEnabled(referralSettings?.enabled !== false);
+        setGoogleSignInEnabled(authSettings?.googleEnabled === true);
       })
       .catch(() => {
         if (mounted) setReferralEnabled(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode !== "login") return;
+    let mounted = true;
+    void apiJson("/api/settings")
+      .then((result) => {
+        if (mounted) {
+          const authSettings = result?.auth ?? result?.data?.auth;
+          setGoogleSignInEnabled(authSettings?.googleEnabled === true);
+        }
+      })
+      .catch(() => {
+        if (mounted) setGoogleSignInEnabled(false);
       });
     return () => {
       mounted = false;
@@ -228,7 +265,14 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
     );
   }
 
+  const googleStartUrl = apiUrl("/api/auth/google/start");
+  const googleStartParams = new URLSearchParams({ mode });
+  const nextPath = searchParams.get("next");
+  if (nextPath) googleStartParams.set("next", nextPath);
+  if (referralParam) googleStartParams.set("ref", referralParam);
+
   return (
+    <>
     <form onSubmit={pendingRegistration ? verifyRegistration : submit} className="grid gap-4">
       {pendingRegistration ? (
         <>
@@ -353,5 +397,15 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         </div>
       )}
     </form>
+    {googleSignInEnabled && !pendingRegistration && (
+      <a
+        href={`${googleStartUrl}?${googleStartParams.toString()}`}
+        className="mt-4 inline-flex h-12 w-full items-center justify-center gap-3 rounded-md border border-neutral-300 bg-white px-4 text-sm font-semibold text-neutral-800 shadow-sm transition hover:bg-neutral-50"
+      >
+        <span aria-hidden="true" className="text-base font-bold text-[#4285f4]">G</span>
+        {mode === "register" ? "Continue with Google" : "Login with Google"}
+      </a>
+    )}
+    </>
   );
 }

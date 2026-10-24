@@ -86,12 +86,15 @@ Also add `EMAIL_WORKER_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_U
 
 Use the existing Render service configuration and set backend env vars as shown above. The Render service keeps the backend API, MongoDB access, Telegram integration, and cron sync jobs running. Set `EMAIL_WORKER_URL` and `EMAIL_WORKER_SECRET` there so the backend calls the Vercel worker instead of attempting direct SMTP from Render.
 
+For Google sign-in, configure `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` on the Render backend, and set `APP_BASE_URL` to the Render backend origin. In Google Cloud OAuth client settings, add `https://<your-render-backend>/api/auth/google/callback` as an authorized redirect URI. Then enable Google sign-in from **Admin > Settings**. Google OAuth is disabled by default and the client secret must never be added to Vercel.
+
 ## Auth Notes
 
 - New registrations require a mobile number and stay pending until the email OTP is verified. Verification codes expire after 10 minutes and allow up to 5 attempts; email delivery uses the configured email worker.
 - After email verification, the backend sends a welcome email with account details and a live service snapshot. If delivery fails, the signed-in user can retry from the registration completion screen; retries are limited to 3 per day.
 - Public registration always creates a normal user account.
 - Login accepts email or mobile number when a user has `phone` saved.
+- Google sign-in creates accounts from Google-verified emails and does not require a mobile number; administrators can enable or disable it in **Admin > Settings**.
 - The main admin signs in using `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the backend environment; `ADMIN_NAME` is optional. Changing these values invalidates existing environment-admin sessions. Unsetting either username or password disables environment-admin login.
 - Main admin credentials are not stored in MongoDB. Existing MongoDB accounts with the `admin` role must be disabled once with `npm --prefix backend run migrate-admin-auth -- --apply`; the migration keeps the records but downgrades and bans those accounts and replaces their password hashes. Staff and secondary-admin roles are unchanged.
 - Remove the old hard-coded main-admin setup; use only the backend environment variables for main-admin access.
