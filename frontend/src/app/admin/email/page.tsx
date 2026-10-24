@@ -167,6 +167,40 @@ export default function EmailManagementPage() {
     }
   }
 
+  async function restoreEmailDefaults() {
+    if (!window.confirm("Restore the default email brand colors and all email templates? This will overwrite your current customizations.")) {
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+    setError("");
+    try {
+      const defaults: EmailSettings = {
+        ...DEFAULT_EMAIL,
+        templates: {
+          registrationOtp: { ...DEFAULT_EMAIL.templates.registrationOtp },
+          forgotPasswordOtp: { ...DEFAULT_EMAIL.templates.forgotPasswordOtp },
+          verificationOtp: { ...DEFAULT_EMAIL.templates.verificationOtp },
+          welcome: { ...DEFAULT_EMAIL.templates.welcome },
+        },
+      };
+      const response = await apiFetch("/api/admin/settings", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ key: "email", value: defaults }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "Unable to restore default email settings.");
+      setEmail(defaults);
+      setMessage("Default email colors and templates restored and saved.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to restore default email settings.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -266,7 +300,10 @@ export default function EmailManagementPage() {
                 <Field label="Message" multiline value={email.templates.welcome.body} onChange={(value) => updateTemplate("welcome", "body", value)} />
                 <p className="text-xs text-neutral-500">Available placeholders: {"{{name}}, {{email}}, {{phone}}, {{websiteUrl}}"}. Passwords are never included in email.</p>
               </div>
-              <button disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save email templates"}</button>
+              <div className="flex flex-wrap gap-3">
+                <button type="submit" disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save email templates"}</button>
+                <button type="button" onClick={() => void restoreEmailDefaults()} disabled={saving} className="w-fit rounded-xl border border-neutral-300 bg-white px-5 py-2.5 text-sm font-bold text-neutral-800 transition hover:bg-neutral-50 disabled:opacity-60">{saving ? "Please wait…" : "Restore default email settings"}</button>
+              </div>
             </form>
           </AdminSection>
 
