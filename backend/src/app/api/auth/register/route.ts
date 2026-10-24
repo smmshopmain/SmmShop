@@ -1,58 +1,71 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { parseBody, fail, ok } from "@/lib/api";
+import { fail, ok, parseBody } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
-import { hashPassword, setSessionCookie } from "@/lib/auth";
-import { createUniqueReferralCode } from "@/lib/referral-code";
-import { User, Referral, getSettings } from "@/models";
-import { notifyTelegram } from "@/lib/telegram";
+import { buildRegistrationOtpEmail, sendMail } from "@/lib/email";
+import { hashPassword } from "@/lib/auth";
+import { createPasswordResetOtp, hashRegistrationOtp } from "@/lib/password-reset";
+import { rateLimit } from "@/lib/rate-limit";
+import { PendingRegistration, User } from "@/models";
 
 const schema = z.object({
-  name: z.string().min(2).max(80),
-  email: z.email(),
-  password: z.string().min(8),
-  referralCode: z.string().optional(),
+  name: z.string().trim().min(2).max(80),
+  email: z.email().transform((email) => email.trim().toLowerCase()),
+  password: z.string().min(8).max(128),
+  referralCode: z.string().trim().max(40).optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  if (!(await rateLimit(`register-request-ip:${ip}`, 5, 10 * 60_000))) {
+    return fail("Too many registration requests. Please try again later.", 429);
+  }
+
   try {
     const input = await parseBody(request, schema);
-    await dbConnect();
-
-    const exists = await User.exists({ email: input.email.toLowerCase() });
-    if (exists) return fail("Email is already registered", 409);
-
-    const isFirstAdmin = !(await User.exists({ role: "admin" }));
-    const settings = await getSettings();
-    const referralSystemEnabled = settings.referrals.enabled !== false;
-    const requestedReferralCode = referralSystemEnabled ? input.referralCode?.trim().toUpperCase() : "";
-    const referrer = referralSystemEnabled && requestedReferralCode
-      ? await User.findOne({ referralCode: requestedReferralCode })
-      : null;
-    const referralCode = await createUniqueReferralCode(User);
-    const user = await User.create({
-      name: input.name,
-      email: input.email,
-      passwordHash: await hashPassword(input.password),
-      role: isFirstAdmin ? "admin" : "user",
-      referralCode,
-      referredBy: referralSystemEnabled && referrer ? referrer._id : undefined,
-    });
-
-    if (referralSystemEnabled && referrer) {
-      await Referral.create({ referrer: referrer._id, referredUser: user._id });
+    if (!(await rateLimit(`register-request-email:${input.email}`, 3, 10 * 60_000))) {
+      return fail("Too many verification codes requested. Please try again later.", 429);
     }
 
-    await setSessionCookie({
-      id: String(user._id),
-      email: user.email,
-      name: user.name,
-      role: user.role,
-    });
-    await notifyTelegram("New User Registration", [user.email, `Role: ${user.role}`]);
+    await dbConnect();
+    if (await User.exists({ email: input.email })) {
+      return fail("Email is already registered", 409);
+    }
 
-    return ok({ id: user._id, name: user.name, email: user.email, role: user.role, referralCode: user.referralCode });
+    const otp = createPasswordResetOtp();
+    const otpHash = hashRegistrationOtp(input.email, otp);
+    const pending = await PendingRegistration.findOneAndUpdate(
+      { email: input.email },
+      {
+        $set: {
+          name: input.name,
+          passwordHash: await hashPassword(input.password),
+          referralCode: input.referralCode?.trim().toUpperCase() || undefined,
+          otpHash,
+          expiresAt: new Date(Date.now() + 10 * 60_000),
+          attempts: 0,
+        },
+      },
+      { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
+    );
+
+    try {
+      await sendMail({
+        to: input.email,
+        ...buildRegistrationOtpEmail(otp),
+      });
+    } catch (error) {
+      if (pending) {
+        await PendingRegistration.deleteOne({ _id: pending._id, otpHash });
+      }
+      throw error;
+    }
+
+    return ok({ email: input.email, message: "Verification OTP sent. Check your email." });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Registration failed");
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      return fail("Email is already registered", 409);
+    }
+    return fail(error instanceof Error ? error.message : "Unable to start registration");
   }
 }

@@ -12,6 +12,14 @@ export function hashPasswordResetOtp(email: string, otp: string) {
     .digest("hex");
 }
 
+export function hashRegistrationOtp(email: string, otp: string) {
+  const secret = process.env.JWT_SECRET || "development-secret-change-me";
+  return crypto
+    .createHmac("sha256", secret)
+    .update(`registration:${email.toLowerCase()}:${otp}`)
+    .digest("hex");
+}
+
 export function hashEmailChangeOtp(userId: string, email: string, otp: string) {
   const secret = process.env.JWT_SECRET || "development-secret-change-me";
   return crypto

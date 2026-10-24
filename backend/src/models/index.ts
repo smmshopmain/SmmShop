@@ -42,6 +42,19 @@ const UserSchema = new Schema(
   { timestamps: true },
 );
 
+const PendingRegistrationSchema = new Schema(
+  {
+    name: { type: String, required: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true, unique: true },
+    passwordHash: { type: String, required: true },
+    referralCode: { type: String, trim: true },
+    otpHash: { type: String, required: true },
+    expiresAt: { type: Date, required: true, index: { expires: 0 } },
+    attempts: { type: Number, default: 0, min: 0 },
+  },
+  { timestamps: true },
+);
+
 const WalletTransactionSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
@@ -301,6 +314,8 @@ const RateLimitSchema = new Schema(
 RateLimitSchema.index({ resetAt: 1 }, { expireAfterSeconds: 0 });
 
 export const User = models.User || model("User", UserSchema);
+export const PendingRegistration =
+  models.PendingRegistration || model("PendingRegistration", PendingRegistrationSchema);
 export const WalletTransaction =
   models.WalletTransaction || model("WalletTransaction", WalletTransactionSchema);
 export const Deposit = models.Deposit || model("Deposit", DepositSchema);
