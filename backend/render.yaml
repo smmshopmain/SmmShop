@@ -71,35 +71,6 @@ services:
       - key: FROM_EMAIL
         sync: false
   - type: cron
-    name: smm-keep-alive
-    runtime: node
-    schedule: "*/10 * * * *"
-    buildCommand: |
-      if [ -d backend ] && cd backend; then
-        npm ci
-      elif [ -d ../backend ] && cd ../backend; then
-        npm ci
-      elif [ -d ../../backend ] && cd ../../backend; then
-        npm ci
-      else
-        echo "Could not locate backend package directory" >&2
-        exit 1
-      fi
-    startCommand: |
-      if [ -d backend ] && cd backend; then
-        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
-      elif [ -d ../backend ] && cd ../backend; then
-        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
-      elif [ -d ../../backend ] && cd ../../backend; then
-        node -e "fetch(\"${process.env.APP_BASE_URL}/api/keep-alive\").then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
-      else
-        echo "Could not locate backend package directory" >&2
-        exit 1
-      fi
-    envVars:
-      - key: APP_BASE_URL
-        sync: false
-  - type: cron
     name: smm-nightly-catalog-refresh
     runtime: node
     schedule: "30 18 * * *"

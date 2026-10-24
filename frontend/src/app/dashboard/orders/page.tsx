@@ -76,7 +76,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
               Follow delivery progress, check provider updates, and manage eligible orders from one place.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900">
-              <span className="size-2 rounded-full bg-emerald-500" />
+              <span className="workspace-live-dot size-2 rounded-full" />
               Live status updates every 15 seconds
             </div>
           </div>

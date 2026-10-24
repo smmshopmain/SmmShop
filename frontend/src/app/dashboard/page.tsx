@@ -24,7 +24,7 @@ export default async function DashboardPage() {
       <section className="dashboard-command mb-6 grid gap-5 rounded-[1.8rem] border border-teal-900/10 bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
         <div className="max-w-2xl">
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
-            <span className="size-2 rounded-full bg-emerald-500" /> Your workspace
+            <span className="workspace-live-dot size-2 rounded-full" /> Your workspace
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-neutral-950 sm:text-4xl">Good to see you. What’s next?</h1>
           <p className="mt-2 max-w-xl text-sm leading-6 text-neutral-600">

@@ -212,7 +212,7 @@ export function ServiceBrowser() {
               <p className="mt-1 text-sm text-neutral-500">Compare options, choose a service, then build your order.</p>
             </div>
             <div className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-xs font-semibold text-neutral-600">
-              <span className={`size-2 rounded-full ${serviceLoading ? "animate-pulse bg-amber-400" : "bg-emerald-500"}`} />
+              <span className={`size-2 rounded-full ${serviceLoading ? "animate-pulse bg-amber-400" : "workspace-live-dot"}`} />
               {serviceLoading ? "Updating catalog" : `${services.length} services available`}
             </div>
           </div>

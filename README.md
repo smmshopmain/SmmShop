@@ -127,21 +127,21 @@ Admins can open **Admin > Animations** (or Admin > Settings) to manage 20 conten
 
 Visible page text is non-selectable by default, right-click is suppressed on regular page content, and images cannot be dragged. Form fields, table data, and explicitly marked values remain selectable for normal account and operations workflows. These are usability deterrents only; they cannot prevent screenshots, browser developer tools, or access to assets delivered to a visitor's browser.
 
-### Render Keep Alive
+### Keep the Render Backend Warm
 
-The blueprint includes `smm-keep-alive`, a cron service that calls:
+The GitHub Actions workflow `.github/workflows/keep-backend-awake.yml` calls:
 
 ```text
 /api/keep-alive
 ```
 
-Set `APP_BASE_URL` on Render to your live URL, for example:
+Set the repository Actions variable `BACKEND_URL` to your deployed backend URL, and add a repository Actions secret `CRON_SECRET` matching the backend's Render `CRON_SECRET` value. For example:
 
 ```text
 https://your-service-name.onrender.com
 ```
 
-This sends an inbound request every 10 minutes to reduce Render free-tier cold starts.
+The workflow sends an authenticated request every 10 minutes; the backend endpoint connects to MongoDB and runs a lightweight ping command. This can reduce Render cold starts and keep the cluster active without adding a Render cron service. Scheduled workflows run from the repository's default branch. Render or MongoDB Atlas may still suspend services under their free-tier policies if a ping is delayed or fails, so this does not guarantee uninterrupted availability.
 
 ### Nightly Catalog Refresh
 

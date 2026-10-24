@@ -14,6 +14,19 @@ type ProviderPayload = Record<string, string | number | boolean | undefined>;
 
 type ProviderErrorResult = { error?: string };
 
+async function updateProviderHealth(provider: ProviderRecord, errorMessage?: string) {
+  if (!provider._id) return;
+
+  try {
+    await Provider.updateOne(
+      { _id: provider._id },
+      errorMessage ? { $set: { lastError: errorMessage } } : { $unset: { lastError: 1 } },
+    );
+  } catch (error) {
+    console.error("Provider health status update failed", error);
+  }
+}
+
 export async function logProviderEvent({
   provider,
   level = "info",
@@ -118,6 +131,7 @@ export async function providerRequest<T>(
       if (parsed && typeof parsed === "object" && "error" in parsed && parsed.error) {
         throw new Error(String(parsed.error));
       }
+      await updateProviderHealth(provider);
       return parsed as T;
     } catch (error) {
       clearTimeout(timer);
@@ -135,12 +149,14 @@ export async function providerRequest<T>(
         await sleep(500 * attempt);
         continue;
       }
+      const message = error instanceof Error ? error.message : "Provider request failed";
+      await updateProviderHealth(provider, message);
       await logProviderEvent({
         provider,
         level: "error",
         scope: "provider_api",
         action: String(payload.action ?? "request"),
-        message: error instanceof Error ? error.message : "Provider request failed",
+        message,
         details: { apiUrl: provider.apiUrl, payload: { ...payload, key: undefined } },
       });
       throw error;

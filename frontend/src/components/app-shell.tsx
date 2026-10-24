@@ -38,6 +38,14 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
 };
 
+type WorkspaceHealthState = "checking" | "healthy" | "attention" | "unavailable";
+
+type WorkspaceHealth = {
+  state: WorkspaceHealthState;
+  label: string;
+  detail: string;
+};
+
 const userLinks: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Gauge },
   { href: "/dashboard/services", label: "Explore", icon: Layers3 },
@@ -76,6 +84,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<{ email?: string; name?: string; role?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [workspaceHealth, setWorkspaceHealth] = useState<WorkspaceHealth>({
+    state: "checking",
+    label: "Checking systems",
+    detail: "Checking service and database availability.",
+  });
+  const isAdmin = isAdminRole(user?.role);
 
   useEffect(() => {
     let mounted = true;
@@ -104,6 +118,79 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [router]);
 
+  useEffect(() => {
+    if (!user) return;
+
+    let mounted = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function refreshWorkspaceHealth() {
+      const requests = [
+        apiJson("/api/health", { cache: "no-store" }),
+        ...(isAdmin ? [apiJson("/api/admin/errors?activeOnly=true", { cache: "no-store" })] : []),
+      ];
+      const [healthResult, adminResult] = await Promise.allSettled(requests);
+      if (!mounted) return;
+
+      if (healthResult.status === "rejected" || !healthResult.value?.ok) {
+        setWorkspaceHealth({
+          state: "unavailable",
+          label: "Service unavailable",
+          detail: "The application service could not be reached.",
+        });
+      } else if (healthResult.value.status !== "healthy" || healthResult.value.mongo !== 1) {
+        const databaseConnecting = healthResult.value.mongo === 2;
+        setWorkspaceHealth({
+          state: databaseConnecting ? "attention" : "unavailable",
+          label: databaseConnecting ? "Service starting" : "Service issue",
+          detail: databaseConnecting
+            ? "The database connection is still starting."
+            : "The application database is not connected.",
+        });
+      } else if (isAdmin && adminResult) {
+        if (adminResult.status === "rejected" || !adminResult.value?.ok) {
+          setWorkspaceHealth({
+            state: "attention",
+            label: "Diagnostics unavailable",
+            detail: "The application is online, but current provider health could not be checked.",
+          });
+        } else {
+          const providerIssues = Array.isArray(adminResult.value.providerIssues) ? adminResult.value.providerIssues.length : 0;
+
+          setWorkspaceHealth(
+            providerIssues > 0
+              ? {
+                  state: "attention",
+                  label: "Needs attention",
+                  detail: `${providerIssues} enabled provider${providerIssues === 1 ? "" : "s"} currently reporting an error. Open Errors for details.`,
+                }
+              : {
+                  state: "healthy",
+                  label: "All systems operational",
+                  detail: "Application and database are available; enabled providers have no active errors.",
+                },
+          );
+        }
+      } else {
+        setWorkspaceHealth({
+          state: "healthy",
+          label: "All systems operational",
+          detail: "Application and database services are available.",
+        });
+      }
+
+      timer = setTimeout(() => {
+        void refreshWorkspaceHealth();
+      }, 30_000);
+    }
+
+    void refreshWorkspaceHealth();
+    return () => {
+      mounted = false;
+      clearTimeout(timer);
+    };
+  }, [isAdmin, user]);
+
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center px-4">
@@ -114,7 +201,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  const isAdmin = isAdminRole(user?.role);
   const links = isAdmin ? adminLinks : userLinks;
   const navigationGroups = isAdmin
     ? [{ label: "Workspace", items: links }]
@@ -164,12 +250,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </span>
           </Link>
-          <div className="mt-7 rounded-2xl border border-teal-100 bg-gradient-to-br from-teal-50 via-white to-sky-50 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-teal-800">
-              <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.12)]" />
-              Workspace active
+          <div
+            className="workspace-status-card mt-7 rounded-2xl border p-3"
+            data-state={workspaceHealth.state}
+            role="status"
+            aria-live="polite"
+            aria-label={isAdmin ? workspaceHealth.detail : `Workspace status: ${workspaceHealth.label}`}
+            title={isAdmin ? workspaceHealth.detail : undefined}
+          >
+            <div className="workspace-status-label flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em]">
+              <span className="workspace-status-indicator size-2 shrink-0 rounded-full" aria-hidden="true" />
+              {isAdmin ? workspaceHealth.label : "Workspace active"}
             </div>
             <p className="mt-2 truncate text-xs text-neutral-600">{user?.name || user?.email || "Your account"}</p>
+            {isAdmin && workspaceHealth.state !== "healthy" && workspaceHealth.state !== "checking" && (
+              <p className="workspace-status-detail mt-1 text-[11px] leading-4">{workspaceHealth.detail}</p>
+            )}
+            {isAdmin && workspaceHealth.state === "attention" && (
+              <Link href="/admin/errors" className="workspace-status-link mt-1 inline-block text-[11px] font-semibold">
+                View diagnostics
+              </Link>
+            )}
           </div>
           <nav className="mt-7 flex-1 space-y-6 pb-6">
             {navigationGroups.map((group) => (
