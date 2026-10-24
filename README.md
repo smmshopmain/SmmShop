@@ -89,6 +89,7 @@ Use the existing Render service configuration and set backend env vars as shown 
 ## Auth Notes
 
 - New registrations require a mobile number and stay pending until the email OTP is verified. Verification codes expire after 10 minutes and allow up to 5 attempts; email delivery uses the configured email worker.
+- After email verification, the backend sends a welcome email with account details and a live service snapshot. If delivery fails, the signed-in user can retry from the registration completion screen; retries are limited to 3 per day.
 - Public registration always creates a normal user account.
 - Login accepts email or mobile number when a user has `phone` saved.
 - The main admin signs in using `ADMIN_USERNAME` and `ADMIN_PASSWORD` from the backend environment; `ADMIN_NAME` is optional. Changing these values invalidates existing environment-admin sessions. Unsetting either username or password disables environment-admin login.

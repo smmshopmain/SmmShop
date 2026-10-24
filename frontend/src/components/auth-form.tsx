@@ -20,8 +20,13 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sendingWelcomeEmail, setSendingWelcomeEmail] = useState(false);
   const [pendingRegistration, setPendingRegistration] = useState<RegistrationPayload | null>(null);
-  const [registrationComplete, setRegistrationComplete] = useState<{ path: string; message: string } | null>(null);
+  const [registrationComplete, setRegistrationComplete] = useState<{
+    path: string;
+    message: string;
+    welcomeEmailSent: boolean;
+  } | null>(null);
   const [otp, setOtp] = useState("");
   const [referralEnabled, setReferralEnabled] = useState(true);
   const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
@@ -85,6 +90,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         setRegistrationComplete({
           path: nextPath?.startsWith("/") ? nextPath : defaultPath,
           message: user.message ?? "Your account was created, but the welcome email could not be sent.",
+          welcomeEmailSent: false,
         });
         return;
       }
@@ -119,12 +125,51 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       const user = result?.data ?? result;
       const nextPath = searchParams.get("next");
       const defaultPath = user?.role === "admin" ? "/admin" : "/dashboard/services";
+      if (user?.welcomeEmailSent === false) {
+        setRegistrationComplete({
+          path: nextPath?.startsWith("/") ? nextPath : defaultPath,
+          message: user.message ?? "Your account was created, but the welcome email could not be sent.",
+          welcomeEmailSent: false,
+        });
+        return;
+      }
       router.push((nextPath?.startsWith("/") ? nextPath : defaultPath) as Route);
       router.refresh();
     } catch {
       setError("Unable to connect to the server. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function retryWelcomeEmail() {
+    setSendingWelcomeEmail(true);
+    try {
+      const response = await apiFetch("/api/auth/welcome-email", { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) {
+        setRegistrationComplete((current) =>
+          current ? { ...current, message: result.message ?? "Welcome email could not be sent. Please try again later." } : current,
+        );
+        return;
+      }
+      setRegistrationComplete((current) =>
+        current
+          ? {
+              ...current,
+              message: result.data?.message ?? "Welcome email sent. Check your inbox and spam folder.",
+              welcomeEmailSent: true,
+            }
+          : current,
+      );
+    } catch {
+      setRegistrationComplete((current) =>
+        current
+          ? { ...current, message: "Unable to connect. Please check your connection and try again." }
+          : current,
+      );
+    } finally {
+      setSendingWelcomeEmail(false);
     }
   }
 
@@ -159,6 +204,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           <p className="font-semibold">Your account has been created.</p>
           <p className="mt-1">{registrationComplete.message}</p>
         </div>
+        {!registrationComplete.welcomeEmailSent && (
+          <button
+            type="button"
+            onClick={() => void retryWelcomeEmail()}
+            disabled={sendingWelcomeEmail}
+            className="inline-flex h-12 items-center justify-center rounded-md border border-teal-700 px-4 text-sm font-semibold text-teal-800 transition hover:bg-teal-50 disabled:opacity-60"
+          >
+            {sendingWelcomeEmail ? "Sending email..." : "Retry welcome email"}
+          </button>
+        )}
         <button
           type="button"
           onClick={() => {

@@ -7,9 +7,9 @@ import { createUniqueReferralCode } from "@/lib/referral-code";
 import { hashRegistrationOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { dbConnect } from "@/lib/db";
-import { buildWelcomeEmail, sendMail } from "@/lib/email";
+import { sendWelcomeEmail } from "@/lib/welcome-email";
 import { notifyTelegram } from "@/lib/telegram";
-import { PendingRegistration, Referral, Service, User, getSettings } from "@/models";
+import { PendingRegistration, Referral, User, getSettings } from "@/models";
 
 const schema = z.object({
   email: z.email().transform((email) => email.trim().toLowerCase()),
@@ -109,33 +109,7 @@ export async function POST(request: NextRequest) {
     let welcomeEmailSent = true;
     let welcomeEmailMessage: string | undefined;
     try {
-      const [activeServiceCount, activeCategories, services] = await Promise.all([
-        Service.countDocuments({ active: true }),
-        Service.distinct("category", { active: true }),
-        Service.find({ active: true })
-          .sort({ sellingRate: 1, category: 1, name: 1 })
-          .limit(5)
-          .select("name category sellingRate")
-          .lean(),
-      ]);
-      const frontendUrl = process.env.FRONTEND_URL?.trim();
-      if (!frontendUrl && process.env.NODE_ENV === "production") {
-        throw new Error("FRONTEND_URL is not configured");
-      }
-      const siteUrl = new URL(frontendUrl || request.nextUrl.origin);
-      if (siteUrl.protocol !== "http:" && siteUrl.protocol !== "https:") {
-        throw new Error("FRONTEND_URL must use HTTP or HTTPS");
-      }
-      const welcomeEmail = buildWelcomeEmail({
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-        siteUrl: siteUrl.origin,
-        activeServiceCount,
-        activeCategoryCount: activeCategories.length,
-        services,
-      });
-      await sendMail({ to: user.email, ...welcomeEmail });
+      await sendWelcomeEmail(user, request.nextUrl.origin);
     } catch (error) {
       welcomeEmailSent = false;
       welcomeEmailMessage = "Your account was created, but the welcome email could not be sent. Please contact support if you need help.";
