@@ -32,6 +32,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { apiJson, apiUrl } from "@/lib/client-api";
 import { isAdminRole } from "@/lib/roles";
 import { ContentLoading } from "@/components/content-loading";
+import { RequiredGooglePhoneModal } from "@/components/required-google-phone-modal";
 
 type NavItem = {
   href: Route;
@@ -83,7 +84,13 @@ const adminLinks: NavItem[] = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<{ email?: string; name?: string; role?: string } | null>(null);
+  const [user, setUser] = useState<{
+    email?: string;
+    name?: string;
+    role?: string;
+    phone?: string;
+    requiresPhone?: boolean;
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [workspaceHealth, setWorkspaceHealth] = useState<WorkspaceHealth>({
@@ -239,6 +246,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={`app-shell min-h-screen ${isAdmin ? "app-shell-admin" : "app-shell-user"}`}>
+      {user.requiresPhone && (
+        <RequiredGooglePhoneModal
+          onComplete={(phone) => setUser((current) => current ? { ...current, phone, requiresPhone: false } : current)}
+        />
+      )}
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <div className="flex h-full flex-col">
           <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="app-brand flex items-center gap-3 px-2 py-1">

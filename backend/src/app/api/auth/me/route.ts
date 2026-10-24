@@ -20,6 +20,7 @@ export async function GET() {
       name: user.name,
       email: user.email,
       phone: "",
+      requiresPhone: false,
       role: user.role,
       referralCode: "",
       referralEarnings: 0,
@@ -40,7 +41,13 @@ export async function GET() {
   }
 
   if (role !== user.role || dbUser.email !== user.email || dbUser.name !== user.name) {
-    await setSessionCookie({ id: user.id, email: dbUser.email, name: dbUser.name, role });
+    await setSessionCookie({
+      id: user.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      role,
+      ...(user.authSource === "database" ? { authSource: "database" as const } : {}),
+    });
   }
 
   return ok({
@@ -48,6 +55,7 @@ export async function GET() {
     name: dbUser.name,
     email: dbUser.email,
     phone: dbUser.phone ?? "",
+    requiresPhone: Boolean(dbUser.googleSub && !dbUser.phone),
     role,
     referralCode: dbUser.referralCode ?? "",
     referralEarnings: dbUser.referralEarnings ?? 0,
@@ -75,6 +83,7 @@ export async function PATCH(request: NextRequest) {
       email: dbUser.email,
       name: dbUser.name,
       role: auth.role,
+      ...(auth.authSource === "database" ? { authSource: "database" as const } : {}),
     });
 
     return ok({

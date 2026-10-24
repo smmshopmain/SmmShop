@@ -151,7 +151,7 @@ export async function currentUser() {
   return verifySession(store.get(COOKIE_NAME)?.value);
 }
 
-export async function requireUser() {
+export async function requireUser(options: { allowMissingGooglePhone?: boolean } = {}) {
   const user = await currentUser();
   if (!user) throw new Error("Unauthorized");
   if (isEnvironmentAdmin(user)) {
@@ -160,6 +160,9 @@ export async function requireUser() {
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) throw new Error("Unauthorized");
+  if (!options.allowMissingGooglePhone && dbUser.googleSub && !dbUser.phone) {
+    throw new Error("Add your mobile number to continue using your account.");
+  }
   if (user.authSource === "database" && normalizeRole(dbUser.role) !== "admin") {
     throw new Error("Unauthorized");
   }
