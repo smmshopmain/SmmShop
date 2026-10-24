@@ -14,6 +14,7 @@ const UserSchema = new Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    googleSub: { type: String, unique: true, sparse: true, index: true },
     phone: { type: String, unique: true, sparse: true, trim: true },
     passwordHash: { type: String, required: true },
     marketingUnsubscribed: { type: Boolean, default: false, index: true },

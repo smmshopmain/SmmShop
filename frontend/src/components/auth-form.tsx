@@ -22,6 +22,8 @@ function googleAuthErrorMessage(errorCode: string | null) {
     not_configured: "Google sign-in is not configured yet. Please contact support.",
     unverified: "Google could not verify this email address.",
     account_unavailable: "This account cannot sign in with Google. Use your existing login method.",
+    account_not_found: "No account exists for this Google email yet. Create an account first using Continue with Google or register with this email.",
+    account_link_conflict: "This Google account is linked to a different website account. Contact support for help.",
     state: "Google sign-in expired or could not be verified. Please try again.",
     rate_limited: "Too many Google sign-in attempts. Please try again later.",
     unavailable: "Google sign-in is temporarily unavailable.",

@@ -155,12 +155,22 @@ export async function GET(request: NextRequest) {
       return redirectError(request, "rate_limited", context);
     }
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ googleSub: googleProfile.sub });
+    const emailUser = await User.findOne({ email });
+    if (user && emailUser && !user._id.equals(emailUser._id)) {
+      return redirectError(request, "account_link_conflict", context);
+    }
+    if (!user) user = emailUser;
+
     if (user?.isBanned || user?.role === "admin") {
       return redirectError(request, "account_unavailable", context);
     }
 
     if (!user) {
+      if (context?.mode !== "register") {
+        return redirectError(request, "account_not_found", context);
+      }
+
       const referralCodeInput = context?.ref.trim().toUpperCase();
       const referralSystemEnabled = settings.referrals.enabled !== false;
       const referrer = referralSystemEnabled && referralCodeInput
@@ -169,6 +179,7 @@ export async function GET(request: NextRequest) {
       user = await User.create({
         name: typeof googleProfile.name === "string" ? googleProfile.name.trim().slice(0, 80) || email : email,
         email,
+        googleSub: googleProfile.sub,
         passwordHash: await hashPassword(randomBytes(48).toString("base64url")),
         role: "user",
         referralCode: await createUniqueReferralCode(User),
@@ -195,6 +206,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    if (!user.googleSub) user.googleSub = googleProfile.sub;
     user.lastLoginAt = new Date();
     await user.save();
 
