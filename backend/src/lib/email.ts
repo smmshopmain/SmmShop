@@ -1,3 +1,5 @@
+import { DEFAULT_EMAIL_MANAGEMENT_SETTINGS, Setting, type EmailManagementSettings } from "@/models";
+
 type MailInput = {
   to: string;
   subject: string;
@@ -14,6 +16,74 @@ type MailResult = {
 };
 
 const REQUEST_TIMEOUT_MS = 15000;
+const OTP_EXPIRY_MINUTES = 10;
+
+async function emailSettings(): Promise<EmailManagementSettings> {
+  const record = await Setting.findOne({ key: "email" }).lean();
+  if (!record?.value || typeof record.value !== "object" || Array.isArray(record.value)) {
+    return DEFAULT_EMAIL_MANAGEMENT_SETTINGS;
+  }
+  const value = record.value as Partial<EmailManagementSettings>;
+  const templates = value.templates && typeof value.templates === "object" && !Array.isArray(value.templates)
+    ? value.templates as Record<string, unknown>
+    : {};
+  const isColor = (color: unknown, fallback: string) =>
+    typeof color === "string" && /^#[\da-fA-F]{6}$/.test(color) ? color.toLowerCase() : fallback;
+  const isTemplate = <T extends Record<string, string>>(candidate: unknown, fallback: T): T => {
+    if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return fallback;
+    const result = { ...fallback };
+    for (const key of Object.keys(fallback) as Array<keyof T>) {
+      const entry = (candidate as Record<string, unknown>)[key as string];
+      if (typeof entry === "string") result[key] = entry as T[keyof T];
+    }
+    return result;
+  };
+  return {
+    ...DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
+    ...value,
+    brandName:
+      typeof value.brandName === "string" && value.brandName.trim()
+        ? value.brandName.trim().slice(0, 60)
+        : DEFAULT_EMAIL_MANAGEMENT_SETTINGS.brandName,
+    primaryColor: isColor(value.primaryColor, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.primaryColor),
+    accentColor: isColor(value.accentColor, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.accentColor),
+    templates: {
+      registrationOtp: isTemplate(templates.registrationOtp, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates.registrationOtp),
+      forgotPasswordOtp: isTemplate(templates.forgotPasswordOtp, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates.forgotPasswordOtp),
+      verificationOtp: isTemplate(templates.verificationOtp, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates.verificationOtp),
+      welcome: isTemplate(templates.welcome, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates.welcome),
+    },
+  };
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => {
+    const entities: Record<string, string> = {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;",
+    };
+    return entities[character];
+  });
+}
+
+function safeHttpUrl(value: string) {
+  const url = new URL(value);
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Email links must use HTTP or HTTPS.");
+  }
+  return escapeHtml(url.toString().replace(/\/$/, ""));
+}
+
+function interpolate(template: string, values: Record<string, string>) {
+  return template.replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) => values[key] ?? token);
+}
+
+function asHtmlParagraphs(value: string) {
+  return escapeHtml(value).replace(/\r?\n/g, "<br>");
+}
 
 function requireEnv(name: string) {
   const value = process.env[name]?.trim();
@@ -87,61 +157,48 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   }
 }
 
-export function buildPasswordOtpEmail(otp: string) {
-  const subject = "SMM Panel password reset OTP";
-  const text = [
-    "Your SMM Panel password reset OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Password reset OTP</h2>
-      <p>Your SMM Panel password reset OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
+type OtpTemplateKey = "registrationOtp" | "forgotPasswordOtp" | "verificationOtp";
 
-  return { subject, text, html };
-}
-
-export function buildRegistrationOtpEmail(otp: string, phone: string) {
-  const subject = "Verify your SMM Panel email";
-  const text = [
-    "Your SMM Panel email verification OTP is:",
-    otp,
-    "",
-    `Mobile number entered for registration: ${phone}`,
-    "",
-    "This OTP expires in 10 minutes. If you did not create an account, ignore this email.",
-  ].join("\n");
-  const safePhone = escapeHtml(phone);
+async function buildOtpEmail(
+  templateKey: OtpTemplateKey,
+  otp: string,
+  values: Record<string, string>,
+  heading: string,
+) {
+  const settings = await emailSettings();
+  const template = settings.templates[templateKey];
+  const variables = { ...values, otp, expiryMinutes: String(OTP_EXPIRY_MINUTES) };
+  const body = interpolate(template.body, variables);
+  const subject = interpolate(template.subject, variables);
   const html = `
     <div style="margin:0;padding:32px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243b53">
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5edf3;border-radius:18px;overflow:hidden">
-        <div style="padding:28px 30px;background-color:#0b3038;background-image:linear-gradient(125deg,#0b3038 0%,#087e78 100%);color:#ffffff">
-          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">SMM PANEL · EMAIL VERIFICATION</div>
-          <h1 style="margin:16px 0 8px;font-size:26px;line-height:1.25;color:#ffffff">Confirm your email</h1>
-          <p style="margin:0;font-size:14px;line-height:1.7;color:#d8f5f0">One quick step to activate your growth workspace.</p>
+        <div style="padding:28px 30px;background-color:${settings.primaryColor};background-image:linear-gradient(125deg,${settings.primaryColor} 0%,${settings.accentColor} 100%);color:#ffffff">
+          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${escapeHtml(settings.brandName)}</div>
+          <h1 style="margin:16px 0 8px;font-size:26px;line-height:1.25;color:#ffffff">${escapeHtml(heading)}</h1>
         </div>
         <div style="padding:28px 30px">
-          <p style="margin:0;font-size:14px;line-height:1.7;color:#486581">Enter this verification code to finish creating your account:</p>
-          <div style="margin:18px 0;padding:17px;border:1px solid #bfe8df;border-radius:12px;background:#effaf8;text-align:center;font-size:30px;font-weight:800;letter-spacing:7px;color:#087e78">${otp}</div>
-          <div style="padding:14px 16px;border:1px solid #e8edf2;border-radius:12px;background:#f7fafc">
-            <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#829ab1">Mobile number for this registration</div>
-            <div style="margin-top:6px;font-size:15px;font-weight:700;color:#243b53">${safePhone}</div>
-          </div>
-          <p style="margin:18px 0 0;font-size:12px;line-height:1.7;color:#627d98">This code expires in 10 minutes. If you did not start this registration, you can ignore this email.</p>
+          <p style="margin:0;font-size:14px;line-height:1.8;color:#486581">${asHtmlParagraphs(body)}</p>
+          <div style="margin:18px 0;padding:17px;border:1px solid #bfe8df;border-radius:12px;background:#effaf8;text-align:center;font-size:30px;font-weight:800;letter-spacing:7px;color:${settings.accentColor}">${escapeHtml(otp)}</div>
+          <p style="margin:0;font-size:12px;line-height:1.7;color:#627d98">This code expires in ${OTP_EXPIRY_MINUTES} minutes. Never share it with anyone.</p>
         </div>
-        <div style="padding:16px 24px;border-top:1px solid #e8edf2;background:#f7fafc;text-align:center;font-size:11px;color:#829ab1">SMM Panel · Your growth workspace</div>
+        <div style="padding:16px 24px;border-top:1px solid #e8edf2;background:#f7fafc;text-align:center;font-size:11px;color:#829ab1">${escapeHtml(settings.brandName)}</div>
       </div>
     </div>
   `;
+  return { subject, text: `${body}\n\nOTP: ${otp}\nExpires in ${OTP_EXPIRY_MINUTES} minutes.`, html };
+}
 
-  return { subject, text, html };
+export function buildPasswordOtpEmail(otp: string) {
+  return buildOtpEmail("forgotPasswordOtp", otp, {}, "Password reset");
+}
+
+export function buildRegistrationOtpEmail(otp: string, phone: string) {
+  return buildOtpEmail("registrationOtp", otp, { phone }, "Confirm your email");
+}
+
+export function buildVerificationOtpEmail(otp: string, purpose: string) {
+  return buildOtpEmail("verificationOtp", otp, { purpose }, "Verify your account");
 }
 
 type WelcomeEmailInput = {
@@ -154,20 +211,7 @@ type WelcomeEmailInput = {
   services: Array<{ name: string; category: string; sellingRate: number }>;
 };
 
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => {
-    const entities: Record<string, string> = {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#39;",
-    };
-    return entities[character];
-  });
-}
-
-export function buildWelcomeEmail({
+export async function buildWelcomeEmail({
   name,
   email,
   phone,
@@ -176,20 +220,25 @@ export function buildWelcomeEmail({
   activeCategoryCount,
   services,
 }: WelcomeEmailInput) {
-  const subject = "Welcome to SMM Panel — your growth workspace is ready";
+  const settings = await emailSettings();
+  const values = { name, email, phone: phone?.trim() || "Not added yet", websiteUrl: siteUrl };
+  const template = settings.templates.welcome;
+  const subject = interpolate(template.subject, values);
+  const headline = interpolate(template.headline, values);
+  const welcomeBody = interpolate(template.body, values);
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(email);
-  const safePhone = escapeHtml(phone?.trim() || "Not added yet");
-  const safeSiteUrl = escapeHtml(siteUrl);
+  const safePhone = escapeHtml(values.phone);
+  const safeSiteUrl = safeHttpUrl(siteUrl);
   const serviceLines = services.length
     ? services.map((service) =>
         `${service.name} · ${service.category} · Rs.${service.sellingRate.toFixed(2)} per 1,000`,
       )
     : ["No active services are listed right now. Visit the catalog again soon."];
   const text = [
-    `Welcome to SMM Panel, ${name}!`,
+    interpolate(template.headline, values),
     "",
-    "Your account is ready. Explore social growth services, manage your wallet, track orders, and get support from one workspace.",
+    welcomeBody,
     "",
     `Name: ${name}`,
     `Email: ${email}`,
@@ -207,7 +256,7 @@ export function buildWelcomeEmail({
     "Sign in to get started:",
     `${siteUrl}/login`,
     "",
-    "SMM Panel — your growth workspace",
+    `${settings.brandName} — your growth workspace`,
   ].join("\n");
   const serviceCards = services.length
     ? services
@@ -219,7 +268,7 @@ export function buildWelcomeEmail({
                 <div style="margin-top:4px;font-size:12px;color:#627d98">${escapeHtml(service.category)}</div>
               </td>
               <td align="right" style="padding:14px 16px;border-bottom:1px solid #e8edf2;white-space:nowrap">
-                <div style="font-size:14px;font-weight:700;color:#087e78">Rs.${service.sellingRate.toFixed(2)}</div>
+                <div style="font-size:14px;font-weight:700;color:${settings.accentColor}">Rs.${service.sellingRate.toFixed(2)}</div>
                 <div style="margin-top:4px;font-size:11px;color:#829ab1">per 1,000</div>
               </td>
             </tr>`,
@@ -229,11 +278,11 @@ export function buildWelcomeEmail({
   const html = `
     <div style="margin:0;padding:32px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243b53">
       <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5edf3;border-radius:20px;overflow:hidden;box-shadow:0 18px 50px rgba(15,35,55,.12)">
-        <div style="padding:36px 34px;background-color:#0b3038;background-image:linear-gradient(125deg,#0b3038 0%,#087e78 58%,#1aa7a1 100%);color:#ffffff">
-          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">SMM PANEL · YOUR GROWTH WORKSPACE</div>
-          <h1 style="margin:18px 0 10px;font-size:30px;line-height:1.2;color:#ffffff">Welcome aboard, ${safeName}!</h1>
-          <p style="margin:0;max-width:460px;font-size:15px;line-height:1.7;color:#d8f5f0">Your account is ready. Discover services, manage orders, and follow your progress from one clear workspace.</p>
-          <a href="${safeSiteUrl}/dashboard/services" style="display:inline-block;margin-top:24px;padding:13px 20px;border-radius:10px;background:#ffffff;color:#075e59;text-decoration:none;font-size:14px;font-weight:700">Explore services&nbsp; →</a>
+        <div style="padding:36px 34px;background-color:${settings.primaryColor};background-image:linear-gradient(125deg,${settings.primaryColor} 0%,${settings.accentColor} 100%);color:#ffffff">
+          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${escapeHtml(settings.brandName)} · YOUR GROWTH WORKSPACE</div>
+          <h1 style="margin:18px 0 10px;font-size:30px;line-height:1.2;color:#ffffff">${escapeHtml(headline)}</h1>
+          <p style="margin:0;max-width:460px;font-size:15px;line-height:1.7;color:#d8f5f0">${asHtmlParagraphs(welcomeBody)}</p>
+          <a href="${safeSiteUrl}/dashboard/services" style="display:inline-block;margin-top:24px;padding:13px 20px;border-radius:10px;background:#ffffff;color:${settings.accentColor};text-decoration:none;font-size:14px;font-weight:700">Explore services&nbsp; →</a>
         </div>
         <div style="padding:28px 34px">
           <h2 style="margin:0 0 15px;font-size:17px;color:#102a43">Your account details</h2>
@@ -257,12 +306,12 @@ export function buildWelcomeEmail({
             <p style="margin:8px 0 0;font-size:13px;line-height:1.8;color:#627d98">Browse social growth services, keep track of your wallet and orders, and reach support whenever you need help.</p>
           </div>
           <div style="margin-top:24px;text-align:center">
-            <a href="${safeSiteUrl}/login" style="display:inline-block;padding:13px 22px;border-radius:10px;background:#087e78;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open your workspace</a>
+            <a href="${safeSiteUrl}/login" style="display:inline-block;padding:13px 22px;border-radius:10px;background:${settings.accentColor};color:#ffffff;text-decoration:none;font-size:14px;font-weight:700">Open your workspace</a>
           </div>
         </div>
         <div style="padding:18px 28px;background:#f7fafc;border-top:1px solid #e8edf2;text-align:center;font-size:11px;line-height:1.7;color:#829ab1">
-          SMM Panel · Your growth workspace<br>
-          <a href="${safeSiteUrl}" style="color:#087e78;text-decoration:none">${safeSiteUrl}</a>
+          ${escapeHtml(settings.brandName)} · Your growth workspace<br>
+          <a href="${safeSiteUrl}" style="color:${settings.accentColor};text-decoration:none">${safeSiteUrl}</a>
         </div>
       </div>
     </div>
@@ -272,64 +321,13 @@ export function buildWelcomeEmail({
 }
 
 export function buildEmailChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel email change OTP";
-  const text = [
-    "Your SMM Panel email change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Email change OTP</h2>
-      <p>Your SMM Panel email change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildVerificationOtpEmail(otp, "email change");
 }
 
 export function buildPhoneChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel phone change OTP";
-  const text = [
-    "Your SMM Panel phone change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Phone change OTP</h2>
-      <p>Your SMM Panel phone change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildVerificationOtpEmail(otp, "phone change");
 }
 
 export function buildPasswordChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel password change OTP";
-  const text = [
-    "Your SMM Panel password change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Password change OTP</h2>
-      <p>Your SMM Panel password change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildVerificationOtpEmail(otp, "password change");
 }

@@ -19,7 +19,7 @@ export async function POST() {
 
     await sendMail({
       to: dbUser.email,
-      ...buildPasswordChangeOtpEmail(otp),
+      ...(await buildPasswordChangeOtpEmail(otp)),
     });
 
     return ok({ message: "OTP sent to your current email address." });

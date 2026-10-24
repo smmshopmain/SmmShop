@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
     await sendMail({
       to: nextEmail,
-      ...buildEmailChangeOtpEmail(otp),
+      ...(await buildEmailChangeOtpEmail(otp)),
     });
 
     return ok({ message: "OTP sent to the new email address." });

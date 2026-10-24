@@ -54,7 +54,7 @@ export async function sendWelcomeEmail(user: WelcomeUser, requestOrigin: string)
     throw new Error("FRONTEND_URL must use HTTP or HTTPS");
   }
 
-  const welcomeEmail = buildWelcomeEmail({
+  const welcomeEmail = await buildWelcomeEmail({
     name: user.name,
     email: user.email,
     phone: user.phone,

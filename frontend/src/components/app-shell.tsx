@@ -11,6 +11,7 @@ import {
   Layers3,
   LineChart,
   Bell,
+  Mail,
   LogOut,
   Menu,
   Palette,
@@ -75,6 +76,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/errors" as Route, label: "Errors", icon: AlertTriangle },
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Palette },
+  { href: "/admin/email" as Route, label: "Email Management", icon: Mail },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 

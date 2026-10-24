@@ -4,10 +4,10 @@ import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib/loading-animations";
-import { getSettings, Setting } from "@/models";
+import { DEFAULT_EMAIL_MANAGEMENT_SETTINGS, getSettings, Setting } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "referrals"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "referrals"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -43,6 +43,23 @@ const appearanceSchema = z.object({
       message: "The selected loading animation must be enabled.",
     });
   }
+});
+
+const emailTemplateSchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(5000),
+});
+
+const emailSettingsSchema = z.object({
+  brandName: z.string().trim().min(1).max(60),
+  primaryColor: z.string().regex(/^#[\da-fA-F]{6}$/),
+  accentColor: z.string().regex(/^#[\da-fA-F]{6}$/),
+  templates: z.object({
+    registrationOtp: emailTemplateSchema,
+    forgotPasswordOtp: emailTemplateSchema,
+    verificationOtp: emailTemplateSchema,
+    welcome: emailTemplateSchema.extend({ headline: z.string().trim().min(1).max(160) }),
+  }),
 });
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -81,6 +98,22 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
       throw new Error("Configure Google OAuth credentials and APP_BASE_URL in the backend environment first.");
     }
     return { googleEnabled: value.googleEnabled === true };
+  }
+
+  if (key === "email") {
+    const emailSettings = emailSettingsSchema.parse({
+      ...DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
+      ...value,
+      templates: {
+        ...DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates,
+        ...(isRecord(value.templates) ? value.templates : {}),
+      },
+    });
+    return {
+      ...emailSettings,
+      primaryColor: emailSettings.primaryColor.toLowerCase(),
+      accentColor: emailSettings.accentColor.toLowerCase(),
+    };
   }
 
   if (key === "appearance") {

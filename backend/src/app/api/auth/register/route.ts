@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     try {
       await sendMail({
         to: input.email,
-        ...buildRegistrationOtpEmail(otp, input.phone),
+        ...(await buildRegistrationOtpEmail(otp, input.phone)),
       });
     } catch (error) {
       if (pending) {

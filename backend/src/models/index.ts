@@ -16,6 +16,8 @@ const UserSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     phone: { type: String, unique: true, sparse: true, trim: true },
     passwordHash: { type: String, required: true },
+    marketingUnsubscribed: { type: Boolean, default: false, index: true },
+    marketingUnsubscribedAt: Date,
     role: { type: String, enum: ["user", "staff", "secondary_admin", "admin"], default: "user", index: true },
     walletBalance: money,
     referralCode: { type: String, unique: true, sparse: true, index: true, default: generateReferralCode },
@@ -240,6 +242,33 @@ const SettingsSchema = new Schema(
   { timestamps: true },
 );
 
+const EmailCampaignSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    kind: { type: String, enum: ["announcement", "advertisement"], required: true },
+    subject: { type: String, required: true, trim: true, maxlength: 200 },
+    body: { type: String, required: true, maxlength: 10000 },
+    includeUnsubscribed: { type: Boolean, default: false },
+    scheduledAt: { type: Date, required: true, index: true },
+    recipientCutoffAt: { type: Date, required: true },
+    cursor: { type: Schema.Types.ObjectId },
+    status: {
+      type: String,
+      enum: ["scheduled", "queued", "sending", "sent", "partial", "failed"],
+      default: "queued",
+      index: true,
+    },
+    recipientCount: { type: Number, default: 0, min: 0 },
+    sentCount: { type: Number, default: 0, min: 0 },
+    failedCount: { type: Number, default: 0, min: 0 },
+    lockUntil: Date,
+    lastError: String,
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },
+  },
+  { timestamps: true },
+);
+EmailCampaignSchema.index({ status: 1, scheduledAt: 1, lockUntil: 1 });
+
 const UploadedFileSchema = new Schema(
   {
     folder: { type: String, enum: ["deposit-proofs", "payment-qr"], required: true, index: true },
@@ -329,6 +358,7 @@ export const Ticket = models.Ticket || model("Ticket", TicketSchema);
 export const PromoCode = models.PromoCode || model("PromoCode", PromoCodeSchema);
 export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
+export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", EmailCampaignSchema);
 export const UploadedFile = models.UploadedFile || model("UploadedFile", UploadedFileSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
@@ -373,12 +403,50 @@ export type PlatformSettings = {
   };
   provider: { lowBalanceThreshold: number };
   auth: { googleEnabled: boolean };
+  email: EmailManagementSettings;
   referrals: {
     enabled: boolean;
     commissionPercent: number;
     commissionAmount: number;
     minimumReferredWalletAddAmount: number;
   };
+};
+
+export type EmailManagementSettings = {
+  brandName: string;
+  primaryColor: string;
+  accentColor: string;
+  templates: {
+    registrationOtp: { subject: string; body: string };
+    forgotPasswordOtp: { subject: string; body: string };
+    verificationOtp: { subject: string; body: string };
+    welcome: { subject: string; headline: string; body: string };
+  };
+};
+
+export const DEFAULT_EMAIL_MANAGEMENT_SETTINGS: EmailManagementSettings = {
+  brandName: "SMM Panel",
+  primaryColor: "#0b3038",
+  accentColor: "#087e78",
+  templates: {
+    registrationOtp: {
+      subject: "Verify your SMM Panel email",
+      body: "Enter this OTP to finish creating your account.\nMobile number entered for registration: {{phone}}\nThis OTP expires in {{expiryMinutes}} minutes. If you did not create an account, ignore this email.",
+    },
+    forgotPasswordOtp: {
+      subject: "SMM Panel password reset OTP",
+      body: "Your password reset OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
+    },
+    verificationOtp: {
+      subject: "SMM Panel verification code",
+      body: "Your account verification OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
+    },
+    welcome: {
+      subject: "Welcome to SMM Panel — your growth workspace is ready",
+      headline: "Welcome aboard, {{name}}!",
+      body: "Your account is ready. Explore social growth services, manage your wallet, track orders, and get support from one workspace.",
+    },
+  },
 };
 
 export async function getSettings() {
@@ -414,6 +482,7 @@ export async function getSettings() {
     },
     provider: { lowBalanceThreshold: 100 },
     auth: { googleEnabled: false },
+    email: DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
     referrals: {
       enabled: true,
       commissionPercent: 2,
@@ -444,6 +513,17 @@ export async function getSettings() {
     }
     if (record.key === "provider") settings.provider = { ...settings.provider, ...(record.value as Partial<PlatformSettings["provider"]>) };
     if (record.key === "auth") settings.auth = { ...settings.auth, ...(record.value as Partial<PlatformSettings["auth"]>) };
+    if (record.key === "email") {
+      const value = record.value as Partial<EmailManagementSettings>;
+      settings.email = {
+        ...settings.email,
+        ...value,
+        templates: {
+          ...settings.email.templates,
+          ...(value.templates ?? {}),
+        },
+      };
+    }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
   }
 

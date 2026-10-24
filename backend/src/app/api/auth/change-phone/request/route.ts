@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
 
     await sendMail({
       to: dbUser.email,
-      ...buildPhoneChangeOtpEmail(otp),
+      ...(await buildPhoneChangeOtpEmail(otp)),
     });
 
     return ok({ message: "OTP sent to your current email address." });

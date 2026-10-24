@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       user.passwordResetAttempts = 0;
       await user.save();
 
-      const emailContent = buildPasswordOtpEmail(otp);
+      const emailContent = await buildPasswordOtpEmail(otp);
       try {
         await sendMail({
           to: user.email,

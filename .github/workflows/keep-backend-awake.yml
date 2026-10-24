@@ -25,3 +25,9 @@ jobs:
           curl --fail --silent --show-error --retry 2 --retry-delay 5 --connect-timeout 20 --max-time 60 \
             --header "x-cron-secret: $CRON_SECRET" \
             "${BACKEND_URL%/}/api/keep-alive"
+          for batch in 1 2 3; do
+            curl --fail --silent --show-error --retry 2 --retry-delay 5 --connect-timeout 20 --max-time 120 \
+              --request POST \
+              --header "x-cron-secret: $CRON_SECRET" \
+              "${BACKEND_URL%/}/api/cron/email-campaigns"
+          done
