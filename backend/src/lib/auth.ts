@@ -10,10 +10,10 @@ const COOKIE_NAME = "smm_token";
 const isProduction = process.env.NODE_ENV === "production";
 const SESSION_COOKIE_OPTIONS = {
   httpOnly: true,
-  sameSite: "none" as const,
+  sameSite: isProduction ? "none" : "lax",
   secure: isProduction,
   path: "/",
-};
+} as const;
 
 export type AuthUser = {
   id: string;

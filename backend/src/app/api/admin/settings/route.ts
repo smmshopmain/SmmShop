@@ -12,7 +12,7 @@ const schema = z.object({
 });
 
 const appearanceSchema = z.object({
-  designPreset: z.enum(["default", "studio", "midnight"]).default("default"),
+  designPreset: z.enum(["default", "studio", "orbit", "atelier", "pulse", "midnight"]).default("default"),
   animationsEnabled: z.boolean(),
   entranceEnabled: z.boolean(),
   floatingEnabled: z.boolean(),

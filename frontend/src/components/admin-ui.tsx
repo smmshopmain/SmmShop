@@ -30,25 +30,30 @@ export function AdminSection({
   title,
   description,
   icon: Icon,
+  actions,
   children,
 }: {
   title: string;
   description?: string;
   icon?: LucideIcon;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="surface-card overflow-hidden">
-      <div className="flex items-center gap-3 border-b border-neutral-200 p-4">
-        {Icon && (
-          <span className="grid size-10 place-items-center rounded-xl bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
-            <Icon className="size-5" />
-          </span>
-        )}
-        <div>
-          <h2 className="font-bold text-neutral-950">{title}</h2>
-          {description && <p className="text-sm text-neutral-500">{description}</p>}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-neutral-200 p-4">
+        <div className="flex min-w-0 items-center gap-3">
+          {Icon && (
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-800 ring-1 ring-teal-700/10">
+              <Icon className="size-5" />
+            </span>
+          )}
+          <div className="min-w-0">
+            <h2 className="font-bold text-neutral-950">{title}</h2>
+            {description && <p className="text-sm text-neutral-500">{description}</p>}
+          </div>
         </div>
+        {actions}
       </div>
       {children}
     </section>

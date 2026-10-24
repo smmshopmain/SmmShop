@@ -150,7 +150,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="app-shell min-h-screen">
+    <div className={`app-shell min-h-screen ${isAdmin ? "app-shell-admin" : "app-shell-user"}`}>
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <div className="flex h-full flex-col">
           <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="app-brand flex items-center gap-3 px-2 py-1">
@@ -182,6 +182,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      title={item.label}
+                      aria-label={item.label}
                       className={`app-nav-link flex items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold transition-all duration-200 ${
                         isActive(item.href)
                           ? "bg-teal-50 text-teal-900 shadow-sm ring-1 ring-teal-700/10"
@@ -189,9 +191,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       }`}
                     >
                       <item.icon className="size-[17px]" strokeWidth={1.8} />
-                      {item.label}
+                      <span className="app-nav-label">{item.label}</span>
                       {item.href === "/dashboard/services" && (
-                        <span className="ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800">New</span>
+                        <span className="app-nav-badge ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800">New</span>
                       )}
                     </Link>
                   ))}

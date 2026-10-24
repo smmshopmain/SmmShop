@@ -115,6 +115,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       )}
       {error && <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">{error}</p>}
       <button
+        type="submit"
         disabled={loading}
         className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-teal-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 disabled:opacity-60"
       >

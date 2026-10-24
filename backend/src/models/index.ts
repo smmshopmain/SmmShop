@@ -323,7 +323,7 @@ export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema)
 
 export type PlatformSettings = {
   appearance: {
-    designPreset: "default" | "studio" | "midnight";
+    designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight";
     animationsEnabled: boolean;
     entranceEnabled: boolean;
     floatingEnabled: boolean;

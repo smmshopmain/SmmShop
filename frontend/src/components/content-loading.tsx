@@ -22,10 +22,13 @@ export function ContentLoading({
   const activeSelection = enabled.includes(settings.selectedLoadingAnimation)
     ? settings.selectedLoadingAnimation
     : enabled[0];
+  const activeRandomAnimation = enabled.includes(randomAnimation)
+    ? randomAnimation
+    : enabled[0];
   const selectedId = animationId
     ?? (settings.loadingAnimationMode === "specific"
       ? activeSelection
-      : randomAnimation || enabled[0]);
+      : activeRandomAnimation);
   const animation = LOADING_ANIMATIONS.find(({ id }) => id === selectedId)
     ?? LOADING_ANIMATIONS.find(({ id }) => enabled.includes(id))
     ?? LOADING_ANIMATIONS[0];

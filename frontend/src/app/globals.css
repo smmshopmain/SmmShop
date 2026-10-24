@@ -165,6 +165,12 @@ button:not(:disabled):active {
 a {
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+  transition:
+    color var(--motion-hover-duration) ease,
+    background-color var(--motion-hover-duration) ease,
+    border-color var(--motion-hover-duration) ease,
+    box-shadow var(--motion-hover-duration) ease,
+    transform var(--motion-hover-duration) ease;
 }
 
 ::selection {
@@ -326,7 +332,7 @@ a {
 @keyframes loading-activity-scan { 0%, 100% { transform: translateY(5px) scaleX(0.82); } 50% { transform: translateY(-5px) scaleX(1.08); } }
 @keyframes loading-sparkle-shimmer { 0%, 100% { transform: rotate(-12deg) scale(0.82); opacity: 0.65; } 50% { transform: rotate(12deg) scale(1.16); opacity: 1; } }
 
-.page-enter > * {
+html[data-motion-entrance="on"] .page-enter > * {
   animation: rise-in var(--motion-page-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
@@ -457,19 +463,19 @@ a {
   box-shadow: 0 18px 35px -28px rgb(15 23 42 / 42%);
 }
 
-.workspace-grid > * {
+html[data-motion-entrance="on"] .workspace-grid > * {
   animation: rise-in var(--motion-page-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
-.workspace-grid > :nth-child(2) {
+html[data-motion-entrance="on"] .workspace-grid > :nth-child(2) {
   animation-delay: 45ms;
 }
 
-.workspace-grid > :nth-child(3) {
+html[data-motion-entrance="on"] .workspace-grid > :nth-child(3) {
   animation-delay: 90ms;
 }
 
-.workspace-grid > :nth-child(4) {
+html[data-motion-entrance="on"] .workspace-grid > :nth-child(4) {
   animation-delay: 135ms;
 }
 
@@ -1024,10 +1030,2475 @@ html[data-design="studio"] .notifications-mark-all button {
   border-radius: 0.9rem;
 }
 
+html[data-design="orbit"] .app-shell-user {
+  --orbit-ink: #19172f;
+  --orbit-violet: #7048ef;
+  --orbit-violet-dark: #5835d1;
+  --orbit-lime: #d9fb69;
+  --orbit-paper: #f4f2fa;
+  --orbit-muted: #77758a;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 82% 0%, rgb(221 215 255 / 52%), transparent 32rem),
+    linear-gradient(145deg, #f8f7fb 0%, #f1eff8 58%, #f7f6fa 100%);
+  color: var(--orbit-ink);
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar {
+  width: 16.5rem;
+  border-color: rgb(255 255 255 / 8%);
+  background:
+    radial-gradient(ellipse at 10% 0%, rgb(112 72 239 / 26%), transparent 24rem),
+    linear-gradient(180deg, #1b1935, #151429 82%);
+  box-shadow: 18px 0 55px -40px rgb(26 20 63 / 55%);
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar .app-brand {
+  padding: 0.45rem 0.55rem;
+}
+
+html[data-design="orbit"] .app-shell-user .brand-mark {
+  border-radius: 1rem;
+  background: linear-gradient(145deg, #d9fb69, #a9d93e);
+  box-shadow: 0 9px 25px rgb(217 251 105 / 18%);
+  color: #24213b;
+}
+
+html[data-design="orbit"] .app-shell-user .app-brand > span:last-child > span:first-child {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user .app-brand > span:last-child > span:last-child {
+  color: #a8a5bf;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) {
+  border-color: rgb(255 255 255 / 9%);
+  background: rgb(255 255 255 / 5%);
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) > div {
+  color: var(--orbit-lime);
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) > p {
+  color: #cfccde;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a {
+  min-height: 2.8rem;
+  border: 1px solid transparent;
+  border-radius: 0.9rem;
+  color: #b5b2ca;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a:hover {
+  background: rgb(255 255 255 / 6%);
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a[class~="bg-teal-50"],
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a[class~="text-teal-900"] {
+  border-color: rgb(217 251 105 / 18%);
+  background: rgb(217 251 105 / 12%);
+  box-shadow: none;
+  color: var(--orbit-lime);
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a span[class*="rounded-full"] {
+  background: var(--orbit-lime);
+  color: #29253e;
+}
+
+html[data-design="orbit"] .app-shell-user .app-support-card {
+  border: 1px solid rgb(255 255 255 / 8%);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(112 72 239 / 35%), transparent 14rem),
+    #25223f;
+}
+
+html[data-design="orbit"] .app-shell-user .app-support-card > span:first-child {
+  background: rgb(217 251 105 / 14%);
+  color: var(--orbit-lime);
+}
+
+html[data-design="orbit"] .app-shell-user .app-support-card > span:last-child {
+  color: #c4c1d5;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:last-child {
+  border-color: rgb(255 255 255 / 10%);
+  color: #87849f;
+}
+
+html[data-design="orbit"] .app-shell-user > div.min-w-0 {
+  padding-left: 16.5rem;
+}
+
+html[data-design="orbit"] .app-shell-user .app-header {
+  border-color: rgb(226 223 237 / 85%);
+  background: rgb(250 249 252 / 86%);
+  box-shadow: 0 12px 38px -34px rgb(31 26 65 / 45%);
+  backdrop-filter: blur(18px);
+}
+
+html[data-design="orbit"] .app-shell-user .app-header > div {
+  max-width: 1560px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-header kbd {
+  border: 1px solid #e5e1ef;
+  background: #f6f4fa;
+  color: #7b778c;
+}
+
+html[data-design="orbit"] .app-shell-user .app-header button,
+html[data-design="orbit"] .app-shell-user .app-header form button,
+html[data-design="orbit"] .app-shell-user .app-header a[class*="rounded-xl"] {
+  border-color: #e3e0ec;
+  background-color: #fff;
+  color: #37334f;
+}
+
+html[data-design="orbit"] .app-shell-user .app-header button:hover,
+html[data-design="orbit"] .app-shell-user .app-header form button:hover {
+  border-color: #c8b9ff;
+  background-color: #f6f3ff;
+}
+
+html[data-design="orbit"] .app-shell-user main {
+  max-width: 1560px;
+  padding-top: clamp(1.4rem, 3vw, 2.5rem);
+}
+
+html[data-design="orbit"] .app-shell-user main h1 {
+  color: #201d38;
+  letter-spacing: -0.045em;
+}
+
+html[data-design="orbit"] .app-shell-user main h2 {
+  letter-spacing: -0.025em;
+}
+
+html[data-design="orbit"] .app-shell-user main .surface-card,
+html[data-design="orbit"] .app-shell-user main .profile-summary,
+html[data-design="orbit"] .app-shell-user main .service-catalog,
+html[data-design="orbit"] .app-shell-user main .order-builder,
+html[data-design="orbit"] .app-shell-user main .order-list-panel,
+html[data-design="orbit"] .app-shell-user main .wallet-workspace > section,
+html[data-design="orbit"] .app-shell-user main .wallet-history,
+html[data-design="orbit"] .app-shell-user main .support-conversations,
+html[data-design="orbit"] .app-shell-user main .refills-list,
+html[data-design="orbit"] .app-shell-user main .notifications-list,
+html[data-design="orbit"] .app-shell-user main .profile-workspace > section,
+html[data-design="orbit"] .app-shell-user main section[class*="rounded-"][class*="border"][class*="bg-white"],
+html[data-design="orbit"] .app-shell-user main > div[class*="rounded-"][class*="border"][class*="bg-white"] {
+  border-color: #e4e0ef;
+  border-radius: 1.35rem;
+  background-color: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 3px 10px rgb(35 28 71 / 3%),
+    0 20px 48px -40px rgb(35 28 71 / 22%);
+}
+
+html[data-design="orbit"] .app-shell-user main .surface-card:hover,
+html[data-design="orbit"] .app-shell-user main .workspace-link:hover {
+  border-color: #c7b9ff;
+  box-shadow: 0 18px 40px -32px rgb(112 72 239 / 30%);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command {
+  position: relative;
+  isolation: isolate;
+  min-height: 18rem;
+  overflow: hidden;
+  border: 0;
+  border-radius: 1.8rem;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(217 251 105 / 34%), transparent 21rem),
+    radial-gradient(ellipse at 8% 115%, rgb(156 132 255 / 42%), transparent 24rem),
+    linear-gradient(118deg, #38267e 0%, #6342cf 55%, #805ee8 100%);
+  box-shadow: 0 28px 60px -35px rgb(81 55 170 / 52%);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command::after {
+  position: absolute;
+  z-index: -1;
+  top: -9rem;
+  right: 21rem;
+  width: 25rem;
+  height: 25rem;
+  border: 1px solid rgb(255 255 255 / 17%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 2.5rem rgb(255 255 255 / 4%), 0 0 0 5rem rgb(255 255 255 / 3%);
+  content: "";
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command h1,
+html[data-design="orbit"] .app-shell-user main .dashboard-command p,
+html[data-design="orbit"] .app-shell-user main .dashboard-command a {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command > div:first-child > p:first-child {
+  color: var(--orbit-lime);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command a:first-of-type {
+  background: var(--orbit-lime);
+  color: #25213c;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command a:last-of-type {
+  border-color: rgb(255 255 255 / 24%);
+  background: rgb(255 255 255 / 10%);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-launch-card {
+  border: 1px solid rgb(255 255 255 / 18%);
+  background: rgb(26 21 58 / 35%);
+  box-shadow: 0 18px 38px -28px rgb(22 14 57 / 50%);
+  backdrop-filter: blur(12px);
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-grid > *,
+html[data-design="orbit"] .app-shell-user main .profile-summary {
+  border-radius: 1.25rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-link {
+  border-color: #e9e5f1;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-link > span:first-child {
+  border-radius: 0.85rem;
+  background: #f0ecff;
+  color: var(--orbit-violet);
+}
+
+html[data-design="orbit"] .app-shell-user main .service-page-hero,
+html[data-design="orbit"] .app-shell-user main .referrals-command {
+  border: 0;
+  border-radius: 1.8rem;
+  background:
+    radial-gradient(ellipse at 87% 0%, rgb(217 251 105 / 30%), transparent 22rem),
+    linear-gradient(120deg, #302264, #6041c4 60%, #7654de);
+  box-shadow: 0 26px 56px -38px rgb(81 55 170 / 48%);
+}
+
+html[data-design="orbit"] .app-shell-user main .service-page-hero h1,
+html[data-design="orbit"] .app-shell-user main .referrals-command h1 {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-page-hero a:last-child {
+  background: var(--orbit-lime);
+  color: #25213c;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-studio {
+  gap: 1.25rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-catalog,
+html[data-design="orbit"] .app-shell-user main .order-builder {
+  border-radius: 1.45rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-catalog-header,
+html[data-design="orbit"] .app-shell-user main .order-builder form {
+  background-color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row {
+  min-height: 5rem;
+  border-left: 3px solid transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row:hover {
+  background: #f7f5ff;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row[class*="bg-teal-50"] {
+  border-left-color: var(--orbit-violet);
+  background: #f1edff;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-builder-header {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(217 251 105 / 28%), transparent 17rem),
+    linear-gradient(135deg, #302264, #4e35a7);
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-command,
+html[data-design="orbit"] .app-shell-user main .support-command,
+html[data-design="orbit"] .app-shell-user main .profile-command,
+html[data-design="orbit"] .app-shell-user main .notifications-command,
+html[data-design="orbit"] .app-shell-user main .refills-command {
+  border-color: #e4e0ef;
+  border-radius: 1.55rem;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(228 221 255 / 42%), transparent 26rem),
+    rgb(255 255 255 / 95%);
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-intro,
+html[data-design="orbit"] .app-shell-user main .orders-filter-wrap {
+  background: transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-filter-wrap {
+  border-color: #e8e4f1;
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-command input,
+html[data-design="orbit"] .app-shell-user main .orders-command select,
+html[data-design="orbit"] .app-shell-user main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="orbit"] .app-shell-user main select,
+html[data-design="orbit"] .app-shell-user main textarea {
+  border-color: #e0dced;
+  border-radius: 0.85rem;
+}
+
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-700"],
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-600"] {
+  background-color: var(--orbit-violet);
+  box-shadow: 0 10px 24px -15px rgb(112 72 239 / 70%);
+}
+
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-700"]:hover,
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-600"]:hover {
+  background-color: var(--orbit-violet-dark);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-command {
+  border: 0;
+  border-radius: 1.8rem;
+  background: linear-gradient(120deg, #302264, #5136ad);
+  box-shadow: 0 26px 56px -38px rgb(81 55 170 / 48%);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-intro {
+  background: transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-balance-card {
+  border-color: rgb(255 255 255 / 14%);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(217 251 105 / 28%), transparent 18rem),
+    rgb(255 255 255 / 7%);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-deposits > div:first-child,
+html[data-design="orbit"] .app-shell-user main .wallet-history > div:first-child,
+html[data-design="orbit"] .app-shell-user main .support-conversations > div:first-child,
+html[data-design="orbit"] .app-shell-user main .notifications-list > div:first-child {
+  background: #faf9fc;
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-role-card {
+  background: linear-gradient(135deg, #302264, #5136ad);
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-summary {
+  border-color: #e4e0ef;
+  background: linear-gradient(145deg, #fff, #fbfaff);
+}
+
+html[data-design="orbit"] .app-shell-user main .support-promise {
+  border-color: #e1daf8;
+  background: #f5f2ff;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-panel > div:first-child {
+  background: #faf9fc;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-row {
+  border-color: #efedf4;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-row:hover {
+  background: #faf9ff;
+}
+
+html[data-design="orbit"] .app-shell-user nav.app-header {
+  border-color: #e4e0ef;
+  background: rgb(250 249 252 / 96%);
+}
+
+html[data-design="orbit"] .app-shell-user nav.app-header a[class~="bg-teal-50"] {
+  background: #eeeaff;
+  color: var(--orbit-violet-dark);
+}
+
+html[data-design="orbit"] .app-shell-user .mobile-menu-panel {
+  background: #1b1935;
+  color: #f8f7ff;
+}
+
+html[data-design="orbit"] .app-shell-user .mobile-menu-panel a {
+  color: #d0cde1;
+}
+
+html[data-design="orbit"] .app-shell-user .mobile-menu-panel a[class~="bg-teal-50"] {
+  background: rgb(217 251 105 / 12%);
+  color: var(--orbit-lime);
+}
+
+html[data-design="orbit"] .app-shell-user {
+  background:
+    radial-gradient(ellipse at 75% 0%, rgb(222 215 255 / 58%), transparent 34rem),
+    #f5f3fa;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar {
+  position: relative;
+  inset: auto;
+  z-index: 30;
+  width: 100%;
+  height: auto;
+  max-height: none;
+  overflow: visible;
+  padding: 1rem clamp(1rem, 4vw, 3.5rem) 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div {
+  display: grid;
+  width: 100%;
+  height: auto;
+  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.8fr) auto;
+  align-items: center;
+  gap: 0.8rem 1.5rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgb(225 221 238 / 85%);
+  border-radius: 1.5rem;
+  background: rgb(255 255 255 / 88%);
+  box-shadow: 0 18px 45px -38px rgb(36 27 75 / 42%);
+  backdrop-filter: blur(20px);
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar .app-brand {
+  grid-column: 1;
+  grid-row: 1;
+  padding: 0;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar .app-brand > span:last-child > span:first-child {
+  color: #24213b;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar .app-brand > span:last-child > span:last-child {
+  color: #77758a;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) {
+  grid-column: 3;
+  grid-row: 1;
+  margin: 0;
+  padding: 0.55rem 0.8rem;
+  border-color: #ece9f3;
+  background: #f8f7fb;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) > div {
+  color: #79758d;
+  font-size: 9px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) > div > span {
+  background: #65b886;
+  box-shadow: none;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:nth-child(2) > p {
+  max-width: 13rem;
+  margin-top: 0.2rem;
+  color: #27243d;
+  font-size: 11px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(190px, 0.85fr) minmax(350px, 1.65fr) minmax(240px, 1.15fr);
+  gap: 1.25rem;
+  margin: 0;
+  padding: 0.7rem 0 0.1rem;
+  border-top: 1px solid #eeebf4;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav > div {
+  min-width: 0;
+  margin-block: 0;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav > div > p {
+  margin-bottom: 0.3rem;
+  padding: 0 0.65rem;
+  color: #a09bad;
+  font-size: 8px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav > div > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav > div > div > * {
+  margin-block: 0;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a {
+  min-height: 2.25rem;
+  gap: 0.45rem;
+  padding: 0.45rem 0.5rem;
+  border-radius: 0.75rem;
+  color: #68647b;
+  font-size: 10px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a svg {
+  width: 15px;
+  height: 15px;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a[class~="bg-teal-50"],
+html[data-design="orbit"] .app-shell-user .app-sidebar nav a[class~="text-teal-900"] {
+  border-color: transparent;
+  background: #efeaff;
+  color: #5c3dc0;
+}
+
+html[data-design="orbit"] .app-shell-user .app-sidebar .app-support-card,
+html[data-design="orbit"] .app-shell-user .app-sidebar > div > div:last-child {
+  display: none;
+}
+
+html[data-design="orbit"] .app-shell-user > div.min-w-0 {
+  padding-left: 0;
+}
+
+html[data-design="orbit"] .app-shell-user .app-header {
+  border-color: rgb(228 224 239 / 88%);
+  background: rgb(248 247 251 / 84%);
+}
+
+html[data-design="orbit"] .app-shell-user .app-header > div {
+  max-width: 1560px;
+}
+
+html[data-design="orbit"] .app-shell-user main {
+  width: min(100%, 1560px);
+  padding: clamp(1.2rem, 3vw, 2.8rem) clamp(1rem, 4vw, 3.5rem) 5rem;
+}
+
+html[data-design="orbit"] .app-shell-user main h1 {
+  font-size: clamp(2rem, 3.6vw, 3.4rem);
+  line-height: 1.04;
+  letter-spacing: -0.065em;
+}
+
+html[data-design="orbit"] .app-shell-user main h2 {
+  font-size: 1.15rem;
+  letter-spacing: -0.04em;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command,
+html[data-design="orbit"] .app-shell-user main .service-page-hero,
+html[data-design="orbit"] .app-shell-user main .wallet-command,
+html[data-design="orbit"] .app-shell-user main .orders-command,
+html[data-design="orbit"] .app-shell-user main .support-command,
+html[data-design="orbit"] .app-shell-user main .profile-command,
+html[data-design="orbit"] .app-shell-user main .refills-command,
+html[data-design="orbit"] .app-shell-user main .notifications-command,
+html[data-design="orbit"] .app-shell-user main .referrals-command {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0;
+  border-radius: 2rem;
+  box-shadow: 0 28px 60px -42px rgb(52 38 111 / 48%);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command {
+  min-height: 20rem;
+  grid-template-columns: minmax(0, 1.25fr) minmax(250px, 0.75fr);
+  align-items: stretch;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 82% 6%, rgb(217 251 105 / 28%), transparent 20rem),
+    radial-gradient(ellipse at 10% 100%, rgb(137 110 238 / 55%), transparent 30rem),
+    linear-gradient(123deg, #241c52 0%, #4a35a2 57%, #6c50cf 100%);
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command::before {
+  position: absolute;
+  z-index: -1;
+  top: -12rem;
+  right: 24%;
+  width: 31rem;
+  height: 31rem;
+  border: 1px solid rgb(255 255 255 / 13%);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3rem rgb(255 255 255 / 3%), 0 0 0 6rem rgb(255 255 255 / 2%);
+  content: "";
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command > div:first-child {
+  align-self: center;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command h1,
+html[data-design="orbit"] .app-shell-user main .dashboard-command p {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command > div:first-child > p:first-child {
+  color: #e5dfc6;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command > div:first-child > p:nth-of-type(2) {
+  max-width: 38rem;
+  color: #d2cde5;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command a:first-of-type {
+  border-radius: 0.85rem;
+  background: #d9fb69;
+  color: #24203d;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-command a:last-of-type {
+  border-color: rgb(255 255 255 / 22%);
+  border-radius: 0.85rem;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .dashboard-launch-card {
+  display: flex;
+  min-height: 14rem;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-self: stretch;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(217 251 105 / 25%), transparent 12rem),
+    rgb(24 18 55 / 34%);
+  box-shadow: none;
+  backdrop-filter: blur(12px);
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-grid {
+  gap: 0.8rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-grid > * {
+  min-height: 9.5rem;
+  border: 1px solid #e9e5f1;
+  border-radius: 1.3rem;
+  background: rgb(255 255 255 / 91%);
+  box-shadow: 0 14px 36px -30px rgb(43 34 84 / 30%);
+}
+
+html[data-design="orbit"] .app-shell-user main .workspace-link,
+html[data-design="orbit"] .app-shell-user main .profile-summary,
+html[data-design="orbit"] .app-shell-user main .service-catalog,
+html[data-design="orbit"] .app-shell-user main .order-builder,
+html[data-design="orbit"] .app-shell-user main .order-list-panel,
+html[data-design="orbit"] .app-shell-user main .wallet-workspace > section,
+html[data-design="orbit"] .app-shell-user main .wallet-history,
+html[data-design="orbit"] .app-shell-user main .support-conversations,
+html[data-design="orbit"] .app-shell-user main .refills-list,
+html[data-design="orbit"] .app-shell-user main .notifications-list,
+html[data-design="orbit"] .app-shell-user main .profile-workspace > section,
+html[data-design="orbit"] .app-shell-user main section[class*="rounded-"][class*="border"][class*="bg-white"],
+html[data-design="orbit"] .app-shell-user main > div[class*="rounded-"][class*="border"][class*="bg-white"] {
+  border-color: #e8e4f0;
+  border-radius: 1.4rem;
+  background-color: #fff;
+  box-shadow: 0 16px 44px -36px rgb(43 34 84 / 35%);
+}
+
+html[data-design="orbit"] .app-shell-user main .service-page-hero {
+  min-height: 16rem;
+  display: flex;
+  align-items: end;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 86% 8%, rgb(217 251 105 / 30%), transparent 19rem),
+    linear-gradient(120deg, #241c52, #5c42c4 65%, #795ee0);
+}
+
+html[data-design="orbit"] .app-shell-user main .service-page-hero > div {
+  width: 100%;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-studio {
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  align-items: start;
+  gap: 1.25rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-catalog,
+html[data-design="orbit"] .app-shell-user main .order-builder {
+  border-radius: 1.5rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-builder {
+  position: sticky;
+  top: 6rem;
+  overflow: hidden;
+  box-shadow: 0 22px 54px -40px rgb(43 34 84 / 42%);
+}
+
+html[data-design="orbit"] .app-shell-user main .service-catalog-header {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(238 234 255 / 72%), transparent 21rem),
+    #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row {
+  min-height: 5rem;
+  border-left: 3px solid transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row:hover {
+  background: #f8f6ff;
+}
+
+html[data-design="orbit"] .app-shell-user main .service-row[class*="bg-teal-50"] {
+  border-left-color: #7048ef;
+  background: #f1edff;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-builder-header {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(217 251 105 / 26%), transparent 16rem),
+    linear-gradient(135deg, #302264, #5139b1);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-command {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(217 251 105 / 20%), transparent 23rem),
+    linear-gradient(120deg, #241c52, #5139b1);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-intro h1 {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-intro > p:nth-of-type(2) {
+  color: #d2cde5;
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-intro {
+  background: transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-balance-card {
+  border-color: rgb(255 255 255 / 15%);
+  background: rgb(255 255 255 / 7%);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-workspace {
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  align-items: start;
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-workspace > form {
+  border-radius: 1.5rem;
+  box-shadow: 0 22px 48px -40px rgb(43 34 84 / 42%);
+}
+
+html[data-design="orbit"] .app-shell-user main .wallet-deposits > div:first-child,
+html[data-design="orbit"] .app-shell-user main .wallet-history > div:first-child,
+html[data-design="orbit"] .app-shell-user main .support-conversations > div:first-child,
+html[data-design="orbit"] .app-shell-user main .notifications-list > div:first-child,
+html[data-design="orbit"] .app-shell-user main .order-list-panel > div:first-child {
+  background: #faf9fc;
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-command {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: stretch;
+  background:
+    radial-gradient(ellipse at 0 0, rgb(238 234 255 / 75%), transparent 25rem),
+    #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-intro,
+html[data-design="orbit"] .app-shell-user main .orders-filter-wrap {
+  background: transparent;
+}
+
+html[data-design="orbit"] .app-shell-user main .orders-filter-wrap {
+  border-color: #e8e4f0;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-panel {
+  padding: 0.4rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0.55rem 0;
+  padding: 1rem;
+  border: 1px solid #edeaf3;
+  border-radius: 1.1rem;
+  background: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-row > div:first-child,
+html[data-design="orbit"] .app-shell-user main .order-list-row > div:last-child {
+  grid-column: 1 / -1;
+}
+
+html[data-design="orbit"] .app-shell-user main .order-list-row > div:not(:first-child):not(:last-child) {
+  padding: 0.65rem;
+  border-radius: 0.75rem;
+  background: #f8f7fb;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-workspace,
+html[data-design="orbit"] .app-shell-user main .profile-workspace {
+  align-items: start;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-conversations,
+html[data-design="orbit"] .app-shell-user main .refills-list,
+html[data-design="orbit"] .app-shell-user main .notifications-list {
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-command {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 0.36fr);
+  min-height: 13rem;
+  align-content: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 95% 0%, rgb(217 251 105 / 25%), transparent 19rem),
+    linear-gradient(120deg, #241c52, #5540b2);
+}
+
+html[data-design="orbit"] .app-shell-user main .support-command h1,
+html[data-design="orbit"] .app-shell-user main .support-command > div:first-child > p {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-promise {
+  border-color: rgb(255 255 255 / 16%);
+  background: rgb(255 255 255 / 8%);
+}
+
+html[data-design="orbit"] .app-shell-user main .support-promise p:first-of-type {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-promise p:last-of-type {
+  color: #d4cfee;
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-command {
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 92% 2%, rgb(217 251 105 / 24%), transparent 20rem),
+    linear-gradient(120deg, #241c52, #5c42c4);
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-command h1,
+html[data-design="orbit"] .app-shell-user main .profile-command > div:first-child > p {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-role-card {
+  border: 1px solid rgb(255 255 255 / 16%);
+  background: rgb(255 255 255 / 8%);
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-overview {
+  gap: 0.8rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-summary {
+  min-height: 7.5rem;
+}
+
+html[data-design="orbit"] .app-shell-user main .profile-workspace {
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+}
+
+html[data-design="orbit"] .app-shell-user main .referrals-command {
+  min-height: 16rem;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 86% 0%, rgb(217 251 105 / 26%), transparent 20rem),
+    linear-gradient(120deg, #241c52, #5c42c4 65%, #795ee0);
+}
+
+html[data-design="orbit"] .app-shell-user main .referrals-command h1 {
+  color: #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .referrals-command > div:last-child {
+  border-radius: 1.4rem;
+  background: rgb(255 255 255 / 8%);
+}
+
+html[data-design="orbit"] .app-shell-user main .refills-command,
+html[data-design="orbit"] .app-shell-user main .notifications-command {
+  min-height: 13rem;
+  align-content: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(238 234 255 / 84%), transparent 27rem),
+    #fff;
+}
+
+html[data-design="orbit"] .app-shell-user main .refills-command > div:last-child {
+  min-width: 12rem;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 1.3rem;
+  background: linear-gradient(135deg, #302264, #5139b1);
+}
+
+html[data-design="orbit"] .app-shell-user main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="orbit"] .app-shell-user main select,
+html[data-design="orbit"] .app-shell-user main textarea {
+  border-color: #e2deec;
+  border-radius: 0.85rem;
+}
+
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-700"],
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-600"] {
+  border-radius: 0.85rem;
+  background-color: #7048ef;
+  box-shadow: 0 10px 24px -15px rgb(112 72 239 / 70%);
+}
+
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-700"]:hover,
+html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-600"]:hover {
+  background-color: #5835d1;
+}
+
+@media (min-width: 1024px) {
+  html[data-design="orbit"] .app-shell-user .app-sidebar {
+    padding-top: 1.2rem;
+  }
+
+  html[data-design="orbit"] .app-shell-user .app-sidebar > div {
+    grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.8fr) auto;
+  }
+
+  html[data-design="orbit"] .app-shell-user .app-sidebar nav {
+    grid-template-columns: minmax(190px, 0.85fr) minmax(350px, 1.65fr) minmax(240px, 1.15fr);
+  }
+
+  html[data-design="orbit"] .app-shell-user main .order-builder {
+    top: 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  html[data-design="orbit"] .app-shell-user .app-sidebar nav > div > div {
+    flex-wrap: nowrap;
+  }
+
+  html[data-design="orbit"] .app-shell-user .app-sidebar nav a {
+    padding-inline: 0.65rem;
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1279px) {
+  html[data-design="orbit"] .app-shell-user main .service-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="orbit"] .app-shell-user main .order-builder {
+    position: static;
+  }
+}
+
+@media (max-width: 767px) {
+  html[data-design="orbit"] .app-shell-user main {
+    padding-bottom: 6.5rem;
+  }
+
+  html[data-design="orbit"] .app-shell-user main .dashboard-command,
+  html[data-design="orbit"] .app-shell-user main .orders-command,
+  html[data-design="orbit"] .app-shell-user main .support-command {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="orbit"] .app-shell-user main .dashboard-command {
+    min-height: 0;
+  }
+
+  html[data-design="orbit"] .app-shell-user main .dashboard-launch-card {
+    min-height: 12rem;
+  }
+
+  html[data-design="orbit"] .app-shell-user main .wallet-workspace,
+  html[data-design="orbit"] .app-shell-user main .profile-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="orbit"] .app-shell-user main .order-list-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  html[data-design="orbit"] .app-shell-user main .order-list-row > div:first-child,
+  html[data-design="orbit"] .app-shell-user main .order-list-row > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+html[data-design="atelier"] .app-shell-user {
+  --atelier-ink: #30251f;
+  --atelier-muted: #887970;
+  --atelier-rust: #b94e35;
+  --atelier-paper: #f5efe6;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 88% 0%, rgb(236 194 157 / 30%), transparent 34rem),
+    var(--atelier-paper);
+  color: var(--atelier-ink);
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  display: block;
+  width: 5.25rem;
+  height: 100vh;
+  overflow: visible;
+  padding: 1rem 0.6rem;
+  border: 0;
+  background: #2b2926;
+  box-shadow: 10px 0 35px -28px rgb(39 29 21 / 70%);
+  color: #fff;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar > div {
+  align-items: center;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar .app-brand {
+  justify-content: center;
+  padding: 0;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar .app-brand > span:last-child,
+html[data-design="atelier"] .app-shell-user .app-sidebar > div > div:nth-child(2),
+html[data-design="atelier"] .app-shell-user .app-sidebar nav > div > p,
+html[data-design="atelier"] .app-shell-user .app-support-card,
+html[data-design="atelier"] .app-shell-user .app-sidebar > div > div:last-child,
+html[data-design="atelier"] .app-shell-user .app-nav-label,
+html[data-design="atelier"] .app-shell-user .app-nav-badge {
+  display: none;
+}
+
+html[data-design="atelier"] .app-shell-user .brand-mark {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: #e8a868;
+  color: #34251d;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  width: 100%;
+  margin-top: 2.5rem;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar nav > div,
+html[data-design="atelier"] .app-shell-user .app-sidebar nav > div > div {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar nav a {
+  display: grid;
+  width: 3.15rem;
+  height: 3.15rem;
+  min-height: 3.15rem;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 1rem;
+  color: #c8bdb4;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar nav a:hover {
+  transform: none;
+  background: rgb(255 255 255 / 8%);
+  color: #fff;
+}
+
+html[data-design="atelier"] .app-shell-user .app-sidebar nav a[class~="bg-teal-50"],
+html[data-design="atelier"] .app-shell-user .app-sidebar nav a[class~="text-teal-900"] {
+  border-color: rgb(232 168 104 / 32%);
+  background: rgb(232 168 104 / 18%);
+  color: #f4bc80;
+}
+
+html[data-design="atelier"] .app-shell-user > div.min-w-0 {
+  padding-left: 5.25rem;
+}
+
+html[data-design="atelier"] .app-shell-user .app-header {
+  border-color: #e7dcd0;
+  background: rgb(250 246 240 / 90%);
+  backdrop-filter: blur(18px);
+}
+
+html[data-design="atelier"] .app-shell-user .app-header > div,
+html[data-design="atelier"] .app-shell-user main {
+  max-width: 1480px;
+}
+
+html[data-design="atelier"] .app-shell-user main {
+  padding: clamp(1.4rem, 3vw, 3rem) clamp(1rem, 4vw, 3.5rem) 5rem;
+}
+
+html[data-design="atelier"] .app-shell-user main h1,
+html[data-design="atelier"] .app-shell-user main h2,
+html[data-design="atelier"] .app-shell-user main h3 {
+  color: var(--atelier-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.035em;
+}
+
+html[data-design="atelier"] .app-shell-user main h1 {
+  max-width: 16ch;
+  font-size: clamp(2.2rem, 4vw, 4rem);
+  line-height: 1.02;
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command,
+html[data-design="atelier"] .app-shell-user main .service-page-hero,
+html[data-design="atelier"] .app-shell-user main .wallet-command,
+html[data-design="atelier"] .app-shell-user main .orders-command,
+html[data-design="atelier"] .app-shell-user main .support-command,
+html[data-design="atelier"] .app-shell-user main .profile-command,
+html[data-design="atelier"] .app-shell-user main .refills-command,
+html[data-design="atelier"] .app-shell-user main .notifications-command,
+html[data-design="atelier"] .app-shell-user main .referrals-command {
+  border: 1px solid #4a3b32;
+  border-radius: 0.45rem;
+  box-shadow: 8px 9px 0 rgb(73 52 38 / 12%);
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command,
+html[data-design="atelier"] .app-shell-user main .service-page-hero,
+html[data-design="atelier"] .app-shell-user main .wallet-command,
+html[data-design="atelier"] .app-shell-user main .referrals-command {
+  background:
+    radial-gradient(ellipse at 95% 0%, rgb(240 190 135 / 28%), transparent 22rem),
+    linear-gradient(128deg, #302d28, #4c3a30);
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command {
+  min-height: 21rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command h1,
+html[data-design="atelier"] .app-shell-user main .service-page-hero h1,
+html[data-design="atelier"] .app-shell-user main .wallet-command h1,
+html[data-design="atelier"] .app-shell-user main .referrals-command h1,
+html[data-design="atelier"] .app-shell-user main .support-command h1,
+html[data-design="atelier"] .app-shell-user main .profile-command h1 {
+  color: #fff3e4;
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command p,
+html[data-design="atelier"] .app-shell-user main .service-page-hero p,
+html[data-design="atelier"] .app-shell-user main .wallet-command p,
+html[data-design="atelier"] .app-shell-user main .referrals-command p,
+html[data-design="atelier"] .app-shell-user main .support-command p,
+html[data-design="atelier"] .app-shell-user main .profile-command p {
+  color: #dfd1c2;
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-command a:first-of-type,
+html[data-design="atelier"] .app-shell-user main .service-page-hero a:last-child {
+  background: #e8a868;
+  color: #34251d;
+}
+
+html[data-design="atelier"] .app-shell-user main .dashboard-launch-card,
+html[data-design="atelier"] .app-shell-user main .referrals-command > div:last-child,
+html[data-design="atelier"] .app-shell-user main .profile-role-card {
+  border: 1px solid rgb(255 240 219 / 18%);
+  border-radius: 0.4rem;
+  background: rgb(255 255 255 / 7%);
+}
+
+html[data-design="atelier"] .app-shell-user main .surface-card,
+html[data-design="atelier"] .app-shell-user main .profile-summary,
+html[data-design="atelier"] .app-shell-user main .service-catalog,
+html[data-design="atelier"] .app-shell-user main .order-builder,
+html[data-design="atelier"] .app-shell-user main .order-list-panel,
+html[data-design="atelier"] .app-shell-user main .wallet-workspace > section,
+html[data-design="atelier"] .app-shell-user main .wallet-history,
+html[data-design="atelier"] .app-shell-user main .support-conversations,
+html[data-design="atelier"] .app-shell-user main .refills-list,
+html[data-design="atelier"] .app-shell-user main .notifications-list,
+html[data-design="atelier"] .app-shell-user main .profile-workspace > section,
+html[data-design="atelier"] .app-shell-user main section[class*="rounded-"][class*="border"][class*="bg-white"],
+html[data-design="atelier"] .app-shell-user main > div[class*="rounded-"][class*="border"][class*="bg-white"] {
+  border-color: #e5d8c9;
+  border-radius: 0.5rem;
+  background-color: #fffdf9;
+  box-shadow: 5px 6px 0 rgb(91 65 45 / 8%);
+}
+
+html[data-design="atelier"] .app-shell-user main .workspace-grid > * {
+  min-height: 9rem;
+  border-color: #e5d8c9;
+  border-radius: 0.4rem;
+  background: #fffdf9;
+}
+
+html[data-design="atelier"] .app-shell-user main .workspace-link {
+  border-color: #e6d9ca;
+  border-radius: 0.4rem;
+  background: #fffdf9;
+}
+
+html[data-design="atelier"] .app-shell-user main .workspace-link > span:first-child {
+  border-radius: 0.4rem;
+  background: #f4e4d2;
+  color: #a44931;
+}
+
+html[data-design="atelier"] .app-shell-user main .service-studio {
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  align-items: start;
+}
+
+html[data-design="atelier"] .app-shell-user main .order-builder {
+  position: sticky;
+  top: 1.5rem;
+}
+
+html[data-design="atelier"] .app-shell-user main .service-catalog-header,
+html[data-design="atelier"] .app-shell-user main .orders-filter-wrap,
+html[data-design="atelier"] .app-shell-user main .wallet-deposits > div:first-child,
+html[data-design="atelier"] .app-shell-user main .wallet-history > div:first-child,
+html[data-design="atelier"] .app-shell-user main .support-conversations > div:first-child,
+html[data-design="atelier"] .app-shell-user main .notifications-list > div:first-child,
+html[data-design="atelier"] .app-shell-user main .order-list-panel > div:first-child {
+  background: #f7f0e7;
+}
+
+html[data-design="atelier"] .app-shell-user main .service-row:hover,
+html[data-design="atelier"] .app-shell-user main .order-list-row:hover {
+  background: #fbf3e8;
+}
+
+html[data-design="atelier"] .app-shell-user main .service-row[class*="bg-teal-50"] {
+  border-left-color: #b94e35;
+  background: #f8e9da;
+}
+
+html[data-design="atelier"] .app-shell-user main .orders-command,
+html[data-design="atelier"] .app-shell-user main .support-command,
+html[data-design="atelier"] .app-shell-user main .profile-command,
+html[data-design="atelier"] .app-shell-user main .refills-command,
+html[data-design="atelier"] .app-shell-user main .notifications-command {
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(234 204 171 / 38%), transparent 25rem),
+    #fffdf9;
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-intro h1,
+html[data-design="atelier"] .app-shell-user main .wallet-intro > p:nth-of-type(2) {
+  color: #fff3e4;
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-balance-card {
+  border-color: rgb(255 241 220 / 15%);
+  background: linear-gradient(145deg, #a84b34, #7d3a2d);
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-workspace > form > div[class*="bg-teal-50"] {
+  border-color: #e9d2b5;
+  background: #fbf1e3;
+  color: #68442f;
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-workspace > form [class*="bg-teal-50"] {
+  background-color: #f8e9da;
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-workspace > form [class*="text-teal-800"] {
+  color: #a44931;
+}
+
+html[data-design="atelier"] .app-shell-user main .wallet-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+html[data-design="atelier"] .app-shell-user main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="atelier"] .app-shell-user main select,
+html[data-design="atelier"] .app-shell-user main textarea {
+  border-color: #ddcfc0;
+  border-radius: 0.4rem;
+}
+
+html[data-design="atelier"] .app-shell-user main button[class*="bg-teal-700"],
+html[data-design="atelier"] .app-shell-user main button[class*="bg-teal-600"] {
+  border-radius: 0.4rem;
+  background-color: #b94e35;
+  box-shadow: none;
+}
+
+html[data-design="atelier"] .app-shell-user main button[class*="bg-teal-700"]:hover,
+html[data-design="atelier"] .app-shell-user main button[class*="bg-teal-600"]:hover {
+  background-color: #963b29;
+}
+
+html[data-design="atelier"] .app-shell-user nav.app-header {
+  border-color: #e5d8c9;
+  background: rgb(250 246 240 / 96%);
+}
+
+html[data-design="atelier"] .app-shell-user nav.app-header a[class~="bg-teal-50"] {
+  background: #f8e9da;
+  color: #963b29;
+}
+
+html[data-design="atelier"] .app-shell-user .mobile-menu-panel {
+  background: #2b2926;
+  color: #fff8ee;
+}
+
+html[data-design="atelier"] .app-shell-user .mobile-menu-panel a {
+  color: #e2d7cd;
+}
+
+html[data-design="atelier"] .app-shell-user .mobile-menu-panel a[class~="bg-teal-50"] {
+  background: rgb(232 168 104 / 18%);
+  color: #f4bc80;
+}
+
+html[data-design="pulse"] .app-shell-user {
+  --pulse-bg: #10191e;
+  --pulse-surface: #17242a;
+  --pulse-border: #293940;
+  --pulse-cyan: #67e8d0;
+  min-height: 100vh;
+  background:
+    radial-gradient(ellipse at 65% 0%, rgb(28 114 103 / 20%), transparent 36rem),
+    var(--pulse-bg);
+  color: #e7f1ef;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar {
+  border-color: #293940;
+  background:
+    radial-gradient(ellipse at 0 0, rgb(55 205 177 / 14%), transparent 27rem),
+    #111c21;
+  box-shadow: 16px 0 45px -36px rgb(0 0 0 / 85%);
+  color: #e7f1ef;
+}
+
+html[data-design="pulse"] .app-shell-user .brand-mark {
+  border-radius: 0.85rem;
+  background: linear-gradient(145deg, #76f0d8, #3dc8b0);
+  color: #0d2928;
+  box-shadow: 0 8px 26px rgb(62 211 182 / 18%);
+}
+
+html[data-design="pulse"] .app-shell-user .app-brand > span:last-child > span:first-child {
+  color: #f1faf8;
+}
+
+html[data-design="pulse"] .app-shell-user .app-brand > span:last-child > span:last-child,
+html[data-design="pulse"] .app-shell-user .app-sidebar > div > div:nth-child(2) > p {
+  color: #8da19f;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar > div > div:nth-child(2) {
+  border-color: #2b3a3f;
+  background: #18262b;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar > div > div:nth-child(2) > div {
+  color: var(--pulse-cyan);
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar nav > div > p {
+  color: #718581;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar nav a {
+  border: 1px solid transparent;
+  border-radius: 0.85rem;
+  color: #a6b9b5;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar nav a:hover {
+  background: #1e2c31;
+  color: #effcf9;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar nav a[class~="bg-teal-50"],
+html[data-design="pulse"] .app-shell-user .app-sidebar nav a[class~="text-teal-900"] {
+  border-color: rgb(103 232 208 / 18%);
+  background: rgb(103 232 208 / 11%);
+  color: var(--pulse-cyan);
+  box-shadow: none;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar nav a .app-nav-badge {
+  background: #67e8d0;
+  color: #0d2928;
+}
+
+html[data-design="pulse"] .app-shell-user .app-support-card {
+  border: 1px solid #2a3b40;
+  border-radius: 1.1rem;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(55 205 177 / 20%), transparent 13rem),
+    #1a292e;
+}
+
+html[data-design="pulse"] .app-shell-user .app-support-card > span:first-child {
+  background: rgb(103 232 208 / 12%);
+  color: var(--pulse-cyan);
+}
+
+html[data-design="pulse"] .app-shell-user .app-support-card > span:last-child {
+  color: #9fb2ae;
+}
+
+html[data-design="pulse"] .app-shell-user .app-sidebar > div > div:last-child {
+  border-color: #2b3a3f;
+  color: #738782;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header {
+  border-color: #293940;
+  background: rgb(17 28 33 / 91%);
+  backdrop-filter: blur(18px);
+}
+
+html[data-design="pulse"] .app-shell-user .app-header > div {
+  max-width: 1560px;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header kbd {
+  border: 1px solid #33464b;
+  background: #1c2b30;
+  color: #a6b9b5;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header button,
+html[data-design="pulse"] .app-shell-user .app-header form button,
+html[data-design="pulse"] .app-shell-user .app-header a[class*="rounded-xl"] {
+  border-color: #33464b;
+  background-color: #17242a;
+  color: #d7e6e2;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header a span[class*="bg-gradient-to-br"] {
+  background: linear-gradient(145deg, #76f0d8, #3dc8b0);
+  color: #0d2928;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header [class*="text-neutral-500"],
+html[data-design="pulse"] .app-shell-user .app-header [class*="text-neutral-600"] {
+  color: #a0b3af;
+}
+
+html[data-design="pulse"] .app-shell-user .app-header [class*="text-neutral-800"],
+html[data-design="pulse"] .app-shell-user .app-header [class*="text-neutral-900"] {
+  color: #e1eeeb;
+}
+
+html[data-design="pulse"] .app-shell-user main {
+  max-width: 1560px;
+  padding-top: clamp(1.4rem, 3vw, 2.8rem);
+}
+
+html[data-design="pulse"] .app-shell-user main h1,
+html[data-design="pulse"] .app-shell-user main h2,
+html[data-design="pulse"] .app-shell-user main h3 {
+  color: #edf7f4;
+  letter-spacing: -0.04em;
+}
+
+html[data-design="pulse"] .app-shell-user main p[class*="text-neutral-500"],
+html[data-design="pulse"] .app-shell-user main p[class*="text-neutral-600"],
+html[data-design="pulse"] .app-shell-user main span[class*="text-neutral-500"],
+html[data-design="pulse"] .app-shell-user main span[class*="text-neutral-600"] {
+  color: #a0b3af;
+}
+
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-950"],
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-900"] {
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-800"] {
+  color: #d8e7e3;
+}
+
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-700"] {
+  color: #c1d1cd;
+}
+
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-500"],
+html[data-design="pulse"] .app-shell-user main [class*="text-neutral-600"] {
+  color: #a0b3af;
+}
+
+html[data-design="pulse"] .app-shell-user main [class*="bg-neutral-50"],
+html[data-design="pulse"] .app-shell-user main [class*="bg-neutral-100"] {
+  border-color: #2c4146;
+  background-color: #1b2b30;
+  color: #d8e7e3;
+}
+
+html[data-design="pulse"] .app-shell-user main .surface-card,
+html[data-design="pulse"] .app-shell-user main .profile-summary,
+html[data-design="pulse"] .app-shell-user main .service-catalog,
+html[data-design="pulse"] .app-shell-user main .order-builder,
+html[data-design="pulse"] .app-shell-user main .order-list-panel,
+html[data-design="pulse"] .app-shell-user main .wallet-workspace > section,
+html[data-design="pulse"] .app-shell-user main .wallet-history,
+html[data-design="pulse"] .app-shell-user main .support-conversations,
+html[data-design="pulse"] .app-shell-user main .refills-list,
+html[data-design="pulse"] .app-shell-user main .notifications-list,
+html[data-design="pulse"] .app-shell-user main .profile-workspace > section,
+html[data-design="pulse"] .app-shell-user main section[class*="rounded-"][class*="border"][class*="bg-white"],
+html[data-design="pulse"] .app-shell-user main > div[class*="rounded-"][class*="border"][class*="bg-white"] {
+  border-color: var(--pulse-border);
+  border-radius: 1.1rem;
+  background-color: var(--pulse-surface);
+  box-shadow: 0 18px 45px -35px rgb(0 0 0 / 80%);
+  color: #e1eeeb;
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-command,
+html[data-design="pulse"] .app-shell-user main .service-page-hero,
+html[data-design="pulse"] .app-shell-user main .wallet-command,
+html[data-design="pulse"] .app-shell-user main .referrals-command {
+  border: 1px solid #31524e;
+  border-radius: 1.4rem;
+  background:
+    radial-gradient(ellipse at 92% 0%, rgb(103 232 208 / 22%), transparent 24rem),
+    radial-gradient(ellipse at 0 100%, rgb(255 161 94 / 12%), transparent 26rem),
+    linear-gradient(125deg, #162b2e, #1e3b3b 60%, #234946);
+  box-shadow: 0 24px 54px -38px rgb(0 0 0 / 80%);
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-command {
+  min-height: 19rem;
+  align-items: center;
+  padding: clamp(1.5rem, 4vw, 3.5rem);
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-command h1,
+html[data-design="pulse"] .app-shell-user main .dashboard-command p,
+html[data-design="pulse"] .app-shell-user main .service-page-hero h1,
+html[data-design="pulse"] .app-shell-user main .wallet-intro h1,
+html[data-design="pulse"] .app-shell-user main .wallet-intro > p:nth-of-type(2),
+html[data-design="pulse"] .app-shell-user main .referrals-command h1 {
+  color: #f2fbf8;
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-command a:first-of-type,
+html[data-design="pulse"] .app-shell-user main .service-page-hero a:last-child {
+  background: #72ecd4;
+  color: #102c2b;
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-command a:last-of-type {
+  border-color: #43625e;
+  background: rgb(255 255 255 / 6%);
+  color: #e0f2ed;
+}
+
+html[data-design="pulse"] .app-shell-user main .dashboard-launch-card,
+html[data-design="pulse"] .app-shell-user main .referrals-command > div:last-child,
+html[data-design="pulse"] .app-shell-user main .profile-role-card {
+  border: 1px solid #36534f;
+  border-radius: 1rem;
+  background: rgb(13 27 30 / 45%);
+}
+
+html[data-design="pulse"] .app-shell-user main .workspace-grid > * {
+  min-height: 9rem;
+  border: 1px solid #2b4045;
+  border-radius: 1rem;
+  background: #17242a;
+}
+
+html[data-design="pulse"] .app-shell-user main .workspace-link {
+  border-color: #304248;
+  border-radius: 0.9rem;
+  background: #1a292f;
+}
+
+html[data-design="pulse"] .app-shell-user main .workspace-link > span:first-child,
+html[data-design="pulse"] .app-shell-user main .service-catalog-header > div > div > span:first-child {
+  background: rgb(103 232 208 / 13%);
+  color: var(--pulse-cyan);
+}
+
+html[data-design="pulse"] .app-shell-user main .service-studio {
+  grid-template-columns: minmax(0, 1.18fr) minmax(330px, 0.82fr);
+  align-items: start;
+}
+
+html[data-design="pulse"] .app-shell-user main .order-builder {
+  position: sticky;
+  top: 1.5rem;
+}
+
+html[data-design="pulse"] .app-shell-user main .service-catalog-header,
+html[data-design="pulse"] .app-shell-user main .orders-filter-wrap,
+html[data-design="pulse"] .app-shell-user main .wallet-deposits > div:first-child,
+html[data-design="pulse"] .app-shell-user main .wallet-history > div:first-child,
+html[data-design="pulse"] .app-shell-user main .support-conversations > div:first-child,
+html[data-design="pulse"] .app-shell-user main .notifications-list > div:first-child,
+html[data-design="pulse"] .app-shell-user main .order-list-panel > div:first-child {
+  border-color: #293940;
+  background: #1a292f;
+}
+
+html[data-design="pulse"] .app-shell-user main .wallet-workspace > form {
+  border: 1px solid var(--pulse-border);
+  border-radius: 1.1rem;
+  background: var(--pulse-surface);
+  box-shadow: 0 18px 45px -35px rgb(0 0 0 / 80%);
+  color: #e1eeeb;
+}
+
+html[data-design="pulse"] .app-shell-user main form[class*="bg-white"] {
+  border-color: var(--pulse-border);
+  border-radius: 1.1rem;
+  background: var(--pulse-surface);
+  color: #e1eeeb;
+}
+
+html[data-design="pulse"] .app-shell-user main .order-builder-header {
+  border-color: #35514c;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(103 232 208 / 20%), transparent 15rem),
+    #1a3939;
+}
+
+html[data-design="pulse"] .app-shell-user main .order-builder-header h2,
+html[data-design="pulse"] .app-shell-user main .order-builder-header p,
+html[data-design="pulse"] .app-shell-user main .order-builder-header span {
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main form[class*="bg-white"] h2,
+html[data-design="pulse"] .app-shell-user main form[class*="bg-white"] p {
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main .wallet-balance-card {
+  border-color: rgb(103 232 208 / 18%);
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(103 232 208 / 16%), transparent 18rem),
+    #173b3b;
+}
+
+html[data-design="pulse"] .app-shell-user main .wallet-workspace > form > div[class*="bg-teal-50"] {
+  border-color: #36514c;
+  background: #1d3434;
+  color: #d5ebe4;
+}
+
+html[data-design="pulse"] .app-shell-user main .wallet-workspace > form [class*="bg-teal-50"] {
+  border-color: #36514c;
+  background-color: #1d3434;
+  color: #67e8d0;
+}
+
+html[data-design="pulse"] .app-shell-user main .service-row:hover,
+html[data-design="pulse"] .app-shell-user main .order-list-row:hover {
+  background: #1c3034;
+}
+
+html[data-design="pulse"] .app-shell-user main .service-row[class*="bg-teal-50"] {
+  border-left-color: #67e8d0;
+  background: #1c3437;
+}
+
+html[data-design="pulse"] .app-shell-user main .orders-command,
+html[data-design="pulse"] .app-shell-user main .support-command,
+html[data-design="pulse"] .app-shell-user main .profile-command,
+html[data-design="pulse"] .app-shell-user main .refills-command,
+html[data-design="pulse"] .app-shell-user main .notifications-command {
+  border-color: #2a4045;
+  border-radius: 1.3rem;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(103 232 208 / 12%), transparent 26rem),
+    #17242a;
+}
+
+html[data-design="pulse"] .app-shell-user main .orders-intro,
+html[data-design="pulse"] .app-shell-user main .orders-filter-wrap {
+  background-color: transparent;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-promise {
+  border-color: #35514c;
+  background: #1c3032;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-promise p:first-of-type {
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-promise p:last-of-type {
+  color: #a0b3af;
+}
+
+html[data-design="pulse"] .app-shell-user main .order-list-row {
+  border-color: #2c4045;
+}
+
+html[data-design="pulse"] .app-shell-user main .order-list-row > div:not(:first-child):not(:last-child) {
+  background: #1c2b30;
+}
+
+html[data-design="pulse"] .app-shell-user main .profile-summary {
+  border-color: #2b4045;
+  background: linear-gradient(145deg, #1b2b30, #17242a);
+}
+
+html[data-design="pulse"] .app-shell-user main .profile-command h1,
+html[data-design="pulse"] .app-shell-user main .profile-command > div:first-child > p,
+html[data-design="pulse"] .app-shell-user main .support-command h1,
+html[data-design="pulse"] .app-shell-user main .support-command > div:first-child > p {
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-design="pulse"] .app-shell-user main select,
+html[data-design="pulse"] .app-shell-user main textarea {
+  border-color: #354b50;
+  background-color: #111e23;
+  color: #e7f1ef;
+}
+
+html[data-design="pulse"] .app-shell-user main input::placeholder,
+html[data-design="pulse"] .app-shell-user main textarea::placeholder {
+  color: #778d89;
+}
+
+html[data-design="pulse"] .app-shell-user main button[class*="bg-teal-700"],
+html[data-design="pulse"] .app-shell-user main button[class*="bg-teal-600"] {
+  border-radius: 0.8rem;
+  background-color: #48cdb6;
+  color: #102c2b;
+  box-shadow: 0 10px 24px -15px rgb(72 205 182 / 62%);
+}
+
+html[data-design="pulse"] .app-shell-user main button[class*="bg-teal-700"]:hover,
+html[data-design="pulse"] .app-shell-user main button[class*="bg-teal-600"]:hover {
+  background-color: #67e8d0;
+}
+
+html[data-design="pulse"] .app-shell-user nav.app-header {
+  border-color: #293940;
+  background: rgb(17 28 33 / 96%);
+}
+
+html[data-design="pulse"] .app-shell-user nav.app-header a[class~="bg-teal-50"] {
+  background: rgb(103 232 208 / 12%);
+  color: var(--pulse-cyan);
+}
+
+html[data-design="pulse"] .app-shell-user .mobile-menu-panel {
+  border-left: 1px solid #293940;
+  background: #111c21;
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user .mobile-menu-panel a {
+  color: #a6b9b5;
+}
+
+html[data-design="pulse"] .app-shell-user .mobile-menu-panel a[class~="bg-teal-50"] {
+  background: rgb(103 232 208 / 12%);
+  color: var(--pulse-cyan);
+}
+
+@media (max-width: 1279px) {
+  html[data-design="atelier"] .app-shell-user main .service-studio,
+  html[data-design="pulse"] .app-shell-user main .service-studio {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="atelier"] .app-shell-user main .order-builder,
+  html[data-design="pulse"] .app-shell-user main .order-builder {
+    position: static;
+  }
+}
+
+@media (max-width: 1023px) {
+  html[data-design="atelier"] .app-shell-user .app-sidebar {
+    display: none;
+  }
+
+  html[data-design="atelier"] .app-shell-user > div.min-w-0 {
+    padding-left: 0;
+  }
+
+  html[data-design="atelier"] .app-shell-user nav.app-header {
+    border-color: #e5d8c9;
+    background: rgb(250 246 240 / 96%);
+  }
+
+  html[data-design="pulse"] .app-shell-user nav.app-header {
+    border-color: #293940;
+    background: rgb(17 28 33 / 96%);
+  }
+}
+
+@media (max-width: 767px) {
+  html[data-design="atelier"] .app-shell-user main,
+  html[data-design="pulse"] .app-shell-user main {
+    padding-bottom: 6.5rem;
+  }
+
+  html[data-design="atelier"] .app-shell-user main .dashboard-command,
+  html[data-design="atelier"] .app-shell-user main .orders-command,
+  html[data-design="atelier"] .app-shell-user main .support-command,
+  html[data-design="pulse"] .app-shell-user main .dashboard-command,
+  html[data-design="pulse"] .app-shell-user main .orders-command,
+  html[data-design="pulse"] .app-shell-user main .support-command {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="atelier"] .app-shell-user main .wallet-workspace,
+  html[data-design="atelier"] .app-shell-user main .profile-workspace,
+  html[data-design="pulse"] .app-shell-user main .wallet-workspace,
+  html[data-design="pulse"] .app-shell-user main .profile-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .home-preview {
   background:
     radial-gradient(ellipse at 100% 0%, rgb(45 212 191 / 24%), transparent 60%),
     linear-gradient(145deg, #0f172a 0%, #102c37 58%, #134e4a 100%);
+}
+
+html[data-design="default"] {
+  --public-accent: #0f766e;
+  --public-accent-strong: #115e59;
+  --public-accent-soft: #ccfbf1;
+  --public-page: #f4f7f7;
+  --public-ink: #14202a;
+  --public-muted: #66747f;
+  --public-panel: rgb(255 255 255 / 92%);
+  --public-border: #dce7e7;
+}
+
+html[data-design="studio"] {
+  --public-accent: #0f8a82;
+  --public-accent-strong: #0e7490;
+  --public-accent-soft: #99f6e4;
+  --public-page: #eff7f7;
+  --public-ink: #102b35;
+  --public-muted: #56717a;
+  --public-panel: rgb(255 255 255 / 94%);
+  --public-border: #d1e8e6;
+}
+
+html[data-design="orbit"] {
+  --public-accent: #7048ef;
+  --public-accent-strong: #5835d1;
+  --public-accent-soft: #d9fb69;
+  --public-page: #f4f2fa;
+  --public-ink: #19172f;
+  --public-muted: #77758a;
+  --public-panel: rgb(255 255 255 / 92%);
+  --public-border: #e4e0ef;
+}
+
+html[data-design="atelier"] {
+  --public-accent: #b94e35;
+  --public-accent-strong: #913a28;
+  --public-accent-soft: #f2d7c3;
+  --public-page: #f4eee5;
+  --public-ink: #34271f;
+  --public-muted: #79695d;
+  --public-panel: #fffaf3;
+  --public-border: #e5d8c9;
+}
+
+html[data-design="pulse"] {
+  --public-accent: #67e8d0;
+  --public-accent-strong: #38c9ae;
+  --public-accent-soft: #b8fff0;
+  --public-page: #0d171b;
+  --public-ink: #ecf9f6;
+  --public-muted: #a4b7b8;
+  --public-panel: #142328;
+  --public-border: #293940;
+}
+
+html[data-design="midnight"] {
+  --public-accent: #a5b4fc;
+  --public-accent-strong: #818cf8;
+  --public-accent-soft: #c7d2fe;
+  --public-page: #0b1020;
+  --public-ink: #f1f5f9;
+  --public-muted: #aab6ca;
+  --public-panel: #141d30;
+  --public-border: #303b55;
+}
+
+html[data-design] .public-landing,
+html[data-design] .public-login {
+  color: var(--public-ink);
+  background:
+    radial-gradient(ellipse at 9% 4%, color-mix(in srgb, var(--public-accent) 13%, transparent), transparent 34rem),
+    radial-gradient(ellipse at 98% 65%, color-mix(in srgb, var(--public-accent-soft) 22%, transparent), transparent 32rem),
+    var(--public-page);
+}
+
+html[data-design] .public-landing .landing-title,
+html[data-design] .public-login .login-title {
+  color: var(--public-ink);
+}
+
+html[data-design] .public-landing .landing-title > span {
+  background-image: linear-gradient(100deg, var(--public-accent), var(--public-accent-strong));
+}
+
+html[data-design] .public-landing .landing-copy > p:not(.landing-eyebrow),
+html[data-design] .public-login .login-story > div > p:not(.login-kicker),
+html[data-design] .public-landing .landing-brand > span > span:last-child,
+html[data-design] .public-login .login-brand > span > span:last-child,
+html[data-design] .public-landing .landing-benefits {
+  color: var(--public-muted);
+}
+
+html[data-design] .public-landing .landing-brand .brand-mark,
+html[data-design] .public-login .login-brand .brand-mark {
+  background: linear-gradient(145deg, var(--public-accent-soft), var(--public-accent));
+  box-shadow: 0 9px 24px color-mix(in srgb, var(--public-accent) 22%, transparent);
+  color: #fff;
+}
+
+html[data-design] .public-landing .landing-eyebrow,
+html[data-design] .public-login .login-kicker {
+  border-color: color-mix(in srgb, var(--public-accent) 24%, transparent);
+  background: var(--public-panel);
+  color: var(--public-accent-strong);
+}
+
+html[data-design] .public-landing .landing-actions a:first-child,
+html[data-design] .public-login .login-panel form button[type="submit"] {
+  border: 1px solid var(--public-accent);
+  background: var(--public-accent);
+  color: #fff;
+  box-shadow: 0 14px 30px -16px color-mix(in srgb, var(--public-accent) 55%, transparent);
+}
+
+html[data-design] .public-landing .landing-actions a:first-child:hover,
+html[data-design] .public-login .login-panel form button[type="submit"]:hover {
+  background: var(--public-accent-strong);
+}
+
+html[data-design] .public-landing .landing-actions a:last-child {
+  border-color: var(--public-border);
+  background: var(--public-panel);
+  color: var(--public-ink);
+}
+
+html[data-design] .public-landing .landing-showcase {
+  border-color: var(--public-border);
+  background: var(--public-panel);
+  box-shadow: 0 35px 90px -40px color-mix(in srgb, var(--public-ink) 30%, transparent);
+}
+
+html[data-design] .public-landing .landing-feature-card {
+  border-color: var(--public-border);
+  background: var(--public-panel);
+}
+
+html[data-design] .public-landing .landing-feature-icon {
+  background: color-mix(in srgb, var(--public-accent) 12%, var(--public-panel));
+  color: var(--public-accent-strong);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--public-accent) 14%, transparent);
+}
+
+html[data-design] .public-login .login-panel {
+  border-color: var(--public-border);
+  background: var(--public-panel);
+  box-shadow: 0 30px 80px -42px color-mix(in srgb, var(--public-ink) 30%, transparent);
+}
+
+html[data-design] .public-login .login-panel .login-heading,
+html[data-design] .public-login .login-panel > p,
+html[data-design] .public-login .login-panel label {
+  color: var(--public-ink);
+}
+
+html[data-design] .public-login .login-panel > p,
+html[data-design] .public-login .login-panel label span {
+  color: var(--public-muted);
+}
+
+html[data-design] .public-login .login-panel input {
+  border-color: var(--public-border);
+  background: color-mix(in srgb, var(--public-panel) 86%, var(--public-page));
+  color: var(--public-ink);
+  transition:
+    border-color var(--motion-hover-duration) ease,
+    box-shadow var(--motion-hover-duration) ease,
+    background-color var(--motion-hover-duration) ease;
+}
+
+html[data-design] .public-login .login-panel input:focus {
+  border-color: var(--motion-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--motion-accent) 17%, transparent);
+}
+
+html[data-design] .public-login .login-panel > p a {
+  color: var(--public-accent-strong);
+}
+
+html[data-design] .public-login .login-panel .login-brand > span {
+  color: var(--public-ink);
+}
+
+html[data-design] .public-login .login-panel > div:first-child > span {
+  border: 1px solid color-mix(in srgb, var(--public-accent) 18%, transparent);
+  background: color-mix(in srgb, var(--public-accent) 10%, var(--public-panel));
+  color: var(--public-accent-strong);
+}
+
+@media (max-width: 639px) {
+  html[data-design] .public-login {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--public-accent) 14%, transparent), transparent 24rem),
+      var(--public-page);
+  }
+
+  html[data-design] .public-login .login-layout {
+    width: 100%;
+    min-height: calc(100svh - 3rem);
+    max-width: 28rem;
+  }
+
+  html[data-design] .public-login .login-panel {
+    padding: clamp(1.25rem, 6vw, 1.75rem);
+    border-color: color-mix(in srgb, var(--public-accent) 18%, var(--public-border));
+    background: var(--public-panel);
+    box-shadow:
+      0 24px 60px -38px color-mix(in srgb, var(--public-accent) 34%, transparent),
+      0 1px 2px color-mix(in srgb, var(--public-ink) 5%, transparent);
+  }
+
+  html[data-design] .public-login .login-panel > div:first-child {
+    margin-bottom: 1.5rem;
+  }
+
+  html[data-design] .public-login .login-panel form {
+    gap: 1.125rem;
+  }
+
+  html[data-design] .public-login .login-panel form input {
+    min-height: 3.25rem;
+  }
+
+  html[data-design] .public-login .login-panel form button[type="submit"] {
+    min-height: 3.25rem;
+    margin-top: 0.125rem;
+  }
+}
+
+html[data-design="default"] .public-landing .landing-showcase-frame {
+  max-width: 31rem;
+}
+
+html[data-design="studio"] .public-landing {
+  background:
+    radial-gradient(ellipse at 6% 12%, rgb(45 212 191 / 23%), transparent 30rem),
+    radial-gradient(ellipse at 96% 25%, rgb(56 189 248 / 18%), transparent 30rem),
+    linear-gradient(145deg, #f4fbfa, #eaf3f4 60%, #f7fafb);
+}
+
+html[data-design="studio"] .public-landing .landing-hero {
+  gap: clamp(3rem, 6vw, 6rem);
+}
+
+html[data-design="studio"] .public-landing .landing-showcase {
+  border-radius: 2.5rem;
+  box-shadow: 0 38px 90px -46px rgb(15 118 110 / 45%);
+}
+
+html[data-design="studio"] .public-landing .home-preview {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(45 212 191 / 30%), transparent 52%),
+    linear-gradient(145deg, #0d2531, #0f5960 68%, #087e78);
+}
+
+html[data-design="studio"] .public-login .login-story {
+  padding: 2rem 0;
+}
+
+html[data-design="studio"] .public-login .login-panel {
+  border-radius: 2rem;
+  box-shadow: 0 34px 90px -48px rgb(15 118 110 / 38%);
+}
+
+html[data-design="orbit"] .public-landing {
+  background:
+    radial-gradient(ellipse at 82% 0%, rgb(221 215 255 / 72%), transparent 33rem),
+    linear-gradient(145deg, #faf9fc, #f0eef8 62%, #f7f6fa);
+}
+
+html[data-design="orbit"] .public-landing .landing-hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  gap: clamp(2.5rem, 5vw, 5.5rem);
+}
+
+html[data-design="orbit"] .public-landing .landing-title,
+html[data-design="orbit"] .public-login .login-title {
+  letter-spacing: -0.075em;
+}
+
+html[data-design="orbit"] .public-landing .landing-eyebrow,
+html[data-design="orbit"] .public-login .login-kicker {
+  border-radius: 0.85rem;
+  background: #fff;
+  color: #5835d1;
+}
+
+html[data-design="orbit"] .public-landing .landing-actions a:first-child {
+  border-color: #d9fb69;
+  background: #d9fb69;
+  color: #24213b;
+}
+
+html[data-design="orbit"] .public-landing .landing-actions a:first-child:hover {
+  background: #c9ee4c;
+}
+
+html[data-design="orbit"] .public-landing .landing-showcase {
+  border-radius: 2.25rem;
+  box-shadow: 0 38px 90px -44px rgb(52 38 111 / 45%);
+}
+
+html[data-design="orbit"] .public-landing .home-preview {
+  background:
+    radial-gradient(ellipse at 88% 0%, rgb(217 251 105 / 28%), transparent 55%),
+    linear-gradient(140deg, #211a48, #4f36a2 62%, #7048ef);
+}
+
+html[data-design="orbit"] .public-landing .landing-features {
+  padding-top: 2rem;
+}
+
+html[data-design="orbit"] .public-landing .landing-feature-card {
+  border-radius: 1.35rem;
+  box-shadow: 0 15px 35px -28px rgb(52 38 111 / 32%);
+}
+
+html[data-design="orbit"] .public-login .login-layout {
+  max-width: 70rem;
+  gap: clamp(2rem, 6vw, 6rem);
+}
+
+html[data-design="orbit"] .public-login .login-panel {
+  border-radius: 2rem;
+  box-shadow: 0 32px 90px -50px rgb(72 54 147 / 40%);
+}
+
+html[data-design="atelier"] .public-landing,
+html[data-design="atelier"] .public-login {
+  background:
+    radial-gradient(ellipse at 92% 8%, rgb(207 150 105 / 18%), transparent 28rem),
+    #f2eadf;
+}
+
+html[data-design="atelier"] .public-landing .landing-hero {
+  grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+}
+
+html[data-design="atelier"] .public-landing .landing-title,
+html[data-design="atelier"] .public-login .login-title,
+html[data-design="atelier"] .public-login .login-heading {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 500;
+  letter-spacing: -0.055em;
+}
+
+html[data-design="atelier"] .public-landing .landing-eyebrow,
+html[data-design="atelier"] .public-login .login-kicker {
+  border-radius: 0.35rem;
+  background: #fffaf3;
+  color: #913a28;
+}
+
+html[data-design="atelier"] .public-landing .landing-showcase {
+  border-radius: 0.5rem;
+  background: #fffaf3;
+  box-shadow: 12px 14px 0 rgb(185 78 53 / 10%), 0 30px 65px -44px rgb(75 48 30 / 38%);
+}
+
+html[data-design="atelier"] .public-landing .home-preview {
+  border-radius: 0.35rem;
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(215 150 96 / 25%), transparent 55%),
+    linear-gradient(145deg, #30271f, #584033 72%, #7d5039);
+}
+
+html[data-design="atelier"] .public-landing .landing-feature-card {
+  border-radius: 0.45rem;
+  box-shadow: none;
+}
+
+html[data-design="atelier"] .public-landing .landing-feature-icon,
+html[data-design="atelier"] .public-login .login-benefits svg {
+  color: #b94e35;
+}
+
+html[data-design="atelier"] .public-landing .landing-actions a:first-child {
+  border-radius: 0.4rem;
+  background: #913a28;
+}
+
+html[data-design="atelier"] .public-landing .landing-actions a:last-child,
+html[data-design="atelier"] .public-login .login-panel {
+  border-radius: 0.45rem;
+}
+
+html[data-design="atelier"] .public-login .login-panel {
+  box-shadow: 10px 12px 0 rgb(185 78 53 / 10%), 0 30px 65px -46px rgb(75 48 30 / 35%);
+}
+
+html[data-design="atelier"] .public-login .login-benefits > div {
+  border-color: #e5d8c9;
+  border-radius: 0.35rem;
+  background: rgb(255 250 243 / 78%);
+}
+
+html[data-design="pulse"] body,
+html[data-design="pulse"] body::before {
+  background-color: #0d171b;
+}
+
+html[data-design="pulse"] .public-landing,
+html[data-design="pulse"] .public-login {
+  background:
+    radial-gradient(ellipse at 84% 0%, rgb(37 184 160 / 17%), transparent 34rem),
+    radial-gradient(ellipse at 5% 90%, rgb(26 95 90 / 19%), transparent 30rem),
+    #0d171b;
+}
+
+html[data-design="pulse"] .public-landing .landing-title > span {
+  background-image: linear-gradient(100deg, #b8fff0, #67e8d0);
+}
+
+html[data-design="pulse"] .public-landing .landing-eyebrow,
+html[data-design="pulse"] .public-login .login-kicker {
+  border-color: #31514f;
+  background: #142328;
+  color: #91f5de;
+}
+
+html[data-design="pulse"] .public-landing .landing-actions a:first-child,
+html[data-design="pulse"] .public-login .login-panel form button[type="submit"] {
+  border-color: #67e8d0;
+  background: #67e8d0;
+  color: #08201f;
+}
+
+html[data-design="pulse"] .public-landing .landing-actions a:first-child:hover,
+html[data-design="pulse"] .public-login .login-panel form button[type="submit"]:hover {
+  background: #9af5e4;
+}
+
+html[data-design="pulse"] .public-landing .landing-actions a:last-child {
+  border-color: #34494d;
+  background: #142328;
+  color: #ecf9f6;
+}
+
+html[data-design="pulse"] .public-landing .landing-showcase,
+html[data-design="pulse"] .public-login .login-panel,
+html[data-design="pulse"] .public-landing .landing-feature-card {
+  border-color: #293940;
+  background: #142328;
+  box-shadow: 0 30px 80px -50px rgb(0 0 0 / 85%);
+}
+
+html[data-design="pulse"] .public-landing .home-preview {
+  background:
+    radial-gradient(ellipse at 90% 0%, rgb(103 232 208 / 21%), transparent 56%),
+    linear-gradient(145deg, #10272a, #164447 68%, #126255);
+}
+
+html[data-design="pulse"] .public-landing .landing-feature-icon {
+  background: #1b393b;
+  color: #91f5de;
+}
+
+html[data-design="pulse"] .public-login .login-panel .login-heading,
+html[data-design="pulse"] .public-login .login-panel label {
+  color: #ecf9f6;
+}
+
+html[data-design="pulse"] .public-login .login-panel input {
+  border-color: #34494d;
+  background: #0d1b1f;
+  color: #ecf9f6;
+}
+
+html[data-design="pulse"] .public-login .login-panel input::placeholder {
+  color: #82999b;
+}
+
+html[data-design="pulse"] .public-login .login-panel > p a {
+  color: #91f5de;
+}
+
+html[data-design="pulse"] .public-login .login-benefits > div {
+  border-color: #293940;
+  background: rgb(20 35 40 / 82%);
+}
+
+html[data-design="midnight"] .public-landing,
+html[data-design="midnight"] .public-login {
+  background:
+    radial-gradient(ellipse at 78% 2%, rgb(99 102 241 / 22%), transparent 34rem),
+    radial-gradient(ellipse at 5% 88%, rgb(45 212 191 / 11%), transparent 29rem),
+    #0b1020;
+}
+
+html[data-design="midnight"] .public-landing .landing-title > span {
+  background-image: linear-gradient(100deg, #a5b4fc, #c4b5fd);
+}
+
+html[data-design="midnight"] .public-landing .landing-showcase,
+html[data-design="midnight"] .public-login .login-panel,
+html[data-design="midnight"] .public-landing .landing-feature-card {
+  border-color: #303b55;
+  background: rgb(20 29 48 / 94%);
+}
+
+html[data-design="midnight"] .public-landing .landing-eyebrow,
+html[data-design="midnight"] .public-login .login-kicker {
+  border-color: #3a4264;
+  background: #1b263b;
+  color: #c4b5fd;
+}
+
+html[data-design="midnight"] .public-landing .landing-actions a:first-child,
+html[data-design="midnight"] .public-login .login-panel form button[type="submit"] {
+  border-color: #818cf8;
+  background: #6366f1;
+  color: #fff;
+}
+
+html[data-design="midnight"] .public-landing .landing-actions a:first-child:hover,
+html[data-design="midnight"] .public-login .login-panel form button[type="submit"]:hover {
+  background: #4f46e5;
+}
+
+html[data-design="midnight"] .public-landing .landing-actions a:last-child {
+  border-color: #334158;
+  background: #1b263b;
+  color: #f1f5f9;
+}
+
+html[data-design="midnight"] .public-landing .home-preview {
+  background:
+    radial-gradient(ellipse at 88% 0%, rgb(129 140 248 / 30%), transparent 56%),
+    linear-gradient(145deg, #151b33, #25254b 65%, #373574);
+}
+
+html[data-design="midnight"] .public-landing .landing-feature-icon {
+  background: #222b43;
+  color: #c4b5fd;
+}
+
+html[data-design="midnight"] .public-login .login-panel .login-heading,
+html[data-design="midnight"] .public-login .login-panel label {
+  color: #f1f5f9;
+}
+
+html[data-design="midnight"] .public-login .login-panel input {
+  border-color: #334158;
+  background: #111a2b;
+  color: #f1f5f9;
+}
+
+html[data-design="midnight"] .public-login .login-panel input::placeholder {
+  color: #8492a8;
+}
+
+html[data-design="midnight"] .public-login .login-panel > p a {
+  color: #c4b5fd;
+}
+
+html[data-design="midnight"] .public-login .login-benefits > div {
+  border-color: #303b55;
+  background: rgb(20 29 48 / 82%);
+}
+
+@media (max-width: 767px) {
+  html[data-design="orbit"] .public-landing .landing-hero,
+  html[data-design="atelier"] .public-landing .landing-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  html[data-design="orbit"] .public-landing .landing-showcase-frame,
+  html[data-design="atelier"] .public-landing .landing-showcase-frame {
+    max-width: 34rem;
+  }
+
+  html[data-design="atelier"] .public-landing .landing-brand {
+    margin-bottom: 2rem;
+  }
+
+  html[data-design="atelier"] .public-landing .landing-title,
+  html[data-design="atelier"] .public-login .login-title {
+    font-size: clamp(2.75rem, 12vw, 4rem);
+  }
 }
 
 .float-soft {
@@ -1038,6 +3509,14 @@ html[data-design="studio"] .notifications-mark-all button {
   animation: glow-pulse var(--motion-glow-duration) ease-in-out infinite;
 }
 
+html[data-motion="on"] .animate-pulse {
+  animation-duration: calc(2s / var(--motion-speed, 1));
+}
+
+html[data-motion="on"] .animate-spin {
+  animation-duration: calc(1s / var(--motion-speed, 1));
+}
+
 html[data-motion="off"] *,
 html[data-motion="off"] *::before,
 html[data-motion="off"] *::after {
@@ -1046,19 +3525,23 @@ html[data-motion="off"] *::after {
   scroll-behavior: auto !important;
 }
 
-html[data-motion-entrance="off"] .page-enter > * {
+html[data-motion-entrance="off"] .page-enter > *,
+html[data-motion-entrance="off"] .workspace-grid > *,
+html[data-motion-entrance="off"] .mobile-menu-panel {
   animation: none;
 }
 
 html[data-motion-floating="off"] .float-soft,
 html[data-motion-floating="off"] .glow-pulse,
-html[data-motion-floating="off"] .auth-visual::before {
+html[data-motion-floating="off"] .auth-visual::before,
+html[data-motion-floating="off"] .workspace-hero::after {
   animation: none;
 }
 
 html[data-motion-hover="off"] button,
 html[data-motion-hover="off"] a,
-html[data-motion-hover="off"] .surface-card {
+html[data-motion-hover="off"] .surface-card,
+html[data-motion-hover="off"] .public-login .login-panel input {
   transition: none !important;
 }
 
@@ -1068,7 +3551,7 @@ html[data-motion-hover="off"] .surface-card:hover {
 }
 
 :focus-visible {
-  outline: 3px solid rgb(13 148 136 / 45%);
+  outline: 3px solid color-mix(in srgb, var(--motion-accent) 45%, transparent);
   outline-offset: 3px;
 }
 
@@ -1081,4 +3564,48 @@ html[data-motion-hover="off"] .surface-card:hover {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+html[data-design="atelier"] .app-shell-user main .support-command h1,
+html[data-design="atelier"] .app-shell-user main .profile-command h1,
+html[data-design="atelier"] .app-shell-user main .support-command > div:first-child > p,
+html[data-design="atelier"] .app-shell-user main .profile-command > div:first-child > p {
+  color: #34271f;
+}
+
+html[data-design="atelier"] .app-shell-user main .support-command > div:first-child > p:first-child,
+html[data-design="atelier"] .app-shell-user main .profile-command > div:first-child > p:first-child {
+  color: #913a28;
+}
+
+html[data-design="atelier"] .app-shell-user main .support-promise {
+  border-color: #e5d2bd;
+  background: #f4e4d2;
+}
+
+html[data-design="atelier"] .app-shell-user main .support-promise p:first-of-type {
+  color: #34271f;
+}
+
+html[data-design="atelier"] .app-shell-user main .support-promise p:last-of-type {
+  color: #695446;
+}
+
+html[data-design="atelier"] .app-shell-user main .profile-role-card {
+  border-color: #e5d2bd;
+  background: #f4e4d2;
+  color: #34271f;
+}
+
+html[data-design="atelier"] .app-shell-user main .profile-role-card > span:first-child {
+  background: #ead2b8;
+  color: #913a28;
+}
+
+html[data-design="atelier"] .app-shell-user main .profile-role-card > span:last-child > span:first-child {
+  color: #79695d;
+}
+
+html[data-design="atelier"] .app-shell-user main .profile-role-card > span:last-child > span:last-child {
+  color: #34271f;
 }

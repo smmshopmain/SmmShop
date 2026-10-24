@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, Check, Sparkles, Wind } from "lucide-react";
+import { Activity, Check, RotateCcw, Sparkles, Wind } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 import { AdminSection } from "@/components/admin-ui";
 import {
+  DEFAULT_MOTION_SETTINGS,
   normalizeMotionSettings,
   type MotionSettings,
   useMotionSettings,
@@ -50,15 +51,14 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
   const [error, setError] = useState("");
 
   function update(patch: Partial<MotionSettings>) {
-    const next = { ...settings, ...patch };
+      const next = normalizeMotionSettings({ ...settings, ...patch });
     setSettings(next);
     setGlobalSettings(next);
     setMessage("");
     setError("");
   }
 
-  async function save(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function persistAppearance(nextSettings: MotionSettings, successMessage: string) {
     setSaving(true);
     setMessage("");
     setError("");
@@ -67,14 +67,15 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
       const response = await apiFetch("/api/admin/settings", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ key: "appearance", value: settings }),
+        body: JSON.stringify({ key: "appearance", value: nextSettings }),
       });
       const result = await response.json();
       if (!response.ok) {
         throw new Error(result.message ?? "Unable to save animation settings.");
       }
-      setGlobalSettings(settings);
-      setMessage("Website design and animation preferences saved and applied for all visitors.");
+      setSettings(nextSettings);
+      setGlobalSettings(nextSettings);
+      setMessage(successMessage);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Unable to save animation settings.");
     } finally {
@@ -82,21 +83,42 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
     }
   }
 
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await persistAppearance(settings, "Website design and animation preferences saved and applied for all visitors.");
+  }
+
+  async function applyDefaults() {
+    const defaults = normalizeMotionSettings(DEFAULT_MOTION_SETTINGS);
+    await persistAppearance(defaults, "Default design and animation settings saved and applied for all visitors.");
+  }
+
   return (
     <AdminSection
       title="Animations & appearance"
       description="Manage themed loading animations, choose a site-wide design, and tune motion, colour, and speed."
       icon={Sparkles}
+      actions={
+        <button
+          type="button"
+          onClick={applyDefaults}
+          disabled={saving}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-teal-300 hover:bg-teal-50 hover:text-teal-900 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <RotateCcw className="size-4" />
+          {saving ? "Saving..." : "Default"}
+        </button>
+      }
     >
       <form onSubmit={save} className="grid gap-5 p-4 sm:p-6">
         <div>
           <div className="mb-3">
             <h3 className="text-sm font-bold text-slate-900">Website design</h3>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Preview a design here, then save to apply it for every visitor and logged-in panel.
+              Choose the design used across the site. Classic · Original keeps the original signed-in workspace available.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {([
               {
                 id: "default",
@@ -106,9 +128,27 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
               },
               {
                 id: "studio",
-                title: "Studio · Redesigned",
-                description: "A fresh, polished workspace across user pages.",
+                title: "Studio · Teal",
+                description: "The previously redesigned teal workspace.",
                 swatches: ["#eaf3f2", "#ffffff", "#0e7490"],
+              },
+              {
+                id: "orbit",
+                title: "Orbit · New experience",
+                description: "A new user workspace with top navigation, reworked page layouts, and a violet, ink, and lime visual system.",
+                swatches: ["#f2f0fa", "#ffffff", "#7048ef"],
+              },
+              {
+                id: "atelier",
+                title: "Atelier · Editorial",
+                description: "A warm, editorial workspace with a slim icon rail, paper-like surfaces, and terracotta accents.",
+                swatches: ["#f5efe6", "#fffdf9", "#b94e35"],
+              },
+              {
+                id: "pulse",
+                title: "Pulse · After dark",
+                description: "A dark, high-contrast studio with deep teal panels, bright mint details, and focused order views.",
+                swatches: ["#10191e", "#17242a", "#67e8d0"],
               },
               {
                 id: "midnight",
@@ -275,25 +315,22 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
         </section>
 
         <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4 sm:grid-cols-2 sm:p-5">
-          <label className="grid gap-2 text-sm font-semibold text-slate-800">
-            Animation accent colour
+          <div className="grid content-start gap-2 text-sm font-semibold text-slate-800">
+            <span>Theme-matched animation colour</span>
             <span className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-2">
-              <input
-                type="color"
-                value={settings.animationColor}
-                disabled={!settings.animationsEnabled}
-                onChange={(event) => update({ animationColor: event.target.value })}
-                className="size-11 cursor-pointer rounded-lg border-0 bg-transparent p-1 disabled:cursor-not-allowed"
-                aria-label="Animation accent colour"
-              />
-              <span className="font-mono text-xs font-medium uppercase text-slate-500">{settings.animationColor}</span>
               <span
-                className="ml-auto size-7 rounded-full shadow-sm"
+                className="size-11 rounded-lg shadow-sm"
                 style={{ backgroundColor: settings.animationColor }}
                 aria-hidden="true"
               />
+              <span>
+                <span className="block font-mono text-xs font-medium uppercase text-slate-700">{settings.animationColor}</span>
+                <span className="mt-1 block text-xs font-normal text-slate-500">
+                  Automatically matches the selected design.
+                </span>
+              </span>
             </span>
-          </label>
+          </div>
 
           <label className="grid content-start gap-2 text-sm font-semibold text-slate-800">
             Animation speed

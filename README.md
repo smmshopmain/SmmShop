@@ -96,7 +96,7 @@ Use the existing Render service configuration and set backend env vars as shown 
 
 ## User-facing design
 
-Administrators can manage the site-wide appearance and loading animations from **Admin > Animations** or **Admin > Settings**. Choose **Classic · Original**, **Studio · Redesigned**, or **Midnight Studio**. Studio applies redesigned navigation and page layouts across the signed-in dashboard (services, orders, wallet, support, refills, referrals, notifications, and profile). Admins can enable or disable loading animations, choose a specific animation or random rotation, and individually enable or disable each of 20 themed animations. The reduced-motion browser preference is always respected.
+Administrators can manage the site-wide appearance and loading animations from **Admin > Animations** or **Admin > Settings**. Use the **Default** button to immediately save and apply the standard appearance and animation settings: **Classic · Original**, enabled motion, all 20 loading animations with random rotation, theme-matched teal accent colour, and 1.0x speed. Animation accents automatically follow the selected design: teal for Classic and Studio, violet for Orbit, terracotta for Atelier, mint for Pulse, and indigo for Midnight Studio. The selected design is reflected on the public landing and login pages as well as the signed-in workspace. Page entrance, ambient floating, and interactive motion controls apply across the public pages and user workspace; the master switch turns off every animation and transition. **Orbit · New experience** restructures the signed-in user navigation and dashboard, services, orders, wallet, support, refills, referrals, notifications, and profile screens without changing their workflows. Admins can also choose **Atelier · Editorial**, with a warm paper palette and compact icon-rail navigation, or **Pulse · After dark**, with dark teal surfaces and mint highlights. **Studio · Teal** and **Midnight Studio** remain available too. Admins can enable or disable loading animations, choose a specific animation or random rotation, and individually enable or disable each of 20 themed animations. The reduced-motion browser preference is always respected.
 
 ## Render Deploy
 
@@ -121,7 +121,7 @@ Open Admin > Settings, then scroll to **Payment details shown to users**. Add th
 
 ### Website Design and Animation Controls
 
-Admins can open **Admin > Animations** (or Admin > Settings) to manage 20 content-themed loaders. Enable or disable loading animations, choose a specific animation or random rotation from the individually enabled set, preview the selection, and save it site-wide. The same section lets admins apply **Classic · Original**, **Studio · Redesigned**, or **Midnight Studio**, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
+Admins can open **Admin > Animations** (or Admin > Settings) to manage 20 content-themed loaders. Enable or disable loading animations, choose a specific animation or random rotation from the individually enabled set, and save it site-wide. The same section lets admins apply **Classic · Original**, **Studio · Teal**, **Orbit · New experience**, **Atelier · Editorial**, **Pulse · After dark**, or **Midnight Studio**, control page-entry, floating, and interactive effects, choose the animation accent colour, and adjust speed. The browser's reduced-motion preference is always respected.
 
 ### Content Copy Deterrents
 

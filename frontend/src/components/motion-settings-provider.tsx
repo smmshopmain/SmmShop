@@ -6,7 +6,7 @@ import { apiJson } from "@/lib/client-api";
 import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATIONS } from "@/lib/loading-animations";
 
 export type MotionSettings = {
-  designPreset: "default" | "studio" | "midnight";
+  designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight";
   animationsEnabled: boolean;
   entranceEnabled: boolean;
   floatingEnabled: boolean;
@@ -19,13 +19,22 @@ export type MotionSettings = {
   enabledLoadingAnimations: string[];
 };
 
+export const DESIGN_MOTION_COLORS: Record<MotionSettings["designPreset"], string> = {
+  default: "#0f766e",
+  studio: "#0f8a82",
+  orbit: "#7048ef",
+  atelier: "#b94e35",
+  pulse: "#67e8d0",
+  midnight: "#818cf8",
+};
+
 const DEFAULT_MOTION_SETTINGS: MotionSettings = {
   designPreset: "default",
   animationsEnabled: true,
   entranceEnabled: true,
   floatingEnabled: true,
   hoverEnabled: true,
-  animationColor: "#14b8a6",
+  animationColor: DESIGN_MOTION_COLORS.default,
   animationSpeed: 1,
   loadingAnimationsEnabled: true,
   loadingAnimationMode: "random",
@@ -57,6 +66,7 @@ function applyMotionSettings(settings: MotionSettings) {
   root.dataset.motionHover = settings.hoverEnabled ? "on" : "off";
   root.dataset.loadingAnimations = settings.animationsEnabled && settings.loadingAnimationsEnabled ? "on" : "off";
   root.style.setProperty("--motion-accent", settings.animationColor);
+  root.style.setProperty("--motion-speed", String(speed));
   root.style.setProperty("--motion-page-duration", `${520 / speed}ms`);
   root.style.setProperty("--motion-menu-duration", `${240 / speed}ms`);
   root.style.setProperty("--motion-float-duration", `${6000 / speed}ms`);
@@ -74,10 +84,16 @@ export function normalizeMotionSettings(value: Partial<MotionSettings>): MotionS
     ? configuredIds
     : DEFAULT_ENABLED_LOADING_ANIMATIONS;
   const requestedSelection = value.selectedLoadingAnimation;
+  const designPreset = typeof value.designPreset === "string"
+    && Object.hasOwn(DESIGN_MOTION_COLORS, value.designPreset)
+    ? value.designPreset
+    : DEFAULT_MOTION_SETTINGS.designPreset;
 
   return {
     ...DEFAULT_MOTION_SETTINGS,
     ...value,
+    designPreset,
+    animationColor: DESIGN_MOTION_COLORS[designPreset],
     loadingAnimationMode: value.loadingAnimationMode === "specific" ? "specific" : "random",
     selectedLoadingAnimation: typeof requestedSelection === "string" && enabledLoadingAnimations.includes(requestedSelection)
       ? requestedSelection
