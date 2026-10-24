@@ -7,7 +7,7 @@ import { createUniqueReferralCode } from "@/lib/referral-code";
 import { hashRegistrationOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { dbConnect } from "@/lib/db";
-import { sendWelcomeEmail } from "@/lib/welcome-email";
+import { sendWelcomeEmail, welcomeEmailFailureMessage } from "@/lib/welcome-email";
 import { notifyTelegram } from "@/lib/telegram";
 import { PendingRegistration, Referral, User, getSettings } from "@/models";
 
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
       await sendWelcomeEmail(user, request.nextUrl.origin);
     } catch (error) {
       welcomeEmailSent = false;
-      welcomeEmailMessage = "Your account was created, but the welcome email could not be sent. Please contact support if you need help.";
+      welcomeEmailMessage = welcomeEmailFailureMessage(error);
       console.error("Welcome email failed after registration", {
         userId: String(user._id),
         email: user.email,

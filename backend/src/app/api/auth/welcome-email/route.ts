@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { fail, ok, requireUser } from "@/lib/api";
 import { rateLimit } from "@/lib/rate-limit";
-import { sendWelcomeEmail } from "@/lib/welcome-email";
+import { sendWelcomeEmail, welcomeEmailFailureMessage } from "@/lib/welcome-email";
 
 export async function POST(request: NextRequest) {
   let auth: Awaited<ReturnType<typeof requireUser>>["auth"];
@@ -21,8 +21,10 @@ export async function POST(request: NextRequest) {
     return ok({ message: "Welcome email sent. Check your inbox and spam folder." });
   } catch (error) {
     console.error("Welcome email retry failed", {
+      userId: auth.id,
+      email: dbUser.email,
       error: error instanceof Error ? error.message : "Unknown email delivery error",
     });
-    return fail("Welcome email could not be sent. Please try again later or contact support.", 502);
+    return fail(welcomeEmailFailureMessage(error), 502);
   }
 }

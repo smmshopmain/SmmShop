@@ -286,7 +286,6 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
                 inputMode="tel"
                 minLength={6}
                 maxLength={25}
-                pattern="[+()0-9 .-]{6,25}"
                 required
                 placeholder="Enter your mobile number"
                 className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
