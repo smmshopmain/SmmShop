@@ -10,6 +10,7 @@ const schema = z.object({
   subject: z.string().trim().min(1).max(200),
   body: z.string().trim().min(1).max(10000),
   includeUnsubscribed: z.boolean(),
+  sendNow: z.boolean().default(false),
   scheduledAt: z.string().datetime().or(z.date()),
 });
 
@@ -33,20 +34,25 @@ export async function POST(request: NextRequest) {
     const { dbUser } = await requireAdmin();
     await dbConnect();
     const input = await parseBody(request, schema);
-    const scheduledAt = new Date(input.scheduledAt);
+    const { sendNow, ...campaignInput } = input;
+    const scheduledAt = sendNow ? new Date() : new Date(input.scheduledAt);
     if (!Number.isFinite(scheduledAt.getTime())) return fail("Choose a valid sending date and time.");
+    if (!sendNow && scheduledAt.getTime() <= Date.now()) {
+      return fail("Choose a future time or select Send now.");
+    }
 
+    const recipientCutoffAt = new Date();
     const recipients = {
-      createdAt: { $lte: new Date() },
+      createdAt: { $lte: recipientCutoffAt },
       ...(input.includeUnsubscribed ? {} : { marketingUnsubscribed: { $ne: true } }),
     };
     const recipientCount = await User.countDocuments(recipients);
     const campaign = await EmailCampaign.create({
-      ...input,
+      ...campaignInput,
       scheduledAt,
-      recipientCutoffAt: new Date(),
+      recipientCutoffAt,
       recipientCount,
-      status: scheduledAt.getTime() > Date.now() ? "scheduled" : "queued",
+      status: sendNow ? "queued" : "scheduled",
       createdBy: dbUser?._id,
     });
     return ok({ campaign });

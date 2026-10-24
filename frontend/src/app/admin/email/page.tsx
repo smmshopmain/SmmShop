@@ -29,6 +29,7 @@ type Campaign = {
   failedCount: number;
   includeUnsubscribed: boolean;
   scheduledAt: string;
+  lastError?: string;
 };
 type SettingsResponse = {
   email?: EmailSettings;
@@ -99,6 +100,7 @@ export default function EmailManagementPage() {
     subject: "",
     body: "",
     includeUnsubscribed: false,
+    sendMode: "now" as "now" | "scheduled",
     scheduledAt: localDateTimeValue(new Date()),
   });
   const [loading, setLoading] = useState(true);
@@ -175,12 +177,43 @@ export default function EmailManagementPage() {
       const response = await apiFetch("/api/admin/email-campaigns", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ...campaignForm, scheduledAt: new Date(campaignForm.scheduledAt).toISOString() }),
+        body: JSON.stringify({
+          ...campaignForm,
+          sendNow: campaignForm.sendMode === "now",
+          scheduledAt: campaignForm.sendMode === "now"
+            ? new Date().toISOString()
+            : new Date(campaignForm.scheduledAt).toISOString(),
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to schedule campaign.");
-      setMessage("Campaign confirmed and scheduled.");
+      setMessage(campaignForm.sendMode === "now" ? "Campaign created. Starting delivery now…" : "Campaign confirmed and scheduled.");
       setCampaignForm((current) => ({ ...current, title: "", subject: "", body: "" }));
+      if (campaignForm.sendMode === "now") {
+        let continueSending = true;
+        let sent = 0;
+        let failed = 0;
+        while (continueSending) {
+          const startResponse = await apiFetch("/api/cron/email-campaigns", { method: "POST" });
+          const startResult = await startResponse.json();
+          if (!startResponse.ok) {
+            throw new Error(`Campaign was saved, but immediate delivery stopped: ${startResult.message ?? "Please check the campaign status and cron configuration."}`);
+          }
+          const batch = startResult.data;
+          if (!batch?.processed) {
+            setMessage("Campaign is queued. Delivery will continue automatically in the background.");
+            break;
+          }
+          sent += Number(batch.sent ?? 0);
+          failed += Number(batch.failed ?? 0);
+          continueSending = batch.hasMore === true;
+          setMessage(
+            continueSending
+              ? `Sending campaign… ${sent + failed} of ${result.campaign?.recipientCount ?? "all"} processed.`
+              : `Campaign delivery finished. ${sent} sent${failed ? `, ${failed} failed` : ""}.`,
+          );
+        }
+      }
       const campaignData = await apiJson("/api/admin/email-campaigns");
       setCampaigns(campaignData.campaigns ?? []);
     } catch (cause) {
@@ -245,14 +278,17 @@ export default function EmailManagementPage() {
               </div>
               <Field label="Email subject" value={campaignForm.subject} onChange={(value) => setCampaignForm({ ...campaignForm, subject: value })} />
               <Field label="Email message (plain text)" multiline value={campaignForm.body} onChange={(value) => setCampaignForm({ ...campaignForm, body: value })} />
-              <label className="block text-sm font-semibold text-neutral-800">Send at<input type="datetime-local" required className="mt-1 block rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" value={campaignForm.scheduledAt} onChange={(event) => setCampaignForm({ ...campaignForm, scheduledAt: event.target.value })} /></label>
+              <label className="block text-sm font-semibold text-neutral-800">Delivery timing<select className="mt-1 block w-full max-w-sm rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" value={campaignForm.sendMode} onChange={(event) => setCampaignForm({ ...campaignForm, sendMode: event.target.value as "now" | "scheduled" })}><option value="now">Send now</option><option value="scheduled">Schedule for later</option></select></label>
+              {campaignForm.sendMode === "scheduled" && (
+                <label className="block text-sm font-semibold text-neutral-800">Send at<input type="datetime-local" required className="mt-1 block rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" value={campaignForm.scheduledAt} onChange={(event) => setCampaignForm({ ...campaignForm, scheduledAt: event.target.value })} /></label>
+              )}
               <label className="flex items-start gap-3 text-sm text-neutral-700"><input type="checkbox" className="mt-1 size-4" checked={campaignForm.includeUnsubscribed} onChange={(event) => setCampaignForm({ ...campaignForm, includeUnsubscribed: event.target.checked })} /><span>Include users who opted out of marketing emails (use only for appropriate, non-promotional service communications).</span></label>
               <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Preview</p>
                 <h3 className="mt-2 font-bold text-neutral-900">{campaignForm.subject || "Email subject preview"}</h3>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">{campaignForm.body || "Your message preview will appear here."}</p>
               </div>
-              <button disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? "Scheduling…" : "Confirm and schedule campaign"}</button>
+              <button disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? (campaignForm.sendMode === "now" ? "Starting…" : "Scheduling…") : (campaignForm.sendMode === "now" ? "Confirm and send now" : "Confirm and schedule campaign")}</button>
             </form>
           </AdminSection>
 
@@ -260,8 +296,8 @@ export default function EmailManagementPage() {
             {campaigns.length ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="bg-neutral-50 text-xs uppercase text-neutral-500"><tr><th className="p-3">Campaign</th><th className="p-3">Status</th><th className="p-3">Scheduled</th><th className="p-3">Recipients</th><th className="p-3">Sent / failed</th><th className="p-3">Unsubscribed included</th></tr></thead>
-                  <tbody>{campaigns.map((campaign) => <tr key={campaign._id} className="border-t border-neutral-100"><td className="p-3"><span className="font-semibold">{campaign.title}</span><span className="block text-xs text-neutral-500">{campaign.kind}: {campaign.subject}</span></td><td className="p-3 capitalize">{campaign.status}</td><td className="p-3 whitespace-nowrap">{new Date(campaign.scheduledAt).toLocaleString()}</td><td className="p-3">{campaign.recipientCount}</td><td className="p-3">{campaign.sentCount} / {campaign.failedCount}</td><td className="p-3">{campaign.includeUnsubscribed ? "Yes" : "No"}</td></tr>)}</tbody>
+                  <thead className="bg-neutral-50 text-xs uppercase text-neutral-500"><tr><th className="p-3">Campaign</th><th className="p-3">Status</th><th className="p-3">Scheduled</th><th className="p-3">Recipients</th><th className="p-3">Sent / failed</th><th className="p-3">Unsubscribed included</th><th className="p-3">Delivery details</th></tr></thead>
+                  <tbody>{campaigns.map((campaign) => <tr key={campaign._id} className="border-t border-neutral-100"><td className="p-3"><span className="font-semibold">{campaign.title}</span><span className="block text-xs text-neutral-500">{campaign.kind}: {campaign.subject}</span></td><td className="p-3 capitalize">{campaign.status}</td><td className="p-3 whitespace-nowrap">{new Date(campaign.scheduledAt).toLocaleString()}</td><td className="p-3">{campaign.recipientCount}</td><td className="p-3">{campaign.sentCount} / {campaign.failedCount}</td><td className="p-3">{campaign.includeUnsubscribed ? "Yes" : "No"}</td><td className="max-w-xs p-3 text-xs text-rose-700">{campaign.lastError || "—"}</td></tr>)}</tbody>
                 </table>
               </div>
             ) : <p className="p-5 text-sm text-neutral-500">No campaigns created yet.</p>}
