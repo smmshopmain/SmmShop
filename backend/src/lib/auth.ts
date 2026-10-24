@@ -21,7 +21,7 @@ export type AuthUser = {
   email: string;
   name: string;
   role: UserRole;
-  authSource?: "environment";
+  authSource?: "environment" | "database";
 };
 
 function environmentAdminCredentials() {
@@ -134,6 +134,9 @@ export async function verifySession(token?: string): Promise<AuthUser | null> {
         return null;
       }
       user.authSource = "environment";
+    } else if (payload.authSource === "database") {
+      if (user.role !== "admin") return null;
+      user.authSource = "database";
     } else if (user.role === "admin") {
       return null;
     }
@@ -157,6 +160,9 @@ export async function requireUser() {
   await dbConnect();
   const dbUser = await User.findById(user.id);
   if (!dbUser || dbUser.isBanned) throw new Error("Unauthorized");
+  if (user.authSource === "database" && normalizeRole(dbUser.role) !== "admin") {
+    throw new Error("Unauthorized");
+  }
   return {
     auth: {
       ...user,

@@ -162,7 +162,7 @@ export async function GET(request: NextRequest) {
     }
     if (!user) user = emailUser;
 
-    if (user?.isBanned || user?.role === "admin") {
+    if (user?.isBanned) {
       return redirectError(request, "account_unavailable", context);
     }
 
@@ -219,6 +219,7 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name: user.name,
       role: user.role,
+      ...(user.role === "admin" ? { authSource: "database" as const } : {}),
     });
     clearStateCookie(response);
     return response;
