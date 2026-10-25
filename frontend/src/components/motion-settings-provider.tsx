@@ -118,8 +118,8 @@ export function MotionSettingsProvider({
         if (!mounted || !result?.appearance) return;
         setSettings(normalizeMotionSettings(result.appearance));
       })
-      .catch(() => {
-        if (mounted) setSettings(DEFAULT_MOTION_SETTINGS);
+      .catch((error: unknown) => {
+        console.error("Unable to refresh site appearance settings; keeping the server-rendered settings.", error);
       });
 
     return () => {
