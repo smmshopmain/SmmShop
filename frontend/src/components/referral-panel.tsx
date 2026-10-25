@@ -9,6 +9,11 @@ type ReferralHistoryItem = {
   earnings: number;
   status: string;
   createdAt: string;
+  referredUser?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+  } | null;
 };
 
 export function ReferralPanel({
@@ -129,7 +134,10 @@ export function ReferralPanel({
         {history.map((item) => (
           <div key={String(item._id)} className="grid gap-2 border-b border-neutral-100 p-4 text-sm sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-center">
             <span>
-              <span className="block font-medium">{item.status}</span>
+              <span className="block font-medium">{item.referredUser?.name || "Referred user"} · {item.status}</span>
+              <span className="block text-xs text-neutral-600">
+                Email: {item.referredUser?.email || "Unavailable"} · Mobile: {item.referredUser?.phone || "Unavailable"}
+              </span>
               <span className="block text-xs text-neutral-500">{new Date(item.createdAt).toLocaleString()}</span>
             </span>
             <strong className="text-teal-700">Rs.{item.earnings}</strong>

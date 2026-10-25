@@ -5,7 +5,7 @@ export async function GET() {
   try {
     const { auth } = await requireUser();
     const history = await Referral.find({ referrer: auth.id })
-      .populate("referredUser", "name email")
+      .populate("referredUser", "name email phone")
       .sort({ updatedAt: -1 })
       .lean();
 
