@@ -2889,6 +2889,118 @@ html[data-design="pulse"] .app-shell-user .mobile-menu-panel a[class~="bg-teal-5
   }
 }
 
+.support-hero {
+  border: 1px solid color-mix(in srgb, var(--motion-accent) 20%, #d9e3e5);
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--motion-accent) 14%, transparent), transparent 28rem),
+    linear-gradient(125deg, #fff, color-mix(in srgb, var(--motion-accent) 5%, #fff));
+  color: #17212b;
+}
+
+.support-hero h1 {
+  max-width: none;
+  color: inherit;
+  font-size: clamp(1.9rem, 4vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+html .app-shell main .support-hero h1 {
+  max-width: none;
+  color: inherit;
+  font-size: clamp(1.9rem, 4vw, 2.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+}
+
+.support-hero-eyebrow {
+  border-color: color-mix(in srgb, var(--motion-accent) 28%, transparent);
+  background: color-mix(in srgb, var(--motion-accent) 9%, #fff);
+  color: color-mix(in srgb, var(--motion-accent) 70%, #15232c);
+}
+
+.support-hero-description {
+  max-width: 58ch;
+  color: #52616b;
+}
+
+.support-hero-stat {
+  border-color: color-mix(in srgb, var(--motion-accent) 16%, #dbe4e7);
+  background: rgb(255 255 255 / 76%);
+  color: #17212b;
+}
+
+html[data-design="orbit"] .app-shell-user main .support-hero {
+  border-color: #e4e0ef;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(112 72 239 / 12%), transparent 28rem),
+    linear-gradient(125deg, #fff, #f4f2fa);
+  color: #19172f;
+}
+
+html[data-design="atelier"] .app-shell-user main .support-hero {
+  border-color: #e8d9c8;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(185 78 53 / 12%), transparent 28rem),
+    linear-gradient(125deg, #fffaf3, #f5efe6);
+  color: #30251f;
+}
+
+html[data-design="studio"] .app-shell-user main .support-hero {
+  border-color: #d5eeea;
+  background:
+    radial-gradient(ellipse at 100% 0%, rgb(15 138 130 / 12%), transparent 28rem),
+    linear-gradient(125deg, #fff, #f1f8f7);
+  color: #10212b;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-hero,
+html[data-design="midnight"] .support-hero {
+  border-color: color-mix(in srgb, var(--motion-accent) 24%, #293940);
+  background:
+    radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--motion-accent) 18%, transparent), transparent 28rem),
+    linear-gradient(125deg, #17242a, #10191e);
+  color: #edf7f4;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-hero-description,
+html[data-design="midnight"] .support-hero-description {
+  color: #b7c8c4;
+}
+
+html[data-design="pulse"] .app-shell-user main .support-hero-eyebrow,
+html[data-design="midnight"] .support-hero-eyebrow {
+  border-color: color-mix(in srgb, var(--motion-accent) 30%, transparent);
+  background: color-mix(in srgb, var(--motion-accent) 12%, transparent);
+  color: var(--motion-accent);
+}
+
+html[data-design="pulse"] .app-shell-user main .support-hero-stat,
+html[data-design="midnight"] .support-hero-stat {
+  border-color: rgb(255 255 255 / 12%);
+  background: rgb(255 255 255 / 6%);
+  color: #edf7f4;
+}
+
+@media (max-width: 639px) {
+  .support-hero {
+    border-radius: 1.25rem;
+    padding: 1.25rem;
+  }
+
+  .support-hero h1 {
+    font-size: clamp(1.75rem, 8vw, 2.25rem);
+  }
+
+  .support-hero-stats {
+    gap: 0.5rem;
+  }
+
+  .support-hero-stat {
+    padding: 0.65rem 0.4rem;
+  }
+}
+
 @media (max-width: 767px) {
   html[data-design="atelier"] .app-shell-user main,
   html[data-design="pulse"] .app-shell-user main {

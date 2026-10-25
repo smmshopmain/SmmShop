@@ -61,6 +61,7 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -153,23 +154,23 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
 
   return (
     <div className="space-y-6">
-      <section className={`overflow-hidden rounded-3xl p-5 text-white shadow-xl sm:p-7 ${isAdmin ? "bg-slate-950" : "bg-gradient-to-br from-slate-950 via-slate-900 to-teal-950"}`}>
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <section className="support-hero overflow-hidden rounded-3xl p-5 shadow-xl sm:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-teal-200/20 bg-teal-300/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.17em] text-teal-100">
+            <p className="support-hero-eyebrow inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.17em]">
               {isAdmin ? <ShieldCheck className="size-3.5" /> : <Headphones className="size-3.5" />}
               {isAdmin ? "Support operations" : "Customer support"}
             </p>
-            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
+            <h1 className="support-hero-title mt-4 text-3xl font-extrabold tracking-tight sm:text-4xl">
               {isAdmin ? "Support inbox" : "How can we help?"}
             </h1>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
+            <p className="support-hero-description mt-2 text-sm leading-6">
               {isAdmin
                 ? "Prioritize incoming requests, reply in context, and keep every customer issue moving."
                 : "Create a request and continue the conversation here. Order, payment and account details stay together in one place."}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[330px]">
+          <div className="support-hero-stats grid w-full grid-cols-3 gap-2 lg:w-[min(100%,330px)] lg:shrink-0">
             <SummaryStat label="Open" count={openCount} />
             <SummaryStat label="Replied" count={answeredCount} />
             <SummaryStat label="Closed" count={closedCount} />
@@ -294,16 +295,54 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
 
           <div className="divide-y divide-neutral-100">
             {visibleTickets.map((ticket) => (
-              <article key={ticket._id} className="p-4 sm:p-5">
+              <article
+                key={ticket._id}
+                className={isAdmin
+                  ? "border-b border-neutral-100 p-4 sm:p-5"
+                  : "mx-3 my-3 overflow-hidden rounded-2xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md sm:mx-4"}
+              >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-bold text-neutral-950">{ticket.subject}</h3>
-                      <StatusBadge status={ticket.status} />
-                    </div>
-                    <p className="mt-1 text-xs text-neutral-500">
-                      #{ticket._id.slice(-7).toUpperCase()} · {categoryLabel(ticket.category)} · {formatDate(ticket.createdAt)}
-                    </p>
+                    {isAdmin ? (
+                      <>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-bold text-neutral-950">{ticket.subject}</h3>
+                          <StatusBadge status={ticket.status} />
+                        </div>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          #{ticket._id.slice(-7).toUpperCase()} · {categoryLabel(ticket.category)} · {formatDate(ticket.createdAt)}
+                        </p>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-expanded={Boolean(expandedTickets[ticket._id])}
+                        onClick={() => setExpandedTickets((current) => ({
+                          ...current,
+                          [ticket._id]: !current[ticket._id],
+                        }))}
+                        className="w-full text-left"
+                      >
+                        <span className="flex flex-wrap items-center justify-between gap-3">
+                          <span className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className="truncate font-bold text-neutral-950">{ticket.subject}</span>
+                            <StatusBadge status={ticket.status} />
+                          </span>
+                          <span className="shrink-0 text-xs font-semibold text-teal-800">
+                            {expandedTickets[ticket._id] ? "Hide conversation" : "View conversation"}
+                          </span>
+                        </span>
+                        <span className="mt-1 block text-xs text-neutral-500">
+                          #{ticket._id.slice(-7).toUpperCase()} <span className="px-1">·</span> {categoryLabel(ticket.category)} <span className="px-1">·</span> Updated {formatDate(ticket.updatedAt)}
+                        </span>
+                        {!expandedTickets[ticket._id] && ticket.messages.length > 0 && (
+                          <span className="mt-3 block truncate rounded-xl bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
+                            {ticket.messages[ticket.messages.length - 1].isAdmin ? "Support: " : "You: "}
+                            {ticket.messages[ticket.messages.length - 1].body}
+                          </span>
+                        )}
+                      </button>
+                    )}
                     {isAdmin && ticket.user && (
                       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-neutral-600">
                         <span className="inline-flex items-center gap-1"><UserRound className="size-3.5" />{ticket.user.name || "Customer"}</span>
@@ -312,24 +351,26 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                       </div>
                     )}
                   </div>
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <label className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 px-2 text-xs text-neutral-600">
-                      <span>Priority</span>
-                      <select
-                        aria-label="Ticket priority"
-                        value={ticket.priority}
-                        disabled={!isAdmin || submitting}
-                        onChange={(event) => void updateTicket(ticket._id, "set_priority", event.target.value as TicketPriority)}
-                        className="max-w-24 bg-transparent font-semibold text-neutral-900 disabled:cursor-default"
-                      >
-                        <option>Low</option><option>Medium</option><option>High</option>
-                      </select>
-                    </label>
-                    <span className="inline-flex items-center gap-1 text-xs text-neutral-500"><Clock3 className="size-3.5" /> Updated {formatDate(ticket.updatedAt)}</span>
-                  </div>
+                  {isAdmin && (
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      <label className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-neutral-200 px-2 text-xs text-neutral-600">
+                        <span>Priority</span>
+                        <select
+                          aria-label="Ticket priority"
+                          value={ticket.priority}
+                          disabled={submitting}
+                          onChange={(event) => void updateTicket(ticket._id, "set_priority", event.target.value as TicketPriority)}
+                          className="max-w-24 bg-transparent font-semibold text-neutral-900"
+                        >
+                          <option>Low</option><option>Medium</option><option>High</option>
+                        </select>
+                      </label>
+                      <span className="inline-flex items-center gap-1 text-xs text-neutral-500"><Clock3 className="size-3.5" /> Updated {formatDate(ticket.updatedAt)}</span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="mt-4 space-y-3">
+                {(isAdmin || expandedTickets[ticket._id]) && <div className="mt-4 space-y-3">
                   {(ticket.messages ?? []).map((message, index) => (
                     <div key={`${ticket._id}-${index}`} className={`flex ${message.isAdmin ? "justify-start" : "justify-end"}`}>
                       <div className={`max-w-[92%] rounded-2xl px-4 py-3 sm:max-w-[82%] ${message.isAdmin ? "rounded-tl-md bg-slate-100 text-neutral-800" : "rounded-tr-md bg-teal-50 text-neutral-800"}`}>
@@ -341,9 +382,9 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                       </div>
                     </div>
                   ))}
-                </div>
+                </div>}
 
-                <div className="mt-4 flex flex-wrap items-start gap-2">
+                {(isAdmin || expandedTickets[ticket._id]) && <div className="mt-4 flex flex-wrap items-start gap-2">
                   {ticket.status !== "Closed" ? (
                     <form
                       className="flex min-w-[min(100%,440px)] flex-1 items-end gap-2"
@@ -372,15 +413,17 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                       <Check className="size-4 text-emerald-700" /> This request is closed.
                     </div>
                   )}
-                  <button
-                    type="button"
-                    disabled={submitting}
-                    onClick={() => void updateTicket(ticket._id, ticket.status === "Closed" ? "reopen" : "close")}
-                    className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-neutral-200 px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-                  >
-                    {ticket.status === "Closed" ? <><ArrowUpRight className="size-4" /> Reopen</> : <><Check className="size-4" /> Close request</>}
-                  </button>
-                </div>
+                  {(ticket.status !== "Closed" || isAdmin) && (
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void updateTicket(ticket._id, ticket.status === "Closed" ? "reopen" : "close")}
+                      className="inline-flex h-10 items-center gap-1.5 rounded-xl border border-neutral-200 px-3 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      {ticket.status === "Closed" ? <><ArrowUpRight className="size-4" /> Reopen</> : <><Check className="size-4" /> Close request</>}
+                    </button>
+                  )}
+                </div>}
               </article>
             ))}
           </div>
@@ -392,9 +435,9 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
 
 function SummaryStat({ label, count }: { label: string; count: number }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-3 text-center">
+    <div className="support-hero-stat rounded-xl border px-2 py-3 text-center sm:px-3">
       <p className="text-xl font-extrabold">{count}</p>
-      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-300">{label}</p>
+      <p className="mt-0.5 text-[10px] font-bold uppercase tracking-wide">{label}</p>
     </div>
   );
 }
