@@ -33,6 +33,8 @@ const patchSchema = z.object({
   action: z.enum(["cancel"]),
 });
 
+const ORDER_CANCELLATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
+
 type StatusResponse = {
   status?: string;
   start_count?: string | number;
@@ -315,7 +317,11 @@ export async function PATCH(request: NextRequest) {
         if (!["Pending", "Processing", "In Progress"].includes(order.status)) {
           throw new Error("Only active or scheduled orders can be canceled");
         }
-        if (!order.service?.cancel) throw new Error("This service does not support cancellation");
+        const hasPassedGracePeriod =
+          Date.now() - order.createdAt.getTime() >= ORDER_CANCELLATION_GRACE_PERIOD_MS;
+        if (!order.service?.cancel && !hasPassedGracePeriod) {
+          throw new Error("This service does not support cancellation before the order has been active for one hour.");
+        }
         if (!order.providerOrderId) throw new Error("Provider order id is missing");
 
         queue.activeOrder = order._id;

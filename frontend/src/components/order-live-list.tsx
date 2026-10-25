@@ -13,6 +13,8 @@ type ProviderStatusPayload = {
   charge?: string | number;
 };
 
+const ORDER_CANCELLATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
+
 export type LiveOrder = {
   _id: string;
   link: string;
@@ -43,6 +45,13 @@ function completionText(order: LiveOrder) {
   const done = Math.max(0, order.quantity - order.remains);
   const percent = order.quantity > 0 ? Math.min(100, Math.round((done / order.quantity) * 100)) : 0;
   return `${done}/${order.quantity} completed (${percent}%)`;
+}
+
+function canCancelOrder(order: LiveOrder) {
+  if (order.status === "Scheduled") return true;
+  if (!["Pending", "Processing", "In Progress"].includes(order.status)) return false;
+  return order.service?.cancel === true ||
+    Date.now() - new Date(order.createdAt).getTime() >= ORDER_CANCELLATION_GRACE_PERIOD_MS;
 }
 
 export function OrderLiveList({
@@ -233,8 +242,7 @@ export function OrderLiveList({
               {order.service?.refill && order.status === "Completed" && (
                 <ActionButton label="Refill" endpoint="/api/refills" method="POST" body={{ orderId: String(order._id) }} />
               )}
-              {(order.status === "Scheduled" ||
-                (order.service?.cancel && ["Pending", "Processing", "In Progress"].includes(order.status))) && (
+              {canCancelOrder(order) && (
                 <button
                   type="button"
                   onClick={() => {
