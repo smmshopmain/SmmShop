@@ -66,7 +66,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
   return (
     <AppShell>
       <section className="orders-command mb-6 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white shadow-sm">
-        <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(450px,1.15fr)]">
+        <div className="grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="orders-intro p-5 sm:p-7">
             <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
               <Sparkles className="size-3.5" /> Campaign control
@@ -104,7 +104,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
               className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
             >
               <option value="">All statuses</option>
-              {["Pending", "Processing", "In Progress", "Completed", "Partial", "Canceled"].map((item) => (
+              {["Scheduled", "Pending", "Processing", "In Progress", "Completed", "Partial", "Canceled", "Failed"].map((item) => (
                 <option key={item} value={item}>
                   {item}
                 </option>

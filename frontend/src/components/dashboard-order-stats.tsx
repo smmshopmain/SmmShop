@@ -11,7 +11,7 @@ type OrderSummary = {
   completedOrders: number;
 };
 
-const activeStatuses = new Set(["Pending", "Processing", "In Progress"]);
+const activeStatuses = new Set(["Scheduled", "Pending", "Processing", "In Progress"]);
 
 function getOrderSummary(orders: Array<{ status?: string }>): OrderSummary {
   return {

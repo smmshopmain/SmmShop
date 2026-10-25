@@ -1830,9 +1830,6 @@ html[data-design="orbit"] .app-shell-user main .order-list-panel > div:first-chi
 }
 
 html[data-design="orbit"] .app-shell-user main .orders-command {
-  display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
-  align-items: stretch;
   background:
     radial-gradient(ellipse at 0 0, rgb(238 234 255 / 75%), transparent 25rem),
     #fff;

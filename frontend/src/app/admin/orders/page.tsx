@@ -58,7 +58,7 @@ export default function AdminOrdersPage() {
           </label>
           <select name="status" defaultValue={status} className="h-11 rounded-md border border-neutral-300 bg-white px-3 text-sm shadow-sm focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10">
             <option value="">All statuses</option>
-            {["Pending", "Processing", "In Progress", "Completed", "Partial", "Canceled"].map((item) => (
+            {["Scheduled", "Pending", "Processing", "In Progress", "Completed", "Partial", "Canceled", "Failed"].map((item) => (
               <option key={item} value={item}>
                 {item}
               </option>
@@ -90,7 +90,7 @@ export default function AdminOrdersPage() {
             <span className="text-neutral-500">{new Date(order.createdAt).toLocaleString()}</span>
             <StatusBadge status={order.status} />
             <strong>Rs.{order.sellingPrice}</strong>
-            {order.service?.cancel && ["Pending", "Processing", "In Progress"].includes(order.status) ? (
+            {order.status === "Scheduled" || (order.service?.cancel && ["Pending", "Processing", "In Progress"].includes(order.status)) ? (
               <ActionButton label="Cancel" endpoint="/api/admin/orders" body={{ id: String(order._id), action: "cancel" }} danger />
             ) : (
               <span className="text-xs text-neutral-400">No action</span>

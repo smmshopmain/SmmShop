@@ -4,14 +4,21 @@ import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
 import { calculateOrderPrice, roundMoney } from "@/lib/pricing";
 import {
-  addProviderOrder,
+  advanceOrderQueueAfterTerminal,
+  drainOrderQueueLocked,
+  getOrderQueueKey,
+  OrderQueueBusyError,
+  processOrderQueue,
+  withOrderQueueLock,
+} from "@/lib/order-queue";
+import {
   cancelProviderOrder,
   getProviderStatuses,
   logProviderEvent,
   normalizeProviderOrderStatus,
 } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
-import { Order, PromoCode, Service, WalletTransaction } from "@/models";
+import { Order, PromoCode, Service, User, WalletTransaction } from "@/models";
 
 const schema = z.object({
   serviceId: z.string().min(1),
@@ -44,6 +51,9 @@ type ProviderRecord = {
 
 type SyncableOrder = {
   _id: unknown;
+  user: unknown;
+  link: string;
+  queueKey?: string;
   provider: ProviderRecord;
   providerOrderId?: string;
   status: string;
@@ -114,6 +124,9 @@ async function syncOrdersWithProvider(orders: SyncableOrder[]) {
         order.lastStatusSyncAt = new Date();
         order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
         await order.save();
+        if (order.queueKey && ["Completed", "Partial", "Canceled", "Failed"].includes(order.status)) {
+          await advanceOrderQueueAfterTerminal(String(order._id), String(order.user), order.link);
+        }
         synced += 1;
       }
     } catch (error) {
@@ -190,41 +203,30 @@ export async function POST(request: NextRequest) {
           : Math.min(grossSellingPrice, promo.discountValue);
     }
     const sellingPrice = Math.max(0, roundMoney(grossSellingPrice - promoDiscount));
-    if (dbUser.walletBalance < sellingPrice) return fail("Insufficient wallet balance", 402);
-
-    const balanceBefore = dbUser.walletBalance;
-    dbUser.walletBalance -= sellingPrice;
-    await dbUser.save();
-
-    let providerResult;
-    try {
-      providerResult = await addProviderOrder([service.provider], {
-        service: service.providerServiceId,
-        link: input.link,
-        quantity: input.quantity,
-      });
-    } catch (error) {
-      dbUser.walletBalance = balanceBefore;
-      await dbUser.save();
-      await logProviderEvent({
-        provider: service.provider,
-        level: "error",
-        scope: "order",
-        action: "add",
-        message: error instanceof Error ? error.message : "Unable to place provider order",
-        details: { service: service.providerServiceId, quantity: input.quantity },
-      });
-      throw error;
+    const chargedUser = await User.findOneAndUpdate(
+      {
+        _id: auth.id,
+        walletFrozen: { $ne: true },
+        walletBalance: { $gte: sellingPrice },
+      },
+      { $inc: { walletBalance: -sellingPrice } },
+      { new: true },
+    );
+    if (!chargedUser) {
+      if (dbUser.walletFrozen) return fail("Wallet is frozen", 403);
+      return fail("Insufficient wallet balance", 402);
     }
+    const balanceBefore = chargedUser.walletBalance + sellingPrice;
+    const balanceAfter = chargedUser.walletBalance;
 
     const order = await Order.create({
       user: auth.id,
       service: service._id,
-      provider: providerResult.provider._id,
-      providerOrderId: String(providerResult.result.order),
+      provider: service.provider._id,
       link: input.link,
+      queueKey: getOrderQueueKey(auth.id, input.link),
       quantity: input.quantity,
-      status: "Pending",
+      status: "Scheduled",
       providerCost,
       providerCharge: providerCost,
       sellingPrice,
@@ -232,7 +234,6 @@ export async function POST(request: NextRequest) {
       promoDiscount,
       profit: sellingPrice - providerCost,
       warningAcceptedAt: new Date(),
-      providerResponse: providerResult.result,
     });
 
     await WalletTransaction.create({
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
       type: "debit",
       amount: sellingPrice,
       balanceBefore,
-      balanceAfter: dbUser.walletBalance,
+      balanceAfter,
       source: "order",
       reference: String(order._id),
     });
@@ -251,17 +252,30 @@ export async function POST(request: NextRequest) {
         user: auth.id,
         type: "promo",
         amount: promoDiscount,
-        balanceBefore: dbUser.walletBalance,
-        balanceAfter: dbUser.walletBalance,
+        balanceBefore: balanceAfter,
+        balanceAfter,
         source: "promo_code",
         reference: promo.code,
       });
     }
 
+    await processOrderQueue(auth.id, input.link);
+    const currentOrder = await Order.findById(order._id).lean();
+    if (currentOrder?.status === "Failed") {
+      const errorMessage = currentOrder.providerResponse &&
+        typeof currentOrder.providerResponse === "object" &&
+        "submissionError" in currentOrder.providerResponse
+        ? String(currentOrder.providerResponse.submissionError)
+        : "Order could not be submitted. The amount was refunded.";
+      return fail(errorMessage, 502);
+    }
+
     await notifyInApp({
       user: auth.id,
-      title: "Order placed",
-      body: `Order ${order._id} placed for Rs.${sellingPrice}.`,
+      title: currentOrder?.status === "Scheduled" ? "Order scheduled" : "Order placed",
+      body: currentOrder?.status === "Scheduled"
+        ? `Order ${order._id} is queued and will start after the previous order for this link finishes.`
+        : `Order ${order._id} placed for Rs.${sellingPrice}.`,
     });
 
     await notifyTelegram("New Order", [
@@ -270,7 +284,7 @@ export async function POST(request: NextRequest) {
       `Amount: ${sellingPrice}`,
     ]);
 
-    return ok({ order });
+    return ok({ order: currentOrder });
   } catch (error) {
     await logProviderEvent({
       level: "error",
@@ -285,53 +299,47 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const input = await parseBody(request, patchSchema);
-    const { auth, dbUser } = await requireUser();
-    const order = await Order.findOne({ _id: input.id, user: auth.id })
-      .populate("provider")
-      .populate("service");
-    if (!order) return fail("Order not found", 404);
-    if (!["Pending", "Processing", "In Progress"].includes(order.status)) {
-      return fail("Only active orders can be canceled");
-    }
-    if (!order.service?.cancel) return fail("This service does not support cancellation");
-    if (!order.providerOrderId) return fail("Provider order id is missing");
+    const { auth } = await requireUser();
+    const existingOrder = await Order.findOne({ _id: input.id, user: auth.id }).select("link");
+    if (!existingOrder) return fail("Order not found", 404);
 
-    const result = await cancelProviderOrder(order.provider, order.providerOrderId);
+    const canceledOrder = await withOrderQueueLock(auth.id, existingOrder.link, async (queue) => {
+      const order = await Order.findOne({ _id: input.id, user: auth.id })
+        .populate("provider")
+        .populate("service");
+      if (!order) throw new Error("Order not found");
 
-    order.status = "Canceled";
-    order.providerResponse = { ...(order.providerResponse ?? {}), cancel: result };
-    order.lastStatusSyncAt = new Date();
-    await order.save();
+      if (order.status === "Scheduled") {
+        order.status = "Canceled";
+      } else {
+        if (!["Pending", "Processing", "In Progress"].includes(order.status)) {
+          throw new Error("Only active or scheduled orders can be canceled");
+        }
+        if (!order.service?.cancel) throw new Error("This service does not support cancellation");
+        if (!order.providerOrderId) throw new Error("Provider order id is missing");
 
-    const existingRefund = await WalletTransaction.exists({
-      user: auth.id,
-      type: "refund",
-      source: "order_cancel",
-      reference: String(order._id),
+        queue.activeOrder = order._id;
+        await queue.save();
+        const result = await cancelProviderOrder(order.provider, order.providerOrderId);
+        if (result.error) throw new Error(result.error);
+        order.providerResponse = { ...(order.providerResponse ?? {}), cancel: result };
+      }
+
+      order.lastStatusSyncAt = new Date();
+      await order.save();
+      await drainOrderQueueLocked(queue);
+      return order;
     });
-    if (!existingRefund && order.sellingPrice > 0) {
-      const balanceBefore = dbUser.walletBalance;
-      dbUser.walletBalance += order.sellingPrice;
-      await dbUser.save();
-      await WalletTransaction.create({
-        user: auth.id,
-        type: "refund",
-        amount: order.sellingPrice,
-        balanceBefore,
-        balanceAfter: dbUser.walletBalance,
-        source: "order_cancel",
-        reference: String(order._id),
-      });
-    }
 
     await notifyInApp({
       user: auth.id,
       title: "Order canceled",
-      body: `Order ${order._id} was canceled and refunded.`,
+      body: `Order ${canceledOrder._id} was canceled. No refund was issued.`,
     });
 
-    return ok({ order });
+    return ok({ order: canceledOrder });
   } catch (error) {
+    if (error instanceof OrderQueueBusyError) return fail(error.message, 409);
     await logProviderEvent({
       level: "error",
       scope: "api",

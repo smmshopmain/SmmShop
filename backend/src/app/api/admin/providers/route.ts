@@ -72,7 +72,7 @@ export async function DELETE(request: NextRequest) {
     if (!id) return fail("Provider id is required");
     const activeOrders = await Order.countDocuments({
       provider: id,
-      status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
+      status: { $in: ["Scheduled", "Pending", "Processing", "In Progress", "Partial"] },
     });
     if (activeOrders > 0 && !force) return fail("Provider has active orders and cannot be deleted", 409);
 

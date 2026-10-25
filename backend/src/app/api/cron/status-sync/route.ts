@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { dbConnect } from "@/lib/db";
+import { advanceOrderQueueAfterTerminal, processScheduledOrderQueues } from "@/lib/order-queue";
 import {
   getProviderRefillStatus,
   getProviderStatuses,
@@ -119,6 +120,9 @@ export async function GET(request: NextRequest) {
           order.lastStatusSyncAt = new Date();
           order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
           await order.save();
+          if (order.queueKey && ["Completed", "Partial", "Canceled", "Failed"].includes(order.status)) {
+            await advanceOrderQueueAfterTerminal(String(order._id), String(order.user), order.link);
+          }
           ordersSynced += 1;
         }
       } catch (error) {
@@ -162,14 +166,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const queuesProcessed = await processScheduledOrderQueues();
     await logProviderEvent({
       scope: "status_sync",
       action: "status",
-      message: `Synced ${ordersSynced} orders and ${refillsSynced} refills`,
-      details: { ordersSynced, refillsSynced, ordersSkipped },
+      message: `Synced ${ordersSynced} orders and ${refillsSynced} refills; checked ${queuesProcessed} scheduled order queues`,
+      details: { ordersSynced, refillsSynced, ordersSkipped, queuesProcessed },
     });
 
-    return ok({ ordersSynced, refillsSynced, ordersSkipped });
+    return ok({ ordersSynced, refillsSynced, ordersSkipped, queuesProcessed });
   } catch (error) {
     await logProviderEvent({
       level: "error",

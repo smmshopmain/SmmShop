@@ -306,6 +306,7 @@ export function normalizeProviderOrderStatus(value: unknown) {
   const compact = normalizeToken(normalized);
   if (normalized === "cancelled" || compact === "cancelled") return "Canceled";
   if (compact === "complete" || compact === "completed") return "Completed";
+  if (["failed", "error", "rejected"].includes(compact)) return "Failed";
 
   for (const status of ORDER_STATUSES) {
     const candidate = status.toLowerCase();

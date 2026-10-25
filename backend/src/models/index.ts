@@ -170,6 +170,7 @@ const OrderSchema = new Schema(
     provider: { type: Schema.Types.ObjectId, ref: "Provider", required: true, index: true },
     providerOrderId: { type: String, index: true },
     link: { type: String, required: true, trim: true },
+    queueKey: { type: String, index: true },
     quantity: { type: Number, required: true, min: 1 },
     status: { type: String, enum: ORDER_STATUSES, default: "Pending", index: true },
     providerCost: { type: Number, required: true },
@@ -183,6 +184,17 @@ const OrderSchema = new Schema(
     warningAcceptedAt: { type: Date, required: true },
     lastStatusSyncAt: Date,
     providerResponse: Schema.Types.Mixed,
+  },
+  { timestamps: true },
+);
+OrderSchema.index({ queueKey: 1, status: 1, createdAt: 1 });
+
+const OrderQueueSchema = new Schema(
+  {
+    queueKey: { type: String, required: true, unique: true, index: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    activeOrder: { type: Schema.Types.ObjectId, ref: "Order" },
+    lockedUntil: { type: Date, default: () => new Date(0) },
   },
   { timestamps: true },
 );
@@ -365,6 +377,7 @@ export const WalletTransaction =
   models.WalletTransaction || model("WalletTransaction", WalletTransactionSchema);
 export const Deposit = models.Deposit || model("Deposit", DepositSchema);
 export const Order = models.Order || model("Order", OrderSchema);
+export const OrderQueue = models.OrderQueue || model("OrderQueue", OrderQueueSchema);
 export const Refill = models.Refill || model("Refill", RefillSchema);
 export const Service = models.Service || model("Service", ServiceSchema);
 export const Category = models.Category || model("Category", CategorySchema);

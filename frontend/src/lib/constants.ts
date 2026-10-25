@@ -1,10 +1,12 @@
 export const ORDER_STATUSES = [
+  "Scheduled",
   "Pending",
   "Processing",
   "In Progress",
   "Completed",
   "Partial",
   "Canceled",
+  "Failed",
 ] as const;
 
 export const DEPOSIT_STATUSES = ["Pending", "Approved", "Rejected"] as const;
