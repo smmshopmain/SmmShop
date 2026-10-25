@@ -1,19 +1,41 @@
 export async function notifyTelegram(title: string, lines: string[] = []) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+  if (!token || !chatId) {
+    console.warn("Telegram notification skipped because bot credentials are not configured.");
+    return false;
+  }
 
   const text = [`*${escapeMarkdown(title)}*`, ...lines.map(escapeMarkdown)].join("\n");
 
-  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      chat_id: chatId,
-      text,
-      parse_mode: "MarkdownV2",
-    }),
-  }).catch(() => undefined);
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "MarkdownV2",
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!response.ok) {
+      console.error("Telegram notification failed", { status: response.status });
+      return false;
+    }
+
+    const result: unknown = await response.json();
+    if (!result || typeof result !== "object" || !("ok" in result) || result.ok !== true) {
+      console.error("Telegram rejected a notification request.");
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error("Telegram notification request failed", {
+      error: error instanceof Error ? error.message : "Unknown Telegram error",
+    });
+    return false;
+  }
 }
 
 export async function ensureTelegramWebhook(origin?: string) {

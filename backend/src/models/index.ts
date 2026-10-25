@@ -204,6 +204,12 @@ const TicketSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     subject: { type: String, required: true },
+    category: {
+      type: String,
+      enum: ["account", "order", "payment", "technical", "other"],
+      default: "other",
+      index: true,
+    },
     status: { type: String, enum: ["Open", "Answered", "Closed"], default: "Open", index: true },
     priority: { type: String, enum: ["Low", "Medium", "High"], default: "Medium" },
     messages: [
