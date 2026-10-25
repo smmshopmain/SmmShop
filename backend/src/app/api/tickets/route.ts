@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { notifyInApp } from "@/lib/notifications";
 import { isAdminRole } from "@/lib/roles";
-import { notifyTelegram } from "@/lib/telegram";
+import { ensureTelegramWebhook, notifyTelegram, supportTicketKeyboard } from "@/lib/telegram";
 import { Ticket, User } from "@/models";
 
 const schema = z.object({
@@ -47,6 +47,16 @@ export async function POST(request: NextRequest) {
       body: input.subject,
     });
     const user = await User.findById(auth.id).select("name email").lean();
+    const webhookResult = await ensureTelegramWebhook(request.nextUrl.origin);
+    if (!webhookResult || (
+      typeof webhookResult === "object" &&
+      "ok" in webhookResult &&
+      webhookResult.ok !== true
+    )) {
+      console.error("Unable to configure Telegram webhook for support ticket controls.", {
+        ticketId: String(ticket._id),
+      });
+    }
     await notifyTelegram("New support ticket", [
       `Ticket: ${String(ticket._id)}`,
       `From: ${user?.name ?? "User"} (${user?.email ?? auth.email})`,
@@ -54,7 +64,7 @@ export async function POST(request: NextRequest) {
       `Priority: ${input.priority}`,
       `Subject: ${input.subject}`,
       `Message: ${input.message.slice(0, 700)}`,
-    ]);
+    ], supportTicketKeyboard(String(ticket._id), ticket.status, ticket.priority));
     return ok({ ticket });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to create ticket");
@@ -71,6 +81,9 @@ export async function PATCH(request: NextRequest) {
 
     const ticket = await Ticket.findOne(filter);
     if (!ticket) return fail("Ticket not found", 404);
+    if (input.action === "reply" && ticket.status === "Closed" && !isAdmin) {
+      return fail("This request is closed. Contact support if you need more help.");
+    }
     if (input.action === "reply") {
       if (!input.message) return fail("Reply message is required");
       ticket.messages.push({
@@ -87,6 +100,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     if (input.action === "reopen") {
+      if (!isAdmin) return fail("Only support staff can reopen a closed request.", 403);
       if (ticket.status !== "Closed") return fail("Ticket is not closed");
       ticket.status = "Open";
     }
@@ -111,20 +125,13 @@ export async function PATCH(request: NextRequest) {
         `From: ${user?.name ?? "User"} (${user?.email ?? auth.email})`,
         `Subject: ${ticket.subject}`,
         `Message: ${input.message?.slice(0, 700) ?? ""}`,
-      ]);
+      ], supportTicketKeyboard(String(ticket._id), ticket.status, ticket.priority));
     } else if (input.action === "close" && isAdmin) {
       await notifyInApp({
         user: ticket.user,
         title: "Support ticket closed",
         body: ticket.subject,
       });
-    } else if (input.action === "reopen" && !isAdmin) {
-      const user = await User.findById(auth.id).select("name email").lean();
-      await notifyTelegram("Customer reopened a support ticket", [
-        `Ticket: ${String(ticket._id)}`,
-        `From: ${user?.name ?? "User"} (${user?.email ?? auth.email})`,
-        `Subject: ${ticket.subject}`,
-      ]);
     }
     return ok({ ticket });
   } catch (error) {

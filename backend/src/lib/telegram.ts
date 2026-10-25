@@ -1,4 +1,6 @@
-export async function notifyTelegram(title: string, lines: string[] = []) {
+import { createHash } from "node:crypto";
+
+export async function notifyTelegram(title: string, lines: string[] = [], replyMarkup?: unknown) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
   if (!token || !chatId) {
@@ -16,6 +18,7 @@ export async function notifyTelegram(title: string, lines: string[] = []) {
         chat_id: chatId,
         text,
         parse_mode: "MarkdownV2",
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
       signal: AbortSignal.timeout(10000),
     });
@@ -38,6 +41,29 @@ export async function notifyTelegram(title: string, lines: string[] = []) {
   }
 }
 
+export function supportTicketKeyboard(ticketId: string, status: string, priority: string) {
+  const statusAction = status === "Closed" ? "reopen" : "close";
+  const statusLabel = status === "Closed" ? "Reopen" : "Close";
+  return {
+    inline_keyboard: [
+      [
+        { text: "Reply", callback_data: `ticket:reply:${ticketId}` },
+        { text: statusLabel, callback_data: `ticket:${statusAction}:${ticketId}` },
+      ],
+      [
+        { text: priority === "Low" ? "✓ Low" : "Low", callback_data: `ticket:priority:${ticketId}:Low` },
+        { text: priority === "Medium" ? "✓ Medium" : "Medium", callback_data: `ticket:priority:${ticketId}:Medium` },
+        { text: priority === "High" ? "✓ High" : "High", callback_data: `ticket:priority:${ticketId}:High` },
+      ],
+    ],
+  };
+}
+
+export function telegramWebhookSecret() {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  return token ? createHash("sha256").update(token).digest("hex") : "";
+}
+
 export async function ensureTelegramWebhook(origin?: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const baseUrl = process.env.APP_BASE_URL || origin;
@@ -46,6 +72,7 @@ export async function ensureTelegramWebhook(origin?: string) {
   const webhookUrl = new URL("/api/telegram/deposits", baseUrl).toString();
   return telegramRequest("setWebhook", {
     url: webhookUrl,
+    secret_token: telegramWebhookSecret(),
     allowed_updates: ["callback_query", "message"],
   });
 }
