@@ -55,6 +55,7 @@ export function supportTicketKeyboard(ticketId: string, status: string, priority
         { text: priority === "Medium" ? "✓ Medium" : "Medium", callback_data: `ticket:priority:${ticketId}:Medium` },
         { text: priority === "High" ? "✓ High" : "High", callback_data: `ticket:priority:${ticketId}:High` },
       ],
+      [{ text: "⬅️ Back to tickets", callback_data: `ticket:back:${ticketId}` }],
     ],
   };
 }

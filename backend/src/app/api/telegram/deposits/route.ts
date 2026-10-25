@@ -156,6 +156,17 @@ async function sendTicketDetails(chatId: string | number, ticketId: string) {
   });
 }
 
+async function promptTicketReply(chatId: string | number, ticketId: string) {
+  await sendTelegramMessage({
+    chatId: String(chatId),
+    text: `Reply to support ticket ${ticketId}:`,
+    replyMarkup: {
+      force_reply: true,
+      input_field_placeholder: "Type your reply to the customer",
+    },
+  });
+}
+
 async function listSupportTickets(chatId: string | number, statusInput = "open") {
   await dbConnect();
   const status = statusInput.toLowerCase();
@@ -242,9 +253,10 @@ async function handleTelegramMessage(message: TelegramMessage) {
       const ticket = await updateSupportTicket(replyPrompt[1], "reply", text);
       await sendTelegramMessage({
         chatId: String(chatId),
-        text: `✅ Reply sent to “${ticket.subject}”. Ticket is now Answered.`,
-        replyMarkup: ticketKeyboard(ticket),
+        text: `✅ Reply sent to “${ticket.subject}”. Conversation remains open for another reply.`,
       });
+      await sendTicketDetails(chatId, String(ticket._id));
+      await promptTicketReply(chatId, String(ticket._id));
     } catch (error) {
       await sendTelegramMessage({
         chatId: String(chatId),
@@ -289,9 +301,10 @@ async function handleTelegramMessage(message: TelegramMessage) {
       const ticket = await updateSupportTicket(match[1], "reply", match[2]);
       await sendTelegramMessage({
         chatId: String(chatId),
-        text: `✅ Reply sent to “${ticket.subject}”. Ticket is now Answered.`,
-        replyMarkup: ticketKeyboard(ticket),
+        text: `✅ Reply sent to “${ticket.subject}”. Conversation remains open for another reply.`,
       });
+      await sendTicketDetails(chatId, String(ticket._id));
+      await promptTicketReply(chatId, String(ticket._id));
     } catch (error) {
       await sendTelegramMessage({
         chatId: String(chatId),
@@ -428,6 +441,12 @@ export async function POST(request: NextRequest) {
       return ok({ ticketViewed: true });
     }
 
+    if (action === "back") {
+      await answerTelegramCallback(callback.id, "Back to tickets");
+      await listSupportTickets(chatId, "all");
+      return ok({ returnedToTicketList: true });
+    }
+
     if (action === "reply") {
       if (!isTicketId(ticketId)) {
         await answerTelegramCallback(callback.id, "Invalid ticket ID", true);
@@ -438,15 +457,8 @@ export async function POST(request: NextRequest) {
         await answerTelegramCallback(callback.id, "Ticket not found", true);
         return ok({ missing: true });
       }
-      await sendTelegramMessage({
-        chatId: String(chatId),
-        text: `Reply to support ticket ${ticketId}:`,
-        replyMarkup: {
-          force_reply: true,
-          input_field_placeholder: "Type your reply to the customer",
-        },
-      });
-      await answerTelegramCallback(callback.id, "Reply to the bot prompt to send your message.");
+      await promptTicketReply(chatId, ticketId);
+      await answerTelegramCallback(callback.id, "Reply to the prompt. Another reply prompt will follow each message.");
       return ok({ awaitingReply: true });
     }
 
