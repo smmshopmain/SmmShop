@@ -73,6 +73,7 @@ services:
   - type: cron
     name: smm-nightly-catalog-refresh
     runtime: node
+    # Render schedules use UTC; 18:30 UTC is midnight in India (IST).
     schedule: "30 18 * * *"
     buildCommand: |
       if [ -d backend ] && cd backend; then

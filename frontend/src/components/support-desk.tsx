@@ -319,7 +319,7 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                   </button>
                 )}
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
-                  <span className="size-2 rounded-full bg-emerald-500" />
+                  <span className="workspace-live-dot size-2 rounded-full" />
                   Live
                 </span>
                 <button type="button" onClick={() => void loadTickets()} disabled={loading} aria-label="Refresh tickets" className="grid size-10 place-items-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50">

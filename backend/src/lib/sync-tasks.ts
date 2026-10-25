@@ -526,7 +526,8 @@ export async function priceSyncTask() {
 }
 
 export async function runAutoSync() {
-  const serviceResult = await serviceImportTask();
+  const importResult = await serviceImportTask();
+  const syncResult = await serviceSyncTask();
   const priceResult = await priceSyncTask();
-  return { serviceResult, priceResult };
+  return { importResult, syncResult, priceResult };
 }
