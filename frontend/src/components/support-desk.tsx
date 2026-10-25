@@ -51,6 +51,12 @@ const categories: Array<{ value: TicketCategory; label: string }> = [
   { value: "other", label: "Other" },
 ];
 
+function priorityForCategory(category: TicketCategory): TicketPriority {
+  if (category === "payment") return "High";
+  if (category === "other") return "Low";
+  return "Medium";
+}
+
 export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
   const isAdmin = mode === "admin";
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
@@ -140,13 +146,14 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
     setActionError("");
     const form = event.currentTarget;
     const values = new FormData(form);
+    const category = categories.find(({ value }) => value === values.get("category"))?.value ?? "other";
     try {
       const result = await apiJson("/api/tickets", {
         method: "POST",
         body: JSON.stringify({
           subject: values.get("subject"),
-          category: values.get("category"),
-          priority: values.get("priority"),
+          category,
+          priority: priorityForCategory(category),
           message: values.get("message"),
         }),
       });
