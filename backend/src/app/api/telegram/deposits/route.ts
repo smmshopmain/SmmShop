@@ -211,7 +211,7 @@ async function updateSupportTicket(
   if (!ticket) throw new Error("Ticket not found.");
 
   if (action === "welcome") {
-    if (ticket.messages.some((message) => message.isAdmin)) {
+    if (ticket.messages.some((message: { isAdmin?: boolean }) => message.isAdmin)) {
       throw new Error("A support reply has already been sent for this request.");
     }
     const settings = await getSettings();
