@@ -11,6 +11,7 @@ import {
   Headphones,
   LoaderCircle,
   RefreshCw,
+  Settings2,
   Send,
   ShieldCheck,
   Ticket,
@@ -22,6 +23,10 @@ import { apiJson } from "@/lib/client-api";
 type TicketStatus = "Open" | "Answered" | "Closed";
 type TicketPriority = "Low" | "Medium" | "High";
 type TicketCategory = "account" | "order" | "payment" | "technical" | "other";
+type SupportMessageSettings = {
+  welcomeMessage: string;
+  closeMessage: string;
+};
 
 type SupportTicket = {
   _id: string;
@@ -70,6 +75,13 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showSupportSettings, setShowSupportSettings] = useState(false);
+  const [supportSettings, setSupportSettings] = useState<SupportMessageSettings>({
+    welcomeMessage: "Hello {{name}}, thank you for contacting support. We have received your request and will help you shortly.",
+    closeMessage: "Your support conversation has been closed. If you need more help, please create a new support request.",
+  });
+  const [loadingSupportSettings, setLoadingSupportSettings] = useState(false);
+  const [savingSupportSettings, setSavingSupportSettings] = useState(false);
   const ticketRequestInProgress = useRef(false);
 
   const loadTickets = useCallback(async (background = false) => {
@@ -115,7 +127,7 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
     };
   }, [loadTickets]);
 
-  async function updateTicket(ticketId: string, action: "reply" | "close" | "reopen" | "set_priority", priority?: TicketPriority) {
+  async function updateTicket(ticketId: string, action: "reply" | "welcome" | "close" | "reopen" | "set_priority", priority?: TicketPriority) {
     setSubmitting(true);
     setActionError("");
     try {
@@ -137,6 +149,45 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
       setActionError(error instanceof Error ? error.message : "Unable to update this ticket.");
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  async function toggleSupportSettings() {
+    if (showSupportSettings) {
+      setShowSupportSettings(false);
+      return;
+    }
+
+    setShowSupportSettings(true);
+    setLoadingSupportSettings(true);
+    setActionError("");
+    try {
+      const result = await apiJson("/api/admin/settings", { cache: "no-store" });
+      if (!result?.ok) throw new Error(result?.message || "Unable to load support settings.");
+      if (result.support) setSupportSettings(result.support);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to load support settings.");
+    } finally {
+      setLoadingSupportSettings(false);
+    }
+  }
+
+  async function saveSupportSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingSupportSettings(true);
+    setActionError("");
+    try {
+      const result = await apiJson("/api/admin/settings", {
+        method: "PATCH",
+        body: JSON.stringify({ key: "support", value: supportSettings }),
+      });
+      if (!result?.ok) throw new Error(result?.message || "Unable to save support settings.");
+      setActionError("");
+      setShowSupportSettings(false);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : "Unable to save support settings.");
+    } finally {
+      setSavingSupportSettings(false);
     }
   }
 
@@ -257,6 +308,16 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                 </p>
               </div>
               <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => void toggleSupportSettings()}
+                    className="inline-flex h-10 items-center gap-2 rounded-xl border border-neutral-200 px-3 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+                  >
+                    <Settings2 className="size-4" />
+                    Support settings
+                  </button>
+                )}
                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
                   <span className="size-2 rounded-full bg-emerald-500" />
                   Live
@@ -266,6 +327,49 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                 </button>
               </div>
             </div>
+            {isAdmin && showSupportSettings && (
+              <form onSubmit={saveSupportSettings} className="mt-4 grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
+                <div>
+                  <h3 className="font-bold text-neutral-900">Conversation messages</h3>
+                  <p className="mt-1 text-xs text-neutral-500">Use {"{{name}}"} for the customer name and {"{{subject}}"} for the ticket subject.</p>
+                </div>
+                {loadingSupportSettings ? (
+                  <p className="inline-flex items-center gap-2 text-sm text-neutral-500"><LoaderCircle className="size-4 animate-spin" /> Loading settings...</p>
+                ) : (
+                  <>
+                    <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
+                      Welcome message
+                      <textarea
+                        required
+                        maxLength={2000}
+                        rows={3}
+                        value={supportSettings.welcomeMessage}
+                        onChange={(event) => setSupportSettings((current) => ({ ...current, welcomeMessage: event.target.value }))}
+                        className="resize-y rounded-xl border border-neutral-300 bg-white px-3 py-2 font-normal"
+                      />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
+                      Conversation close message
+                      <textarea
+                        required
+                        maxLength={2000}
+                        rows={3}
+                        value={supportSettings.closeMessage}
+                        onChange={(event) => setSupportSettings((current) => ({ ...current, closeMessage: event.target.value }))}
+                        className="resize-y rounded-xl border border-neutral-300 bg-white px-3 py-2 font-normal"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <button type="button" onClick={() => setShowSupportSettings(false)} className="h-10 rounded-xl border border-neutral-300 px-4 text-sm font-semibold text-neutral-700">Cancel</button>
+                      <button type="submit" disabled={savingSupportSettings} className="inline-flex h-10 items-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white disabled:opacity-60">
+                        {savingSupportSettings && <LoaderCircle className="size-4 animate-spin" />}
+                        Save messages
+                      </button>
+                    </div>
+                  </>
+                )}
+              </form>
+            )}
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {isAdmin && (
                 <label className="relative">
@@ -412,28 +516,43 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
 
                 {(isAdmin || expandedTickets[ticket._id]) && <div className="mt-4 flex flex-wrap items-start gap-2">
                   {ticket.status !== "Closed" ? (
-                    <form
-                      className="flex min-w-[min(100%,440px)] flex-1 items-end gap-2"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (replyText[ticket._id]?.trim()) void updateTicket(ticket._id, "reply");
-                      }}
-                    >
-                      <label className="min-w-0 flex-1">
-                        <span className="sr-only">Write a reply</span>
-                        <textarea
-                          rows={2}
-                          maxLength={5000}
-                          value={replyText[ticket._id] ?? ""}
-                          onChange={(event) => setReplyText((current) => ({ ...current, [ticket._id]: event.target.value }))}
-                          placeholder={isAdmin ? "Write a helpful reply..." : "Add information or reply..."}
-                          className="w-full resize-y rounded-xl border border-neutral-300 px-3 py-2 text-sm focus:border-teal-700 focus:outline-none"
-                        />
-                      </label>
-                      <button type="submit" disabled={submitting || !replyText[ticket._id]?.trim()} aria-label="Send reply" className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-50">
-                        {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
-                      </button>
-                    </form>
+                    isAdmin && !ticket.messages.some((message) => message.isAdmin) ? (
+                      <div className="flex flex-1 flex-col items-start gap-2">
+                        <p className="text-xs text-neutral-500">Send the configured welcome message before writing a custom reply.</p>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => void updateTicket(ticket._id, "welcome")}
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-50"
+                        >
+                          {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
+                          Send welcome message
+                        </button>
+                      </div>
+                    ) : (
+                      <form
+                        className="flex min-w-[min(100%,440px)] flex-1 items-end gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          if (replyText[ticket._id]?.trim()) void updateTicket(ticket._id, "reply");
+                        }}
+                      >
+                        <label className="min-w-0 flex-1">
+                          <span className="sr-only">Write a reply</span>
+                          <textarea
+                            rows={2}
+                            maxLength={5000}
+                            value={replyText[ticket._id] ?? ""}
+                            onChange={(event) => setReplyText((current) => ({ ...current, [ticket._id]: event.target.value }))}
+                            placeholder={isAdmin ? "Write a helpful reply..." : "Add information or reply..."}
+                            className="w-full resize-y rounded-xl border border-neutral-300 px-3 py-2 text-sm focus:border-teal-700 focus:outline-none"
+                          />
+                        </label>
+                        <button type="submit" disabled={submitting || !replyText[ticket._id]?.trim()} aria-label="Send reply" className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-700 text-white hover:bg-teal-800 disabled:opacity-50">
+                          {submitting ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
+                        </button>
+                      </form>
+                    )
                   ) : (
                     <div className="flex items-center gap-2 rounded-xl bg-neutral-50 px-3 py-2 text-xs text-neutral-600">
                       <Check className="size-4 text-emerald-700" /> This request is closed.

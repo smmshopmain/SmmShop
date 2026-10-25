@@ -1,10 +1,11 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { dbConnect } from "@/lib/db";
 import { notifyInApp } from "@/lib/notifications";
 import { isAdminRole } from "@/lib/roles";
 import { ensureTelegramWebhook, notifyTelegram, supportTicketKeyboard } from "@/lib/telegram";
-import { Ticket, User } from "@/models";
+import { DEFAULT_SUPPORT_SETTINGS, getSettings, Ticket, User } from "@/models";
 
 const schema = z.object({
   subject: z.string().trim().min(3).max(160),
@@ -14,7 +15,7 @@ const schema = z.object({
 
 const patchSchema = z.object({
   id: z.string().min(1),
-  action: z.enum(["reply", "close", "reopen", "set_priority"]),
+  action: z.enum(["reply", "welcome", "close", "reopen", "set_priority"]),
   message: z.string().trim().min(2).max(5000).optional(),
   priority: z.enum(["Low", "Medium", "High"]).optional(),
 });
@@ -30,9 +31,15 @@ export async function GET() {
 }
 
 function priorityForCategory(category: z.infer<typeof schema>["category"]) {
-    if (category === "payment") return "High" as const;
-    if (category === "other") return "Low" as const;
-    return "Medium" as const;
+  if (category === "payment") return "High" as const;
+  if (category === "other") return "Low" as const;
+  return "Medium" as const;
+}
+
+function renderSupportMessage(template: string, name: string, subject: string) {
+  return template
+    .replaceAll("{{name}}", name)
+    .replaceAll("{{subject}}", subject);
 }
 
 export async function POST(request: NextRequest) {
@@ -86,8 +93,32 @@ export async function PATCH(request: NextRequest) {
 
     const ticket = await Ticket.findOne(filter);
     if (!ticket) return fail("Ticket not found", 404);
+    if (input.action === "welcome" && !isAdmin) {
+      return fail("Only support staff can send the welcome message.", 403);
+    }
+    if (
+      input.action === "welcome" &&
+      ticket.messages.some((message) => message.isAdmin)
+    ) {
+      return fail("A support reply has already been sent for this request.");
+    }
     if (input.action === "reply" && ticket.status === "Closed" && !isAdmin) {
       return fail("This request is closed. Contact support if you need more help.");
+    }
+    if (input.action === "welcome") {
+      await dbConnect();
+      const settings = await getSettings();
+      const user = await User.findById(ticket.user).select("name").lean();
+      ticket.messages.push({
+        sender: auth.id,
+        body: renderSupportMessage(
+          settings.support.welcomeMessage || DEFAULT_SUPPORT_SETTINGS.welcomeMessage,
+          user?.name ?? "there",
+          ticket.subject,
+        ),
+        isAdmin: true,
+      });
+      ticket.status = "Answered";
     }
     if (input.action === "reply") {
       if (!input.message) return fail("Reply message is required");
@@ -101,6 +132,20 @@ export async function PATCH(request: NextRequest) {
 
     if (input.action === "close") {
       if (ticket.status === "Closed") return fail("Ticket is already closed");
+      if (isAdmin) {
+        await dbConnect();
+        const settings = await getSettings();
+        const user = await User.findById(ticket.user).select("name").lean();
+        ticket.messages.push({
+          sender: auth.id,
+          body: renderSupportMessage(
+            settings.support.closeMessage || DEFAULT_SUPPORT_SETTINGS.closeMessage,
+            user?.name ?? "there",
+            ticket.subject,
+          ),
+          isAdmin: true,
+        });
+      }
       ticket.status = "Closed";
     }
 
@@ -117,7 +162,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     await ticket.save();
-    if (input.action === "reply" && isAdmin) {
+    if ((input.action === "reply" || input.action === "welcome") && isAdmin) {
       await notifyInApp({
         user: ticket.user,
         title: "Support replied to your ticket",

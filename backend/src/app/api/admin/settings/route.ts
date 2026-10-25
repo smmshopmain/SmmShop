@@ -4,10 +4,10 @@ import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib/loading-animations";
-import { DEFAULT_EMAIL_MANAGEMENT_SETTINGS, getSettings, Setting } from "@/models";
+import { DEFAULT_EMAIL_MANAGEMENT_SETTINGS, DEFAULT_SUPPORT_SETTINGS, getSettings, Setting } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "referrals"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -62,6 +62,11 @@ const emailSettingsSchema = z.object({
   }),
 });
 
+const supportSettingsSchema = z.object({
+  welcomeMessage: z.string().trim().min(1).max(2000),
+  closeMessage: z.string().trim().min(1).max(2000),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -114,6 +119,13 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
       primaryColor: emailSettings.primaryColor.toLowerCase(),
       accentColor: emailSettings.accentColor.toLowerCase(),
     };
+  }
+
+  if (key === "support") {
+    return supportSettingsSchema.parse({
+      ...DEFAULT_SUPPORT_SETTINGS,
+      ...value,
+    });
   }
 
   if (key === "appearance") {

@@ -16,7 +16,7 @@ import {
   supportTicketKeyboard,
   telegramWebhookSecret,
 } from "@/lib/telegram";
-import { Deposit, Ticket, User } from "@/models";
+import { DEFAULT_SUPPORT_SETTINGS, Deposit, getSettings, Ticket, User } from "@/models";
 
 type TelegramCallbackQuery = {
   id: string;
@@ -202,7 +202,7 @@ async function listSupportTickets(chatId: string | number, statusInput = "open")
 
 async function updateSupportTicket(
   ticketId: string,
-  action: "reply" | "close" | "reopen" | "priority",
+  action: "reply" | "welcome" | "close" | "reopen" | "priority",
   value?: string,
 ) {
   if (!isTicketId(ticketId)) throw new Error("Ticket ID must be 24 characters. Use /tickets to find the request.");
@@ -210,7 +210,18 @@ async function updateSupportTicket(
   const ticket = await Ticket.findById(ticketId);
   if (!ticket) throw new Error("Ticket not found.");
 
-  if (action === "reply") {
+  if (action === "welcome") {
+    if (ticket.messages.some((message) => message.isAdmin)) {
+      throw new Error("A support reply has already been sent for this request.");
+    }
+    const settings = await getSettings();
+    const user = await User.findById(ticket.user).select("name").lean();
+    const welcomeMessage = (settings.support.welcomeMessage || DEFAULT_SUPPORT_SETTINGS.welcomeMessage)
+      .replaceAll("{{name}}", user?.name ?? "there")
+      .replaceAll("{{subject}}", ticket.subject);
+    ticket.messages.push({ body: welcomeMessage, isAdmin: true });
+    ticket.status = "Answered";
+  } else if (action === "reply") {
     const reply = value?.trim();
     if (!reply || reply.length < 2 || reply.length > 5000) {
       throw new Error("Reply must contain between 2 and 5000 characters.");
@@ -219,6 +230,12 @@ async function updateSupportTicket(
     ticket.status = "Answered";
   } else if (action === "close") {
     if (ticket.status === "Closed") throw new Error("Ticket is already closed.");
+    const settings = await getSettings();
+    const user = await User.findById(ticket.user).select("name").lean();
+    const closeMessage = (settings.support.closeMessage || DEFAULT_SUPPORT_SETTINGS.closeMessage)
+      .replaceAll("{{name}}", user?.name ?? "there")
+      .replaceAll("{{subject}}", ticket.subject);
+    ticket.messages.push({ body: closeMessage, isAdmin: true });
     ticket.status = "Closed";
   } else if (action === "reopen") {
     if (ticket.status !== "Closed") throw new Error("Ticket is not closed.");
@@ -231,10 +248,12 @@ async function updateSupportTicket(
   }
 
   await ticket.save();
-  if (action === "reply" || action === "close" || action === "reopen") {
+  if (action === "reply" || action === "welcome" || action === "close" || action === "reopen") {
     const title = action === "reply"
       ? "Support replied to your ticket"
-      : action === "close"
+      : action === "welcome"
+        ? "Support welcomed you to your ticket"
+        : action === "close"
         ? "Support ticket closed"
         : "Support ticket reopened";
     await notifyInApp({ user: ticket.user, title, body: ticket.subject });
@@ -453,9 +472,17 @@ export async function POST(request: NextRequest) {
         return ok({ invalidTicketId: true });
       }
       await dbConnect();
-      if (!(await Ticket.exists({ _id: ticketId }))) {
+      const ticket = await Ticket.findById(ticketId);
+      if (!ticket) {
         await answerTelegramCallback(callback.id, "Ticket not found", true);
         return ok({ missing: true });
+      }
+      if (!ticket.messages.some((message) => message.isAdmin)) {
+        await updateSupportTicket(ticketId, "welcome");
+        await sendTelegramMessage({
+          chatId: String(chatId),
+          text: "✅ Welcome message sent. You can now reply to the customer.",
+        });
       }
       await promptTicketReply(chatId, ticketId);
       await answerTelegramCallback(callback.id, "Reply to the prompt. Another reply prompt will follow each message.");

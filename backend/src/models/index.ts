@@ -419,6 +419,10 @@ export type PlatformSettings = {
   provider: { lowBalanceThreshold: number };
   auth: { googleEnabled: boolean };
   email: EmailManagementSettings;
+  support: {
+    welcomeMessage: string;
+    closeMessage: string;
+  };
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -464,6 +468,11 @@ export const DEFAULT_EMAIL_MANAGEMENT_SETTINGS: EmailManagementSettings = {
   },
 };
 
+export const DEFAULT_SUPPORT_SETTINGS: PlatformSettings["support"] = {
+  welcomeMessage: "Hello {{name}}, thank you for contacting support. We have received your request and will help you shortly.",
+  closeMessage: "Your support conversation has been closed. If you need more help, please create a new support request.",
+};
+
 export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
@@ -498,6 +507,7 @@ export async function getSettings() {
     provider: { lowBalanceThreshold: 100 },
     auth: { googleEnabled: false },
     email: DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
+    support: DEFAULT_SUPPORT_SETTINGS,
     referrals: {
       enabled: true,
       commissionPercent: 2,
@@ -537,6 +547,12 @@ export async function getSettings() {
           ...settings.email.templates,
           ...(value.templates ?? {}),
         },
+      };
+    }
+    if (record.key === "support") {
+      settings.support = {
+        ...settings.support,
+        ...(record.value as Partial<PlatformSettings["support"]>),
       };
     }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
