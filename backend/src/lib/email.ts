@@ -157,6 +157,59 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   }
 }
 
+export async function sendAccountChangeNotice({
+  recipients,
+  name,
+  change,
+  details,
+}: {
+  recipients: string[];
+  name: string;
+  change: string;
+  details: string[];
+}) {
+  const uniqueRecipients = [...new Set(recipients.map((recipient) => recipient.trim().toLowerCase()).filter(Boolean))];
+  const text = [
+    `Hello ${name || "there"},`,
+    "",
+    `A change was made to your account: ${change}.`,
+    ...details,
+    "",
+    "If you did not make this change, contact support immediately and secure your account.",
+  ].join("\n");
+  const html = `
+    <div style="margin:0;padding:32px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243b53">
+      <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5edf3;border-radius:18px;overflow:hidden">
+        <div style="padding:24px 30px;background:#0b3038;color:#ffffff">
+          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">Account security</div>
+          <h1 style="margin:14px 0 0;font-size:24px;line-height:1.3;color:#ffffff">${escapeHtml(change)}</h1>
+        </div>
+        <div style="padding:26px 30px">
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.7">Hello ${escapeHtml(name || "there")}, a change was made to your account:</p>
+          <ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.8">${details.map((detail) => `<li>${escapeHtml(detail)}</li>`).join("")}</ul>
+          <p style="margin:20px 0 0;padding:14px;border-radius:10px;background:#fff7ed;color:#9a3412;font-size:13px;line-height:1.7">If you did not make this change, contact support immediately and secure your account.</p>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const results = await Promise.all(uniqueRecipients.map(async (to) => {
+    try {
+      await sendMail({ to, subject: `Security notice: ${change}`, text, html });
+      return true;
+    } catch (error) {
+      console.error("Account security email notification failed.", {
+        recipient: to,
+        change,
+        error: error instanceof Error ? error.message : "Unknown email error",
+      });
+      return false;
+    }
+  }));
+
+  return results.every(Boolean);
+}
+
 type OtpTemplateKey = "registrationOtp" | "forgotPasswordOtp" | "verificationOtp";
 
 async function buildOtpEmail(

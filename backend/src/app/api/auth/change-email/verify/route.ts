@@ -4,6 +4,7 @@ import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { hashEmailChangeOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { setSessionCookie } from "@/lib/auth";
+import { sendAccountChangeNotice } from "@/lib/email";
 import { AuditLog, User } from "@/models";
 
 const schema = z.object({
@@ -74,6 +75,12 @@ export async function POST(request: NextRequest) {
       entityId: auth.id,
       before: { email: previousEmail },
       after: { email: dbUser.email },
+    });
+    await sendAccountChangeNotice({
+      recipients: [previousEmail, dbUser.email],
+      name: dbUser.name,
+      change: "Email address changed",
+      details: [`Previous email: ${previousEmail}`, `New email: ${dbUser.email}`],
     });
 
     return ok({

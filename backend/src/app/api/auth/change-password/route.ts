@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { hashPassword, verifyPassword } from "@/lib/auth";
+import { sendAccountChangeNotice } from "@/lib/email";
 
 const schema = z.object({
   currentPassword: z.string().min(1),
@@ -17,6 +18,12 @@ export async function POST(request: NextRequest) {
     }
     dbUser.passwordHash = await hashPassword(input.newPassword);
     await dbUser.save();
+    await sendAccountChangeNotice({
+      recipients: [dbUser.email],
+      name: dbUser.name,
+      change: "Password changed",
+      details: ["Your account password was successfully changed."],
+    });
     return ok({ changed: true });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to change password", 401);

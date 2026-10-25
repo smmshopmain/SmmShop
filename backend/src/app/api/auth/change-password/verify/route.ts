@@ -4,6 +4,7 @@ import { fail, ok, parseBody, requireUser } from "@/lib/api";
 import { hashPassword } from "@/lib/auth";
 import { hashPasswordChangeOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
+import { sendAccountChangeNotice } from "@/lib/email";
 import { AuditLog } from "@/models";
 
 const schema = z.object({
@@ -56,6 +57,12 @@ export async function POST(request: NextRequest) {
       entityId: auth.id,
       before: { method: "otp" },
       after: { changed: true },
+    });
+    await sendAccountChangeNotice({
+      recipients: [dbUser.email],
+      name: dbUser.name,
+      change: "Password changed",
+      details: ["Your account password was successfully changed using email verification."],
     });
 
     return ok({ changed: true });

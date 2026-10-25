@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { sendAccountChangeNotice } from "@/lib/email";
 import { hashPhoneChangeOtp } from "@/lib/password-reset";
 import { rateLimit } from "@/lib/rate-limit";
 import { AuditLog, User } from "@/models";
@@ -64,6 +65,12 @@ export async function POST(request: NextRequest) {
       entityId: auth.id,
       before: { phone: previousPhone },
       after: { phone: dbUser.phone ?? "" },
+    });
+    await sendAccountChangeNotice({
+      recipients: [dbUser.email],
+      name: dbUser.name,
+      change: "Mobile number changed",
+      details: [`Previous mobile: ${previousPhone || "Not set"}`, `New mobile: ${dbUser.phone ?? ""}`],
     });
 
     return ok({
