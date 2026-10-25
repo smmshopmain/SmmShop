@@ -98,7 +98,7 @@ export async function PATCH(request: NextRequest) {
     }
     if (
       input.action === "welcome" &&
-      ticket.messages.some((message) => message.isAdmin)
+      ticket.messages.some((message: { isAdmin?: boolean }) => message.isAdmin)
     ) {
       return fail("A support reply has already been sent for this request.");
     }

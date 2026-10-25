@@ -477,7 +477,7 @@ export async function POST(request: NextRequest) {
         await answerTelegramCallback(callback.id, "Ticket not found", true);
         return ok({ missing: true });
       }
-      if (!ticket.messages.some((message) => message.isAdmin)) {
+      if (!ticket.messages.some((message: { isAdmin?: boolean }) => message.isAdmin)) {
         await updateSupportTicket(ticketId, "welcome");
         await sendTelegramMessage({
           chatId: String(chatId),
