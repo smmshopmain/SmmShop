@@ -81,7 +81,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<{
@@ -412,6 +412,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
         <main className="page-enter mx-auto min-w-0 max-w-7xl px-3 py-5 pb-24 sm:px-6 sm:py-6 lg:px-8 lg:pb-8">{children}</main>
+        {footer}
       </div>
 
       <nav className="app-header fixed inset-x-0 bottom-0 z-30 border-t px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] lg:hidden">

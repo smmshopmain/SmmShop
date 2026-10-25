@@ -6,9 +6,12 @@ import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { AnimationControls } from "@/components/animation-controls";
 import { DeveloperCreditSettings } from "@/components/developer-credit-settings";
+import { SiteFooterSettings } from "@/components/site-footer-settings";
 import {
   DEFAULT_DEVELOPER_CREDIT,
+  DEFAULT_SITE_FOOTER,
   type DeveloperCreditSettings as DeveloperCreditSettingsValue,
+  type SiteFooterSettings as SiteFooterSettingsValue,
 } from "@/components/developer-credit-footer";
 import { apiJson } from "@/lib/client-api";
 import {
@@ -35,6 +38,7 @@ type PlatformSettings = {
   };
   provider: { lowBalanceThreshold: number };
   developerCredit: DeveloperCreditSettingsValue;
+  siteFooter: SiteFooterSettingsValue;
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -62,6 +66,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   },
   provider: { lowBalanceThreshold: 100 },
   developerCredit: DEFAULT_DEVELOPER_CREDIT,
+  siteFooter: DEFAULT_SITE_FOOTER,
   referrals: {
     enabled: true,
     commissionPercent: 2,
@@ -83,7 +88,17 @@ export default function SettingsPage() {
         if (!nextSettings?.appearance || !nextSettings?.deposits) {
           throw new Error(nextSettings?.message ?? "Unable to load administrator settings.");
         }
-        setSettings(nextSettings);
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          ...nextSettings,
+          developerCredit: nextSettings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT,
+          siteFooter: {
+            ...DEFAULT_SITE_FOOTER,
+            ...(nextSettings.siteFooter ?? {}),
+            quickLinks: nextSettings.siteFooter?.quickLinks ?? DEFAULT_SITE_FOOTER.quickLinks,
+            supportLinks: nextSettings.siteFooter?.supportLinks ?? DEFAULT_SITE_FOOTER.supportLinks,
+          },
+        });
         setLoadError("");
       })
       .catch((error: unknown) => {
@@ -119,6 +134,7 @@ export default function SettingsPage() {
       <div className="mb-4 px-4 lg:px-0">
         <ActionButton label="Backfill referral codes" endpoint="/api/admin/backfill-referrals" method="POST" confirmMessage="Assign referral codes to users missing them?" />
       </div>
+      <SiteFooterSettings initialSettings={settings.siteFooter} />
       <DeveloperCreditSettings initialSettings={settings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT} />
       <SettingsForm
         mode={settings.deposits.verificationMode}

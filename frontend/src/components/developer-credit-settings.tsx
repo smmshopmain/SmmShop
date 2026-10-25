@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { DeveloperCreditSettings as CreditSettings } from "@/components/developer-credit-footer";
 import { apiFetch } from "@/lib/client-api";
 
@@ -9,6 +10,7 @@ export function DeveloperCreditSettings({
 }: {
   initialSettings: CreditSettings;
 }) {
+  const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -26,6 +28,7 @@ export function DeveloperCreditSettings({
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to save developer credit.");
       setMessage("Developer credit settings saved.");
+      router.refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to save developer credit.");
     } finally {

@@ -442,6 +442,23 @@ export type PlatformSettings = {
     name: string;
     url: string;
   };
+  siteFooter: {
+    enabled: boolean;
+    brandName: string;
+    tagline: string;
+    description: string;
+    quickLinksTitle: string;
+    quickLinks: Array<{ label: string; href: string }>;
+    supportLinksTitle: string;
+    supportLinks: Array<{ label: string; href: string }>;
+    contactTitle: string;
+    contactEmail: string;
+    contactPhone: string;
+    whatsappUrl: string;
+    address: string;
+    businessHours: string;
+    copyrightText: string;
+  };
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -499,6 +516,32 @@ export const DEFAULT_DEVELOPER_CREDIT: PlatformSettings["developerCredit"] = {
   url: "",
 };
 
+export const DEFAULT_SITE_FOOTER: PlatformSettings["siteFooter"] = {
+  enabled: true,
+  brandName: "SMM Panel",
+  tagline: "Your social growth workspace",
+  description: "Manage services, orders, wallet, and support from one simple place.",
+  quickLinksTitle: "Quick links",
+  quickLinks: [
+    { label: "Home", href: "/" },
+    { label: "Sign in", href: "/login" },
+    { label: "Create account", href: "/register" },
+  ],
+  supportLinksTitle: "Customer support",
+  supportLinks: [
+    { label: "Help & support", href: "/dashboard/tickets" },
+    { label: "My orders", href: "/dashboard/orders" },
+    { label: "My account", href: "/dashboard/profile" },
+  ],
+  contactTitle: "Contact",
+  contactEmail: "",
+  contactPhone: "",
+  whatsappUrl: "",
+  address: "",
+  businessHours: "",
+  copyrightText: "All rights reserved.",
+};
+
 export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
@@ -535,6 +578,7 @@ export async function getSettings() {
     email: DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
     support: DEFAULT_SUPPORT_SETTINGS,
     developerCredit: DEFAULT_DEVELOPER_CREDIT,
+    siteFooter: DEFAULT_SITE_FOOTER,
     referrals: {
       enabled: true,
       commissionPercent: 2,
@@ -586,6 +630,15 @@ export async function getSettings() {
       settings.developerCredit = {
         ...settings.developerCredit,
         ...(record.value as Partial<PlatformSettings["developerCredit"]>),
+      };
+    }
+    if (record.key === "siteFooter") {
+      const value = record.value as Partial<PlatformSettings["siteFooter"]>;
+      settings.siteFooter = {
+        ...settings.siteFooter,
+        ...value,
+        quickLinks: value.quickLinks ?? settings.siteFooter.quickLinks,
+        supportLinks: value.supportLinks ?? settings.siteFooter.supportLinks,
       };
     }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };

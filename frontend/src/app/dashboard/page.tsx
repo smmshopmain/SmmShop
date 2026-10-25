@@ -6,6 +6,58 @@ import { DashboardOrderStats } from "@/components/dashboard-order-stats";
 import { DashboardRecentTransactions } from "@/components/dashboard-recent-transactions";
 import { StatCard } from "@/components/stat-card";
 import { LiveWalletBalance } from "@/components/wallet-balance";
+import {
+  DEFAULT_DEVELOPER_CREDIT,
+  DEFAULT_SITE_FOOTER,
+  DeveloperCreditFooter,
+  type DeveloperCreditSettings,
+  type SiteFooterSettings,
+} from "@/components/developer-credit-footer";
+
+async function loadDashboardFooterSettings(): Promise<{
+  siteFooter: SiteFooterSettings;
+  developerCredit: DeveloperCreditSettings;
+}> {
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
+  if (!apiBase) {
+    console.error("Unable to load dashboard footer: NEXT_PUBLIC_API_URL is not configured.");
+    return { siteFooter: DEFAULT_SITE_FOOTER, developerCredit: DEFAULT_DEVELOPER_CREDIT };
+  }
+
+  try {
+    const response = await fetch(`${apiBase}/api/settings`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) throw new Error(`Settings request failed with status ${response.status}.`);
+
+    const payload = await response.json() as {
+      data?: {
+        siteFooter?: Partial<SiteFooterSettings>;
+        developerCredit?: Partial<DeveloperCreditSettings>;
+      };
+      siteFooter?: Partial<SiteFooterSettings>;
+      developerCredit?: Partial<DeveloperCreditSettings>;
+    };
+    const siteFooter = payload.data?.siteFooter ?? payload.siteFooter;
+    const developerCredit = payload.data?.developerCredit ?? payload.developerCredit;
+    return {
+      siteFooter: {
+        ...DEFAULT_SITE_FOOTER,
+        ...siteFooter,
+        quickLinks: siteFooter?.quickLinks ?? DEFAULT_SITE_FOOTER.quickLinks,
+        supportLinks: siteFooter?.supportLinks ?? DEFAULT_SITE_FOOTER.supportLinks,
+      },
+      developerCredit: {
+        ...DEFAULT_DEVELOPER_CREDIT,
+        ...developerCredit,
+      },
+    };
+  } catch (error) {
+    console.error("Unable to load dashboard footer settings.", error);
+    return { siteFooter: DEFAULT_SITE_FOOTER, developerCredit: DEFAULT_DEVELOPER_CREDIT };
+  }
+}
 
 const quickActions: Array<{
   href: Route;
@@ -19,8 +71,17 @@ const quickActions: Array<{
 ];
 
 export default async function DashboardPage() {
+  const footerSettings = await loadDashboardFooterSettings();
+
   return (
-    <AppShell>
+    <AppShell
+      footer={
+        <DeveloperCreditFooter
+          settings={footerSettings.siteFooter}
+          developerCredit={footerSettings.developerCredit}
+        />
+      }
+    >
       <section className="dashboard-command mb-6 grid gap-5 rounded-[1.8rem] border border-teal-900/10 bg-white p-5 shadow-sm sm:p-7 lg:grid-cols-[minmax(0,1fr)_300px] lg:items-center">
         <div className="max-w-2xl">
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">

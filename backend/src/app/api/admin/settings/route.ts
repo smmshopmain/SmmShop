@@ -7,13 +7,14 @@ import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib
 import {
   DEFAULT_DEVELOPER_CREDIT,
   DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
+  DEFAULT_SITE_FOOTER,
   DEFAULT_SUPPORT_SETTINGS,
   getSettings,
   Setting,
 } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -101,6 +102,61 @@ const developerCreditSchema = z.object({
   }
 });
 
+const footerLinkSchema = z.object({
+  label: z.string().trim().min(1).max(60),
+  href: z.string().trim().min(1).max(2048),
+});
+
+function isSafeFooterHref(value: string) {
+  if (value.startsWith("/") && !value.startsWith("//")) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
+
+const siteFooterSchema = z.object({
+  enabled: z.boolean(),
+  brandName: z.string().trim().min(1).max(80),
+  tagline: z.string().trim().max(160),
+  description: z.string().trim().max(500),
+  quickLinksTitle: z.string().trim().min(1).max(40),
+  quickLinks: z.array(footerLinkSchema).max(8),
+  supportLinksTitle: z.string().trim().min(1).max(40),
+  supportLinks: z.array(footerLinkSchema).max(8),
+  contactTitle: z.string().trim().min(1).max(40),
+  contactEmail: z.union([z.literal(""), z.string().trim().email().max(254)]),
+  contactPhone: z.string().trim().max(40),
+  whatsappUrl: z.string().trim().max(2048),
+  address: z.string().trim().max(250),
+  businessHours: z.string().trim().max(120),
+  copyrightText: z.string().trim().max(120),
+}).superRefine((footer, context) => {
+  for (const [group, links] of [
+    ["quickLinks", footer.quickLinks],
+    ["supportLinks", footer.supportLinks],
+  ] as const) {
+    links.forEach((link, index) => {
+      if (!isSafeFooterHref(link.href)) {
+        context.addIssue({
+          code: "custom",
+          path: [group, index, "href"],
+          message: "Links must be a site path or a valid http/https URL.",
+        });
+      }
+    });
+  }
+  if (footer.whatsappUrl && !isSafeFooterHref(footer.whatsappUrl)) {
+    context.addIssue({
+      code: "custom",
+      path: ["whatsappUrl"],
+      message: "WhatsApp link must be a valid http/https URL.",
+    });
+  }
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -165,6 +221,13 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
   if (key === "developerCredit") {
     return developerCreditSchema.parse({
       ...DEFAULT_DEVELOPER_CREDIT,
+      ...value,
+    });
+  }
+
+  if (key === "siteFooter") {
+    return siteFooterSchema.parse({
+      ...DEFAULT_SITE_FOOTER,
       ...value,
     });
   }

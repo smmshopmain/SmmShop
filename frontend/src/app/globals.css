@@ -2770,6 +2770,98 @@ html[data-design="pulse"] .app-shell-user main .orders-filter-wrap {
   background-color: transparent;
 }
 
+.site-footer {
+  --footer-background: #10252b;
+  --footer-border: #294047;
+  --footer-heading: #f2f8f8;
+  --footer-muted: #b0c2c5;
+  --footer-link: #dbe8e9;
+  --footer-accent: #5eead4;
+  background: var(--footer-background);
+  color: var(--footer-heading);
+}
+
+.site-footer-bottom {
+  border-color: var(--footer-border);
+}
+
+.site-footer-heading,
+.site-footer-kicker {
+  color: var(--footer-heading);
+}
+
+.site-footer-muted {
+  color: var(--footer-muted);
+}
+
+.site-footer-link {
+  color: var(--footer-link);
+}
+
+.site-footer-link:hover,
+.site-footer-credit {
+  color: var(--footer-accent);
+}
+
+.site-footer-mark {
+  background: var(--footer-accent);
+  color: var(--footer-background);
+}
+
+html[data-design="default"] .site-footer {
+  --footer-background: #10252b;
+  --footer-border: #294047;
+  --footer-heading: #f2f8f8;
+  --footer-muted: #b0c2c5;
+  --footer-link: #dbe8e9;
+  --footer-accent: #5eead4;
+}
+
+html[data-design="studio"] .site-footer {
+  --footer-background: #e8f0f1;
+  --footer-border: #cbd9dc;
+  --footer-heading: #142b34;
+  --footer-muted: #52666d;
+  --footer-link: #344e57;
+  --footer-accent: #0f766e;
+}
+
+html[data-design="orbit"] .site-footer {
+  --footer-background: #211a37;
+  --footer-border: #40365b;
+  --footer-heading: #f5f1ff;
+  --footer-muted: #c4badc;
+  --footer-link: #e4dcf6;
+  --footer-accent: #c4b5fd;
+}
+
+html[data-design="atelier"] .site-footer {
+  --footer-background: #332b26;
+  --footer-border: #57483d;
+  --footer-heading: #fff7ec;
+  --footer-muted: #d3c2ae;
+  --footer-link: #f0dfca;
+  --footer-accent: #e4a477;
+}
+
+html[data-design="pulse"] .site-footer {
+  --footer-background: #101d22;
+  --footer-border: #294047;
+  --footer-heading: #effaf8;
+  --footer-muted: #a6b8b8;
+  --footer-link: #d6e7e4;
+  --footer-accent: #67e8d0;
+}
+
+html[data-design="midnight"] .site-footer {
+  --footer-background: #0b1020;
+  --footer-border: #273248;
+  --footer-heading: #f1f5f9;
+  --footer-muted: #aab6ca;
+  --footer-link: #d8e0ef;
+  --footer-accent: #a5b4fc;
+}
+
 html[data-design="pulse"] .app-shell-user main .support-promise {
   border-color: #35514c;
   background: #1c3032;
