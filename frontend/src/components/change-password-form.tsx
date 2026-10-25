@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
+import { Check, ChevronDown, Copy, KeyRound, Mail, Phone, Save, UserRound } from "lucide-react";
 import { useState } from "react";
 import { apiFetch } from "@/lib/client-api";
 import { roleLabel, UserRole } from "@/lib/roles";
@@ -17,6 +17,20 @@ const darkButtonClass =
 export function ProfileSettingsForm({ profile }: { profile: Profile }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [referralCodeCopied, setReferralCodeCopied] = useState(false);
+  const [referralCodeCopyError, setReferralCodeCopyError] = useState("");
+
+  async function copyReferralCode() {
+    if (!profile.referralCode) return;
+    try {
+      await navigator.clipboard.writeText(profile.referralCode);
+      setReferralCodeCopyError("");
+      setReferralCodeCopied(true);
+      window.setTimeout(() => setReferralCodeCopied(false), 1600);
+    } catch {
+      setReferralCodeCopyError("Unable to copy referral code. Please copy it manually.");
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,7 +67,23 @@ export function ProfileSettingsForm({ profile }: { profile: Profile }) {
           <DetailItem label="Email" value={profile.email || "-"} />
           <DetailItem label="Phone" value={profile.phone || "Not set"} />
           <DetailItem label="Role" value={roleLabel(profile.role)} />
-          <DetailItem label="Referral code" value={profile.referralCode || "-"} mono />
+          <div className="min-w-0 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-neutral-500">Referral code</p>
+            <div className="mt-1 flex items-center gap-2">
+              <p data-copy-allowed className="min-w-0 flex-1 break-words font-mono text-sm font-semibold text-neutral-950">{profile.referralCode || "-"}</p>
+              <button
+                type="button"
+                onClick={() => void copyReferralCode()}
+                disabled={!profile.referralCode}
+                aria-label="Copy referral code"
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-neutral-300 bg-white px-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-50"
+              >
+                {referralCodeCopied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {referralCodeCopied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            {referralCodeCopyError && <p role="alert" className="mt-1 text-xs text-rose-700">{referralCodeCopyError}</p>}
+          </div>
         </div>
 
         <form onSubmit={submit} className="mt-5 border-t border-neutral-100 pt-4">
@@ -283,10 +313,12 @@ export function ChangePasswordForm() {
 function CurrentPasswordChangeForm() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [changedSuccessfully, setChangedSuccessfully] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const newPassword = String(form.get("newPassword") ?? "");
     const confirmPassword = String(form.get("confirmPassword") ?? "");
 
@@ -308,29 +340,36 @@ function CurrentPasswordChangeForm() {
     const result = await response.json();
     setLoading(false);
     setMessage(response.ok ? "Password changed successfully." : (result.message ?? "Unable to change password"));
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      formElement.reset();
+      setChangedSuccessfully(true);
+    }
   }
 
   return (
     <ActionPanel icon={<KeyRound className="size-4" />} title="Change password" value="Use current password">
-      <form onSubmit={submit} className="grid gap-3 text-sm">
-        <label className="grid gap-2 font-semibold text-neutral-800">
-          Current password
-          <input name="currentPassword" type="password" required className={inputClass} />
-        </label>
-        <label className="grid gap-2 font-semibold text-neutral-800">
-          New password
-          <input name="newPassword" type="password" minLength={8} required className={inputClass} />
-        </label>
-        <label className="grid gap-2 font-semibold text-neutral-800">
-          Confirm new password
-          <input name="confirmPassword" type="password" minLength={8} required className={inputClass} />
-        </label>
-        {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
-        <button disabled={loading} className={primaryButtonClass}>
-          {loading ? "Saving..." : "Save password"}
-        </button>
-      </form>
+      {changedSuccessfully ? (
+        <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">{message}</p>
+      ) : (
+        <form onSubmit={submit} className="grid gap-3 text-sm">
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            Current password
+            <input name="currentPassword" type="password" required className={inputClass} />
+          </label>
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            New password
+            <input name="newPassword" type="password" minLength={8} required className={inputClass} />
+          </label>
+          <label className="grid gap-2 font-semibold text-neutral-800">
+            Confirm new password
+            <input name="confirmPassword" type="password" minLength={8} required className={inputClass} />
+          </label>
+          {message && <p className="rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+          <button disabled={loading} className={primaryButtonClass}>
+            {loading ? "Saving..." : "Save password"}
+          </button>
+        </form>
+      )}
     </ActionPanel>
   );
 }
@@ -339,6 +378,7 @@ function PasswordOtpChangeForm() {
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [changedSuccessfully, setChangedSuccessfully] = useState(false);
 
   async function requestOtp() {
     setLoading(true);
@@ -355,7 +395,8 @@ function PasswordOtpChangeForm() {
 
   async function verifyOtp(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const newPassword = String(form.get("otpNewPassword") ?? "");
     const confirmPassword = String(form.get("otpConfirmPassword") ?? "");
 
@@ -377,34 +418,44 @@ function PasswordOtpChangeForm() {
     const result = await response.json().catch(() => ({}));
     setLoading(false);
     setMessage(response.ok ? "Password changed successfully." : (result.message ?? "Unable to change password"));
-    if (response.ok) event.currentTarget.reset();
+    if (response.ok) {
+      formElement.reset();
+      setPending(false);
+      setChangedSuccessfully(true);
+    }
   }
 
   return (
     <ActionPanel icon={<Mail className="size-4" />} title="Change password with OTP" value="Email OTP">
-      <button type="button" onClick={requestOtp} disabled={loading} className={darkButtonClass}>
-        {loading ? "Sending..." : "Send OTP"}
-      </button>
-      {pending && (
-        <form onSubmit={verifyOtp} className="mt-3 grid gap-3 text-sm">
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            OTP
-            <input name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required className={inputClass} />
-          </label>
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            New password
-            <input name="otpNewPassword" type="password" minLength={8} required className={inputClass} />
-          </label>
-          <label className="grid gap-2 font-semibold text-neutral-800">
-            Confirm new password
-            <input name="otpConfirmPassword" type="password" minLength={8} required className={inputClass} />
-          </label>
-          <button disabled={loading} className={primaryButtonClass}>
-            {loading ? "Verifying..." : "Verify and change"}
+      {changedSuccessfully ? (
+        <p role="status" className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-800">{message}</p>
+      ) : (
+        <>
+          <button type="button" onClick={requestOtp} disabled={loading} className={darkButtonClass}>
+            {loading ? "Sending..." : "Send OTP"}
           </button>
-        </form>
+          {pending && (
+            <form onSubmit={verifyOtp} className="mt-3 grid gap-3 text-sm">
+              <label className="grid gap-2 font-semibold text-neutral-800">
+                OTP
+                <input name="otp" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required className={inputClass} />
+              </label>
+              <label className="grid gap-2 font-semibold text-neutral-800">
+                New password
+                <input name="otpNewPassword" type="password" minLength={8} required className={inputClass} />
+              </label>
+              <label className="grid gap-2 font-semibold text-neutral-800">
+                Confirm new password
+                <input name="otpConfirmPassword" type="password" minLength={8} required className={inputClass} />
+              </label>
+              <button disabled={loading} className={primaryButtonClass}>
+                {loading ? "Verifying..." : "Verify and change"}
+              </button>
+            </form>
+          )}
+          {message && <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
+        </>
       )}
-      {message && <p className="mt-3 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm font-medium text-neutral-700">{message}</p>}
     </ActionPanel>
   );
 }
