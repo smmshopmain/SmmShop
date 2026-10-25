@@ -2,11 +2,11 @@ name: Keep Render backend awake
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 concurrency:
-  group: email-campaign-delivery
+  group: keep-render-backend-awake
   cancel-in-progress: false
 
 jobs:
@@ -29,13 +29,3 @@ jobs:
           curl --fail --silent --show-error --retry 2 --retry-delay 5 --connect-timeout 20 --max-time 60 \
             --header "x-cron-secret: $CRON_SECRET" \
             "${BACKEND_URL%/}/api/keep-alive"
-          for batch in 1 2 3 4 5 6; do
-            response=$(curl --fail --silent --show-error --retry 2 --retry-delay 5 --connect-timeout 20 --max-time 90 \
-              --request POST \
-              --header "x-cron-secret: $CRON_SECRET" \
-              "${BACKEND_URL%/}/api/cron/email-campaigns")
-            echo "$response"
-            if ! echo "$response" | jq -e '.data.processed == true' >/dev/null; then
-              break
-            fi
-          done

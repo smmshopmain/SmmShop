@@ -148,7 +148,7 @@ Set the repository Actions variable `BACKEND_URL` to your deployed backend URL, 
 https://your-service-name.onrender.com
 ```
 
-The workflow sends an authenticated request every 10 minutes; the backend endpoint connects to MongoDB and runs a lightweight ping command. This can reduce Render cold starts and keep the cluster active without adding a Render cron service. Scheduled workflows run from the repository's default branch. Render or MongoDB Atlas may still suspend services under their free-tier policies if a ping is delayed or fails, so this does not guarantee uninterrupted availability.
+The workflow sends an authenticated request every 5 minutes; the backend endpoint connects to MongoDB and runs a lightweight ping command. Email campaign processing runs in its own 10-minute workflow so sending a large campaign cannot delay the keep-alive request. This can reduce Render cold starts without adding a Render cron service. Scheduled workflows run from the repository's default branch, and GitHub may delay scheduled jobs during high load. Render or MongoDB Atlas may still suspend services under their free-tier policies if a ping is delayed or fails, so this does not guarantee uninterrupted availability.
 
 ### Nightly Catalog Refresh
 
