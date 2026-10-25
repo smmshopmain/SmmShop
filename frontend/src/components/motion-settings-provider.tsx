@@ -102,8 +102,14 @@ export function normalizeMotionSettings(value: Partial<MotionSettings>): MotionS
   };
 }
 
-export function MotionSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState(DEFAULT_MOTION_SETTINGS);
+export function MotionSettingsProvider({
+  children,
+  initialSettings = DEFAULT_MOTION_SETTINGS,
+}: {
+  children: ReactNode;
+  initialSettings?: MotionSettings;
+}) {
+  const [settings, setSettings] = useState(initialSettings);
 
   useEffect(() => {
     let mounted = true;
