@@ -7,6 +7,11 @@ import {
   type MotionSettings,
 } from "@/components/motion-settings-provider";
 import { CopyProtection } from "@/components/copy-protection";
+import {
+  DEFAULT_DEVELOPER_CREDIT,
+  DeveloperCreditFooter,
+  type DeveloperCreditSettings,
+} from "@/components/developer-credit-footer";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,11 +22,14 @@ export const metadata: Metadata = {
   description: "Manage social media services, orders, wallet, and support from one modern reseller workspace.",
 };
 
-async function loadInitialMotionSettings(): Promise<MotionSettings> {
+async function loadInitialSiteSettings(): Promise<{
+  motion: MotionSettings;
+  developerCredit: DeveloperCreditSettings;
+}> {
   const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
   if (!apiBase) {
-    console.error("Unable to load the site design before first render: NEXT_PUBLIC_API_URL is not configured.");
-    return DEFAULT_MOTION_SETTINGS;
+    console.error("Unable to load site settings before first render: NEXT_PUBLIC_API_URL is not configured.");
+    return { motion: DEFAULT_MOTION_SETTINGS, developerCredit: DEFAULT_DEVELOPER_CREDIT };
   }
 
   try {
@@ -34,16 +42,27 @@ async function loadInitialMotionSettings(): Promise<MotionSettings> {
     }
 
     const payload = await response.json() as {
-      data?: { appearance?: Partial<MotionSettings> };
+      data?: {
+        appearance?: Partial<MotionSettings>;
+        developerCredit?: Partial<DeveloperCreditSettings>;
+      };
       appearance?: Partial<MotionSettings>;
+      developerCredit?: Partial<DeveloperCreditSettings>;
     };
     const appearance = payload.data?.appearance ?? payload.appearance;
     if (!appearance) throw new Error("Appearance settings were missing from the settings response.");
 
-    return normalizeMotionSettings(appearance);
+    const developerCredit = payload.data?.developerCredit ?? payload.developerCredit;
+    return {
+      motion: normalizeMotionSettings(appearance),
+      developerCredit: {
+        ...DEFAULT_DEVELOPER_CREDIT,
+        ...developerCredit,
+      },
+    };
   } catch (error) {
-    console.error("Unable to load the site design before first render.", error);
-    return DEFAULT_MOTION_SETTINGS;
+    console.error("Unable to load site settings before first render.", error);
+    return { motion: DEFAULT_MOTION_SETTINGS, developerCredit: DEFAULT_DEVELOPER_CREDIT };
   }
 }
 
@@ -52,7 +71,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialMotionSettings = await loadInitialMotionSettings();
+  const initialSiteSettings = await loadInitialSiteSettings();
+  const initialMotionSettings = initialSiteSettings.motion;
 
   return (
     <html
@@ -74,6 +94,7 @@ export default async function RootLayout({
         <MotionSettingsProvider initialSettings={initialMotionSettings}>
           <CopyProtection />
           <React.Suspense fallback={null}>{children}</React.Suspense>
+          <DeveloperCreditFooter settings={initialSiteSettings.developerCredit} />
         </MotionSettingsProvider>
       </body>
     </html>

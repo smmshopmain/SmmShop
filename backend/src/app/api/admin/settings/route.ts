@@ -4,10 +4,16 @@ import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATION_IDS } from "@/lib/loading-animations";
-import { DEFAULT_EMAIL_MANAGEMENT_SETTINGS, DEFAULT_SUPPORT_SETTINGS, getSettings, Setting } from "@/models";
+import {
+  DEFAULT_DEVELOPER_CREDIT,
+  DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
+  DEFAULT_SUPPORT_SETTINGS,
+  getSettings,
+  Setting,
+} from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -67,6 +73,34 @@ const supportSettingsSchema = z.object({
   closeMessage: z.string().trim().min(1).max(2000),
 });
 
+const developerCreditSchema = z.object({
+  enabled: z.boolean(),
+  label: z.string().trim().min(1).max(40),
+  name: z.string().trim().max(80),
+  url: z.string().trim().max(2048),
+}).superRefine((credit, context) => {
+  if (!credit.enabled) return;
+  if (!credit.name) {
+    context.addIssue({
+      code: "custom",
+      path: ["name"],
+      message: "Enter a developer or agency name before enabling the footer credit.",
+    });
+  }
+  if (credit.url) {
+    try {
+      const url = new URL(credit.url);
+      if (!["http:", "https:"].includes(url.protocol)) throw new Error("Unsupported link protocol.");
+    } catch {
+      context.addIssue({
+        code: "custom",
+        path: ["url"],
+        message: "Enter a valid http or https URL.",
+      });
+    }
+  }
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -124,6 +158,13 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
   if (key === "support") {
     return supportSettingsSchema.parse({
       ...DEFAULT_SUPPORT_SETTINGS,
+      ...value,
+    });
+  }
+
+  if (key === "developerCredit") {
+    return developerCreditSchema.parse({
+      ...DEFAULT_DEVELOPER_CREDIT,
       ...value,
     });
   }

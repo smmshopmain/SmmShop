@@ -436,6 +436,12 @@ export type PlatformSettings = {
     welcomeMessage: string;
     closeMessage: string;
   };
+  developerCredit: {
+    enabled: boolean;
+    label: string;
+    name: string;
+    url: string;
+  };
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -486,6 +492,13 @@ export const DEFAULT_SUPPORT_SETTINGS: PlatformSettings["support"] = {
   closeMessage: "Your support conversation has been closed. If you need more help, please create a new support request.",
 };
 
+export const DEFAULT_DEVELOPER_CREDIT: PlatformSettings["developerCredit"] = {
+  enabled: false,
+  label: "Developed by",
+  name: "",
+  url: "",
+};
+
 export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
@@ -521,6 +534,7 @@ export async function getSettings() {
     auth: { googleEnabled: false },
     email: DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
     support: DEFAULT_SUPPORT_SETTINGS,
+    developerCredit: DEFAULT_DEVELOPER_CREDIT,
     referrals: {
       enabled: true,
       commissionPercent: 2,
@@ -566,6 +580,12 @@ export async function getSettings() {
       settings.support = {
         ...settings.support,
         ...(record.value as Partial<PlatformSettings["support"]>),
+      };
+    }
+    if (record.key === "developerCredit") {
+      settings.developerCredit = {
+        ...settings.developerCredit,
+        ...(record.value as Partial<PlatformSettings["developerCredit"]>),
       };
     }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };

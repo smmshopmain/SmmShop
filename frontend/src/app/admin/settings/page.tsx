@@ -5,6 +5,11 @@ import { SettingsForm, ActionButton } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { AnimationControls } from "@/components/animation-controls";
+import { DeveloperCreditSettings } from "@/components/developer-credit-settings";
+import {
+  DEFAULT_DEVELOPER_CREDIT,
+  type DeveloperCreditSettings as DeveloperCreditSettingsValue,
+} from "@/components/developer-credit-footer";
 import { apiJson } from "@/lib/client-api";
 import {
   DEFAULT_MOTION_SETTINGS,
@@ -29,6 +34,7 @@ type PlatformSettings = {
     };
   };
   provider: { lowBalanceThreshold: number };
+  developerCredit: DeveloperCreditSettingsValue;
   referrals: {
     enabled: boolean;
     commissionPercent: number;
@@ -55,6 +61,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     },
   },
   provider: { lowBalanceThreshold: 100 },
+  developerCredit: DEFAULT_DEVELOPER_CREDIT,
   referrals: {
     enabled: true,
     commissionPercent: 2,
@@ -112,6 +119,7 @@ export default function SettingsPage() {
       <div className="mb-4 px-4 lg:px-0">
         <ActionButton label="Backfill referral codes" endpoint="/api/admin/backfill-referrals" method="POST" confirmMessage="Assign referral codes to users missing them?" />
       </div>
+      <DeveloperCreditSettings initialSettings={settings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT} />
       <SettingsForm
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
