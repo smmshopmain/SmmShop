@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
       `Ticket: ${String(ticket._id)}`,
       `From: ${user?.name ?? "User"} (${user?.email ?? auth.email})`,
       `Category: ${input.category}`,
-      `Priority: ${input.priority}`,
+      `Priority: ${ticket.priority}`,
       `Subject: ${input.subject}`,
       `Message: ${input.message.slice(0, 700)}`,
     ], supportTicketKeyboard(String(ticket._id), ticket.status, ticket.priority));
