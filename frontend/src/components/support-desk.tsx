@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ArrowUpRight,
@@ -64,10 +64,12 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
   const [expandedTickets, setExpandedTickets] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const ticketRequestInProgress = useRef(false);
 
-  const loadTickets = useCallback(async () => {
-    setLoading(true);
-    setLoadError("");
+  const loadTickets = useCallback(async (background = false) => {
+    if (ticketRequestInProgress.current) return;
+    ticketRequestInProgress.current = true;
+    if (!background) setLoading(true);
     try {
       const query = new URLSearchParams();
       if (isAdmin) {
@@ -81,10 +83,12 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
       const result = await apiJson(path, { cache: "no-store" });
       if (!result?.ok) throw new Error(result?.message || "Unable to load support tickets.");
       setTickets(Array.isArray(result.tickets) ? result.tickets : []);
+      setLoadError("");
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : "Unable to load support tickets.");
     } finally {
-      setLoading(false);
+      ticketRequestInProgress.current = false;
+      if (!background) setLoading(false);
     }
   }, [isAdmin, priorityFilter, search, statusFilter]);
 
@@ -92,6 +96,18 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
     const timer = window.setTimeout(() => void loadTickets(), isAdmin && search ? 250 : 0);
     return () => window.clearTimeout(timer);
   }, [loadTickets, isAdmin, search, statusFilter, priorityFilter]);
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void loadTickets(true);
+    };
+    const timer = window.setInterval(refreshWhenVisible, 3000);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [loadTickets]);
 
   async function updateTicket(ticketId: string, action: "reply" | "close" | "reopen" | "set_priority", priority?: TicketPriority) {
     setSubmitting(true);
@@ -209,15 +225,10 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
                 <input name="subject" minLength={3} maxLength={160} required placeholder="For example: Order #12345 is delayed" className="h-11 rounded-xl border border-neutral-300 px-3 font-normal" />
               </label>
               <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
-                Priority
-                <select name="priority" defaultValue="Medium" className="h-11 rounded-xl border border-neutral-300 bg-white px-3 font-normal">
-                  <option>Low</option><option>Medium</option><option>High</option>
-                </select>
-              </label>
-              <label className="grid gap-1.5 text-sm font-semibold text-neutral-800">
                 Describe the issue
                 <textarea name="message" minLength={5} maxLength={5000} required rows={5} placeholder="Include relevant order ID, payment reference, what happened, and what you have tried." className="resize-y rounded-xl border border-neutral-300 px-3 py-2 font-normal" />
               </label>
+              <p className="text-xs leading-5 text-neutral-500">Priority is assigned automatically based on the issue type. Support can adjust it if needed.</p>
               <p className="text-xs leading-5 text-neutral-500">Please do not include your password, OTP, or full payment-card details.</p>
               <button disabled={creating} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-teal-700 px-4 text-sm font-bold text-white hover:bg-teal-800 disabled:opacity-60">
                 {creating ? <LoaderCircle className="size-4 animate-spin" /> : <Send className="size-4" />}
@@ -233,12 +244,20 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
               <div>
                 <h2 className="font-bold text-neutral-950">{isAdmin ? "All customer requests" : "Your requests"}</h2>
                 <p className="mt-1 text-sm text-neutral-500">
-                  {isAdmin ? "Manage replies, priorities, and resolution status." : "Select a request to review its full conversation."}
+                  {isAdmin
+                    ? "Priorities are assigned by issue type. Review the selected priority and adjust it if needed."
+                    : "Select a request to review its conversation. New replies appear automatically."}
                 </p>
               </div>
-              <button type="button" onClick={() => void loadTickets()} disabled={loading} aria-label="Refresh tickets" className="grid size-10 place-items-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50">
-                <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700">
+                  <span className="size-2 rounded-full bg-emerald-500" />
+                  Live
+                </span>
+                <button type="button" onClick={() => void loadTickets()} disabled={loading} aria-label="Refresh tickets" className="grid size-10 place-items-center rounded-xl border border-neutral-200 text-neutral-600 hover:bg-neutral-50 disabled:opacity-50">
+                  <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
+                </button>
+              </div>
             </div>
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               {isAdmin && (

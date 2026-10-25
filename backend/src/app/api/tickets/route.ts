@@ -10,7 +10,6 @@ const schema = z.object({
   subject: z.string().trim().min(3).max(160),
   message: z.string().trim().min(5).max(5000),
   category: z.enum(["account", "order", "payment", "technical", "other"]).default("other"),
-  priority: z.enum(["Low", "Medium", "High"]).default("Medium"),
 });
 
 const patchSchema = z.object({
@@ -30,6 +29,12 @@ export async function GET() {
   }
 }
 
+function priorityForCategory(category: z.infer<typeof schema>["category"]) {
+    if (category === "payment") return "High" as const;
+    if (category === "other") return "Low" as const;
+    return "Medium" as const;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const input = await parseBody(request, schema);
@@ -38,7 +43,7 @@ export async function POST(request: NextRequest) {
       user: auth.id,
       subject: input.subject,
       category: input.category,
-      priority: input.priority,
+      priority: priorityForCategory(input.category),
       messages: [{ sender: auth.id, body: input.message }],
     });
     await notifyInApp({
