@@ -409,7 +409,7 @@ export async function POST(request: NextRequest) {
 
   if (!callback?.data) return ok({ ignored: true });
 
-  if (!isTelegramAdmin(callback)) {
+  if (!isTelegramAdmin({ from: callback.from, chat: callback.message?.chat })) {
     await answerTelegramCallback(callback.id, "❌ Unauthorized Action", true);
     return ok({ unauthorized: true });
   }
