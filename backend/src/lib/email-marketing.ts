@@ -65,6 +65,7 @@ export function buildCampaignEmail(input: {
     name: string;
     category: string;
     platform: string;
+    country?: string;
     sellingRate: number;
     min: number;
     max: number;
@@ -96,14 +97,14 @@ export function buildCampaignEmail(input: {
   const accentColor = /^#[\da-fA-F]{6}$/.test(input.accentColor) ? input.accentColor : "#087e78";
   const services = input.services ?? [];
   const serviceText = services.length
-    ? `\n\nFeatured services:\n${services.map((service) => `${service.platform} · ${service.name} · Rs.${service.sellingRate.toFixed(2)} per 1,000`).join("\n")}`
+    ? `\n\nFeatured services:\n${services.map((service) => `${service.platform}${service.country ? ` · ${service.country}` : ""} · ${service.name} · Rs.${service.sellingRate.toFixed(2)} per 1,000`).join("\n")}`
     : "";
   const serviceCards = services.map((service) => `
     <tr>
       <td style="padding:16px 18px;border-bottom:1px solid #e8edf2">
         <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${accentColor}">${escapeHtml(service.platform)}</div>
         <div style="margin-top:5px;font-size:15px;font-weight:700;color:#243b53">${escapeHtml(service.name)}</div>
-        <div style="margin-top:4px;font-size:12px;color:#627d98">${escapeHtml(service.category)} · Quantity ${service.min.toLocaleString()}–${service.max.toLocaleString()}</div>
+        <div style="margin-top:4px;font-size:12px;color:#627d98">${escapeHtml(service.category)}${service.country ? ` · ${escapeHtml(service.country)}` : ""} · Quantity ${service.min.toLocaleString()}–${service.max.toLocaleString()}</div>
       </td>
       <td align="right" style="padding:16px 18px;border-bottom:1px solid #e8edf2;white-space:nowrap">
         <div style="font-size:15px;font-weight:700;color:#243b53">Rs.${service.sellingRate.toFixed(2)}</div>

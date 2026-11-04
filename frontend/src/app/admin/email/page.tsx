@@ -8,16 +8,25 @@ import { apiFetch, apiJson } from "@/lib/client-api";
 import { Search, Sparkles, X } from "lucide-react";
 
 type Template = { subject: string; body: string };
+type CampaignRecipient = { _id: string; name: string; email: string };
 type CampaignService = {
   serviceId: string;
   name: string;
   category: string;
   platform: string;
+  country?: string;
   sellingRate: number;
   type: string;
   min: number;
   max: number;
 };
+const SERVICE_COUNTRIES = [
+  "Worldwide", "India", "United States", "United Kingdom", "Canada", "Australia",
+  "Brazil", "Indonesia", "Japan", "South Korea", "Philippines", "Vietnam",
+  "Thailand", "Mexico", "Germany", "France", "Spain", "Italy", "Turkey",
+  "Saudi Arabia", "United Arab Emirates", "Nigeria", "South Africa",
+  "Bangladesh", "Pakistan",
+];
 type CampaignForm = {
   title: string;
   kind: Campaign["kind"];
@@ -25,6 +34,8 @@ type CampaignForm = {
   greeting: string;
   body: string;
   services: CampaignService[];
+  audienceMode: "all" | "selected";
+  selectedRecipients: CampaignRecipient[];
   includeUnsubscribed: boolean;
   sendMode: "now" | "scheduled";
   scheduledAt: string;
@@ -53,6 +64,8 @@ type Campaign = {
   sentCount: number;
   failedCount: number;
   includeUnsubscribed: boolean;
+  audienceMode: "all" | "selected";
+  recipientUserIds?: CampaignRecipient[];
   scheduledAt: string;
   lastError?: string;
 };
@@ -122,6 +135,9 @@ export default function EmailManagementPage() {
   const [serviceResults, setServiceResults] = useState<CampaignService[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
   const [serviceLoading, setServiceLoading] = useState(false);
+  const [recipientSearch, setRecipientSearch] = useState("");
+  const [recipientResults, setRecipientResults] = useState<CampaignRecipient[]>([]);
+  const [recipientLoading, setRecipientLoading] = useState(false);
   const [campaignForm, setCampaignForm] = useState<CampaignForm>({
     title: "",
     kind: "announcement" as Campaign["kind"],
@@ -129,6 +145,8 @@ export default function EmailManagementPage() {
     greeting: "Hello {{name}},",
     body: "",
     services: [],
+    audienceMode: "all",
+    selectedRecipients: [],
     includeUnsubscribed: false,
     sendMode: "now" as "now" | "scheduled",
     scheduledAt: localDateTimeValue(new Date()),
@@ -238,13 +256,15 @@ export default function EmailManagementPage() {
     if (!window.confirm("Confirm this email campaign? It will be sent to the selected audience at the chosen time.")) return;
     setSaving(true);
     try {
-      const { services, ...campaignPayload } = campaignForm;
+      const { services, selectedRecipients, ...campaignPayload } = campaignForm;
       const response = await apiFetch("/api/admin/email-campaigns", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...campaignPayload,
           serviceIds: services.map((service) => service.serviceId),
+          serviceCountries: services.map(({ serviceId, country }) => ({ serviceId, country: country ?? "" })),
+          recipientUserIds: selectedRecipients.map((recipient) => recipient._id),
           sendNow: campaignForm.sendMode === "now",
           scheduledAt: campaignForm.sendMode === "now"
             ? new Date().toISOString()
@@ -254,7 +274,7 @@ export default function EmailManagementPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to schedule campaign.");
       setMessage(campaignForm.sendMode === "now" ? "Campaign created. Starting delivery now…" : "Campaign confirmed and scheduled.");
-      setCampaignForm((current) => ({ ...current, title: "", subject: "", greeting: "Hello {{name}},", body: "", services: [] }));
+      setCampaignForm((current) => ({ ...current, title: "", subject: "", greeting: "Hello {{name}},", body: "", services: [], selectedRecipients: [] }));
       if (campaignForm.sendMode === "now") {
         let continueSending = true;
         let sent = 0;
@@ -293,7 +313,8 @@ export default function EmailManagementPage() {
     setServiceLoading(true);
     setError("");
     try {
-      const result = await apiJson(`/api/admin/email-campaign-services?limit=${count}`);
+      const exclude = campaignForm.services.map((service) => service.serviceId).join(",");
+      const result = await apiJson(`/api/admin/email-campaign-services?limit=${count}${exclude ? `&exclude=${encodeURIComponent(exclude)}` : ""}`);
       const services = (result.services ?? []) as CampaignService[];
       setCampaignForm((current) => ({ ...current, services }));
       setServiceResults([]);
@@ -304,8 +325,8 @@ export default function EmailManagementPage() {
       ].filter(Boolean);
       setMessage(
         services.length
-          ? `Loaded ${services.length} latest services${missingPlatforms.length ? `. No active ${missingPlatforms.join(" or ")} service was available to include` : ", including Instagram and YouTube"}.`
-          : "No active services are available to add.",
+          ? `Refreshed with ${services.length} different services${missingPlatforms.length ? `. No active ${missingPlatforms.join(" or ")} service was available to include` : ", including Instagram and YouTube"}.`
+          : "No different active services are available for this refresh.",
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load latest services.");
@@ -329,6 +350,29 @@ export default function EmailManagementPage() {
     } finally {
       setServiceLoading(false);
     }
+  }
+
+  async function searchCampaignRecipients() {
+    if (!recipientSearch.trim()) {
+      setError("Enter a user's name, email, or phone to search.");
+      return;
+    }
+    setRecipientLoading(true);
+    setError("");
+    try {
+      const result = await apiJson(`/api/admin/users?q=${encodeURIComponent(recipientSearch.trim())}`);
+      setRecipientResults((result.users ?? []) as CampaignRecipient[]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to search users.");
+    } finally {
+      setRecipientLoading(false);
+    }
+  }
+
+  function addCampaignRecipient(recipient: CampaignRecipient) {
+    setCampaignForm((current) => current.selectedRecipients.some((item) => item._id === recipient._id)
+      ? current
+      : { ...current, selectedRecipients: [...current.selectedRecipients, recipient] });
   }
 
   function addCampaignService(service: CampaignService) {
@@ -358,6 +402,8 @@ export default function EmailManagementPage() {
       greeting: campaign.greeting || "Hello {{name}},",
       body: campaign.body,
       services: campaign.services ?? [],
+      audienceMode: campaign.audienceMode ?? "all",
+      selectedRecipients: campaign.recipientUserIds ?? [],
       includeUnsubscribed: campaign.includeUnsubscribed,
       sendMode: "now",
       scheduledAt: localDateTimeValue(new Date()),
@@ -427,18 +473,72 @@ export default function EmailManagementPage() {
               <Field label="Personalized greeting" value={campaignForm.greeting} onChange={(value) => setCampaignForm({ ...campaignForm, greeting: value })} />
               <p className="-mt-2 text-xs text-neutral-500">Available placeholders: {"{{name}}, {{email}}, {{brandName}}"} — recipient name and email are read from their account.</p>
               <Field label="Email message (plain text)" multiline value={campaignForm.body} onChange={(value) => setCampaignForm({ ...campaignForm, body: value })} />
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5" aria-labelledby="campaign-audience-heading">
+                <h3 id="campaign-audience-heading" className="font-bold text-neutral-900">Recipients</h3>
+                <label className="mt-3 block max-w-md text-sm font-semibold text-neutral-800">
+                  Send to
+                  <select
+                    className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm"
+                    value={campaignForm.audienceMode}
+                    onChange={(event) => setCampaignForm({ ...campaignForm, audienceMode: event.target.value as "all" | "selected" })}
+                  >
+                    <option value="all">All eligible users</option>
+                    <option value="selected">Specific user(s) only</option>
+                  </select>
+                </label>
+                {campaignForm.audienceMode === "selected" && (
+                  <div className="mt-4">
+                    <p className="text-xs text-neutral-500">Selected users: {campaignForm.selectedRecipients.length}/500. Marketing opt-outs remain excluded unless you explicitly enable the opt-out override below.</p>
+                    {campaignForm.selectedRecipients.length > 0 && (
+                      <ul className="mt-3 flex flex-wrap gap-2">
+                        {campaignForm.selectedRecipients.map((recipient) => (
+                          <li key={recipient._id} className="flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 py-1 pl-3 pr-1 text-xs text-teal-900">
+                            <span>{recipient.name} · {recipient.email}</span>
+                            <button type="button" aria-label={`Remove ${recipient.email}`} onClick={() => setCampaignForm((current) => ({ ...current, selectedRecipients: current.selectedRecipients.filter((item) => item._id !== recipient._id) }))} className="grid size-6 place-items-center rounded-full hover:bg-teal-100"><X className="size-3.5" /></button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                      <input
+                        value={recipientSearch}
+                        onChange={(event) => setRecipientSearch(event.target.value)}
+                        onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchCampaignRecipients(); } }}
+                        placeholder="Search users by name, email, or phone"
+                        className="min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900"
+                      />
+                      <button type="button" disabled={recipientLoading} onClick={() => void searchCampaignRecipients()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                        <Search className="size-4" /> {recipientLoading ? "Searching…" : "Find users"}
+                      </button>
+                    </div>
+                    {recipientResults.length > 0 && (
+                      <ul className="mt-3 max-h-60 divide-y divide-neutral-100 overflow-y-auto rounded-xl border border-neutral-200">
+                        {recipientResults.map((recipient) => {
+                          const selected = campaignForm.selectedRecipients.some((item) => item._id === recipient._id);
+                          return (
+                            <li key={recipient._id} className="flex items-center justify-between gap-3 p-3">
+                              <div><p className="text-sm font-semibold text-neutral-900">{recipient.name}</p><p className="text-xs text-neutral-500">{recipient.email}</p></div>
+                              <button type="button" disabled={selected || campaignForm.selectedRecipients.length >= 500} onClick={() => addCampaignRecipient(recipient)} className="rounded-lg bg-teal-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">{selected ? "Added" : "Add"}</button>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </section>
               <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5" aria-labelledby="campaign-services-heading">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h3 id="campaign-services-heading" className="font-bold text-neutral-900">Featured services <span className="font-medium text-neutral-500">({campaignForm.services.length}/10)</span></h3>
-                    <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-500">Include selected services in a polished email section. Latest picks prioritize Instagram and YouTube when active services are available.</p>
+                    <p className="mt-1 max-w-2xl text-xs leading-5 text-neutral-500">Refresh to get a randomized set that excludes the currently displayed services. Assign a country label to each service when relevant.</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button type="button" disabled={serviceLoading} onClick={() => void loadLatestServices(5)} className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 px-3 py-2 text-xs font-bold text-teal-800 transition hover:bg-teal-50 disabled:opacity-50">
-                      <Sparkles className="size-3.5" /> Latest 5
+                      <Sparkles className="size-3.5" /> Refresh 5
                     </button>
                     <button type="button" disabled={serviceLoading} onClick={() => void loadLatestServices(10)} className="inline-flex items-center gap-1.5 rounded-lg border border-teal-200 px-3 py-2 text-xs font-bold text-teal-800 transition hover:bg-teal-50 disabled:opacity-50">
-                      <Sparkles className="size-3.5" /> Latest 10
+                      <Sparkles className="size-3.5" /> Refresh 10
                     </button>
                   </div>
                 </div>
@@ -447,10 +547,24 @@ export default function EmailManagementPage() {
                   <ul className="mt-4 grid gap-2 sm:grid-cols-2">
                     {campaignForm.services.map((service) => (
                       <li key={service.serviceId} className="flex min-w-0 items-start justify-between gap-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3">
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <span className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-teal-800">{service.platform}</span>
                           <p className="mt-1 truncate text-sm font-bold text-neutral-900">{service.name}</p>
                           <p className="mt-0.5 text-xs text-neutral-500">{service.category} · Rs.{Number(service.sellingRate).toFixed(2)} / 1k</p>
+                          <label className="mt-2 block text-xs font-semibold text-neutral-700">
+                            Related country
+                            <input
+                              list="campaign-service-countries"
+                              maxLength={80}
+                              className="mt-1 block w-full rounded-lg border border-neutral-300 bg-white px-2 py-1.5 text-xs"
+                              placeholder="Choose or type a country"
+                              value={service.country ?? ""}
+                              onChange={(event) => setCampaignForm((current) => ({
+                                ...current,
+                                services: current.services.map((item) => item.serviceId === service.serviceId ? { ...item, country: event.target.value } : item),
+                              }))}
+                            />
+                          </label>
                         </div>
                         <button type="button" onClick={() => removeCampaignService(service.serviceId)} aria-label={`Remove ${service.name}`} className="grid size-8 shrink-0 place-items-center rounded-lg text-neutral-500 transition hover:bg-rose-50 hover:text-rose-700">
                           <X className="size-4" />
@@ -461,6 +575,9 @@ export default function EmailManagementPage() {
                 ) : (
                   <p className="mt-4 rounded-xl border border-dashed border-neutral-300 px-4 py-5 text-center text-sm text-neutral-500">No featured services selected. Load the latest services or search the catalog to add them.</p>
                 )}
+                <datalist id="campaign-service-countries">
+                  {SERVICE_COUNTRIES.map((country) => <option key={country} value={country} />)}
+                </datalist>
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <input value={serviceSearch} onChange={(event) => setServiceSearch(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void searchCampaignServices(); } }} placeholder="Search any active service by name or category" className="min-w-0 flex-1 rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-900" />
@@ -505,7 +622,7 @@ export default function EmailManagementPage() {
                       <div key={service.serviceId} className="rounded-xl border border-neutral-200 bg-white p-3">
                         <span className="text-[10px] font-bold uppercase tracking-wide text-teal-800">{service.platform}</span>
                         <p className="mt-1 text-sm font-bold text-neutral-900">{service.name}</p>
-                        <p className="mt-1 text-xs text-neutral-500">{service.category} · Rs.{Number(service.sellingRate).toFixed(2)} / 1k</p>
+                        <p className="mt-1 text-xs text-neutral-500">{service.category}{service.country ? ` · ${service.country}` : ""} · Rs.{Number(service.sellingRate).toFixed(2)} / 1k</p>
                       </div>
                     ))}
                   </div>

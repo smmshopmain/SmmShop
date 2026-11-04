@@ -12,6 +12,13 @@ const schema = z.object({
   greeting: z.string().trim().max(200).default("Hello {{name}},"),
   body: z.string().trim().min(1).max(10000),
   serviceIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(10).default([]),
+  serviceCountries: z.array(z.object({
+    serviceId: z.string().regex(/^[a-f\d]{24}$/i),
+    country: z.string().trim().max(80),
+  })).max(10).default([]),
+  audienceMode: z.enum(["all", "selected"]).default("all"),
+  recipientUserIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(500).default([])
+    .refine((ids) => new Set(ids).size === ids.length, "Selected recipients must be unique."),
   includeUnsubscribed: z.boolean(),
   sendNow: z.boolean().default(false),
   scheduledAt: z.string().datetime().or(z.date()),
@@ -24,7 +31,8 @@ export async function GET() {
     const campaigns = await EmailCampaign.find()
       .sort({ createdAt: -1 })
       .limit(50)
-      .select("title kind subject greeting body services includeUnsubscribed scheduledAt status recipientCount sentCount failedCount lastError createdAt")
+      .select("title kind subject greeting body services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError createdAt")
+      .populate({ path: "recipientUserIds", select: "name email" })
       .lean();
     return ok({ campaigns });
   } catch (error) {
@@ -37,7 +45,7 @@ export async function POST(request: NextRequest) {
     const { dbUser } = await requireAdmin();
     await dbConnect();
     const input = await parseBody(request, schema);
-    const { sendNow, serviceIds, ...campaignInput } = input;
+    const { sendNow, serviceIds, serviceCountries, recipientUserIds, audienceMode, ...campaignInput } = input;
     const scheduledAt = sendNow ? new Date() : new Date(input.scheduledAt);
     if (!Number.isFinite(scheduledAt.getTime())) return fail("Choose a valid sending date and time.");
     if (!sendNow && scheduledAt.getTime() <= Date.now()) {
@@ -45,11 +53,18 @@ export async function POST(request: NextRequest) {
     }
 
     const recipientCutoffAt = new Date();
-    const recipients = {
-      createdAt: { $lte: recipientCutoffAt },
+    if (audienceMode === "selected" && recipientUserIds.length === 0) {
+      return fail("Select at least one recipient for a specific-user campaign.");
+    }
+
+    const recipientFilter = {
       ...(input.includeUnsubscribed ? {} : { marketingUnsubscribed: { $ne: true } }),
+      ...(audienceMode === "selected"
+        ? { _id: { $in: recipientUserIds } }
+        : { createdAt: { $lte: recipientCutoffAt } }),
     };
-    const recipientCount = await User.countDocuments(recipients);
+    const recipientCount = await User.countDocuments(recipientFilter);
+    if (recipientCount === 0) return fail("No eligible recipients found for this campaign.");
     const selectedServices = serviceIds.length
       ? await Service.find({ _id: { $in: serviceIds }, active: true })
           .select("name category sellingRate type min max")
@@ -59,6 +74,10 @@ export async function POST(request: NextRequest) {
       return fail("One or more selected services are no longer active. Refresh the service list and try again.");
     }
     const serviceById = new Map(selectedServices.map((service) => [String(service._id), service]));
+    const countryById = new Map(serviceCountries.map(({ serviceId, country }) => [serviceId, country]));
+    if (serviceCountries.some(({ serviceId }) => !serviceIds.includes(serviceId))) {
+      return fail("Country selection references a service that is not included in this campaign.");
+    }
     const services = serviceIds.map((serviceId) => {
       const service = serviceById.get(serviceId);
       if (!service) throw new Error("A selected service could not be loaded.");
@@ -71,6 +90,7 @@ export async function POST(request: NextRequest) {
         name: service.name,
         category: service.category,
         platform,
+        country: countryById.get(serviceId) ?? "",
         sellingRate: service.sellingRate,
         type: service.type ?? "",
         min: service.min ?? 1,
@@ -80,6 +100,8 @@ export async function POST(request: NextRequest) {
     const campaign = await EmailCampaign.create({
       ...campaignInput,
       services,
+      audienceMode,
+      recipientUserIds: audienceMode === "selected" ? recipientUserIds : [],
       scheduledAt,
       recipientCutoffAt,
       recipientCount,

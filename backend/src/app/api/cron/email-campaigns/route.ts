@@ -29,10 +29,21 @@ export async function POST(request: NextRequest) {
 
     const settings = await getSettings();
     const query: Record<string, unknown> = {
-      createdAt: { $lte: campaign.recipientCutoffAt },
       ...(campaign.includeUnsubscribed ? {} : { marketingUnsubscribed: { $ne: true } }),
+      ...(campaign.audienceMode === "selected"
+        ? { _id: { $in: campaign.recipientUserIds ?? [] } }
+        : { createdAt: { $lte: campaign.recipientCutoffAt } }),
     };
-    if (campaign.cursor) query._id = { $gt: campaign.cursor };
+    if (campaign.cursor) {
+      if (campaign.audienceMode === "selected") {
+        query._id = {
+          $in: campaign.recipientUserIds ?? [],
+          $gt: campaign.cursor,
+        };
+      } else {
+        query._id = { $gt: campaign.cursor };
+      }
+    }
     const recipients = await User.find(query)
       .sort({ _id: 1 })
       .limit(CAMPAIGN_BATCH_SIZE)
@@ -103,7 +114,9 @@ export async function POST(request: NextRequest) {
     const hasMore = lastRecipient
       ? await User.exists({
           ...query,
-          _id: { $gt: lastRecipient._id },
+          _id: campaign.audienceMode === "selected"
+            ? { $in: campaign.recipientUserIds ?? [], $gt: lastRecipient._id }
+            : { $gt: lastRecipient._id },
         })
       : false;
 
