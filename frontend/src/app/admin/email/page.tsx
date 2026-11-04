@@ -18,6 +18,17 @@ type CampaignService = {
   min: number;
   max: number;
 };
+type CampaignForm = {
+  title: string;
+  kind: Campaign["kind"];
+  subject: string;
+  greeting: string;
+  body: string;
+  services: CampaignService[];
+  includeUnsubscribed: boolean;
+  sendMode: "now" | "scheduled";
+  scheduledAt: string;
+};
 type EmailSettings = {
   brandName: string;
   primaryColor: string;
@@ -111,7 +122,7 @@ export default function EmailManagementPage() {
   const [serviceResults, setServiceResults] = useState<CampaignService[]>([]);
   const [serviceSearch, setServiceSearch] = useState("");
   const [serviceLoading, setServiceLoading] = useState(false);
-  const [campaignForm, setCampaignForm] = useState({
+  const [campaignForm, setCampaignForm] = useState<CampaignForm>({
     title: "",
     kind: "announcement" as Campaign["kind"],
     subject: "",
