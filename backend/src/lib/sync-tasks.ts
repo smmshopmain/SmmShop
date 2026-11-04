@@ -65,8 +65,9 @@ async function upsertSyncStatus(
   }>,
 ): Promise<Awaited<ReturnType<typeof SyncStatus.findOneAndUpdate>> | null> {
   const update: Record<string, unknown> = { ...patch };
-  if (patch.status === "running" && patch.startedAt === undefined) {
+  if (patch.status === "running" && patch.processed === 0 && patch.startedAt === undefined) {
     update.startedAt = new Date();
+    update.finishedAt = null;
   }
   if (patch.status === "completed" && patch.finishedAt === undefined) {
     update.finishedAt = new Date();
@@ -139,103 +140,108 @@ async function fetchProviderServices(provider: typeof Provider.prototype) {
   return { services, rawServices };
 }
 
-async function upsertServiceFromProvider(
-  provider: typeof Provider.prototype,
-  settings: Awaited<ReturnType<typeof getSettings>>,
-  item: ProviderService,
-) {
-  const providerServiceId = cleanString(item.service, "");
-  if (!providerServiceId) return null;
-
-  const categoryName = cleanString(item.category, "Uncategorized");
-  const providerRate = toNumber(item.rate, 0);
-  const min = toNumber(item.min, 1);
-  const max = toNumber(item.max, 100000);
-
-  const category = await Category.findOneAndUpdate(
-    { name: categoryName },
-    {
-      $set: {
-        name: categoryName,
-        active: true,
-        lastSyncedAt: new Date(),
-      },
-      $addToSet: { providers: provider._id },
-    },
-    { upsert: true, returnDocument: "after" },
-  );
-
-  const existing = await Service.findOne({ provider: provider._id, providerServiceId }).select("marginPercent");
-  const serviceMargins: Record<string, number> = {
-    ...(settings.pricing.serviceMargins as Record<string, number>),
-  };
-  if (existing?.marginPercent !== undefined && existing?.marginPercent !== null) {
-    serviceMargins[providerServiceId] = existing.marginPercent;
-  }
-
-  const sellingRate = calculateSellingRate(
-    providerRate,
-    categoryName,
-    providerServiceId,
-    existing?.marginPercent !== undefined && existing?.marginPercent !== null
-      ? {
-          ...settings.pricing,
-          serviceMargins,
-        }
-      : settings.pricing,
-  );
-
-  await Service.findOneAndUpdate(
-    { provider: provider._id, providerServiceId },
-    {
-      provider: provider._id,
-      providerServiceId,
-      name: cleanString(item.name, `Service ${providerServiceId}`),
-      categoryRef: category._id,
-      category: categoryName,
-      type: cleanString(item.type, ""),
-      providerRate,
-      sellingRate,
-      min,
-      max,
-      refill: parseProviderBoolean(item.refill),
-      cancel: parseProviderBoolean(item.cancel),
-      active: true,
-      lastSyncedAt: new Date(),
-      providerData: item,
-    },
-    { upsert: true, returnDocument: "after" },
-  );
-
-  return { providerServiceId, imported: !existing, updated: Boolean(existing) };
-}
-
 async function syncProvider(
   provider: typeof Provider.prototype,
   settings: Awaited<ReturnType<typeof getSettings>>,
+  onProgress?: (processed: number, total: number) => Promise<void>,
 ) {
   const { services, rawServices } = await fetchProviderServices(provider);
-
-  const providerServiceIds: string[] = [];
-  let imported = 0;
-  let updated = 0;
-
+  const uniqueServices = new Map<string, ProviderService>();
   for (const item of services) {
-    const result = await upsertServiceFromProvider(provider, settings, item);
-    if (!result) continue;
-    providerServiceIds.push(result.providerServiceId);
-    imported += result.imported ? 1 : 0;
-    updated += result.updated ? 1 : 0;
+    const id = cleanString(item.service, "");
+    if (id) uniqueServices.set(id, item);
+  }
+  const providerServiceIds = [...uniqueServices.keys()];
+  if (providerServiceIds.length === 0) {
+    throw new Error(`${provider.name} returned no services with valid identifiers`);
+  }
+
+  const categoryNames = [...new Set([...uniqueServices.values()].map((item) => cleanString(item.category, "Uncategorized")))];
+  const syncedAt = new Date();
+  await Category.bulkWrite(categoryNames.map((name) => ({
+    updateOne: {
+      filter: { name },
+      update: {
+        $set: { name, active: true, lastSyncedAt: syncedAt },
+        $addToSet: { providers: provider._id },
+      },
+      upsert: true,
+    },
+  })));
+  const categories = await Category.find({ name: { $in: categoryNames } }).select("_id name").lean();
+  const categoryByName = new Map(categories.map((category) => [category.name, category._id]));
+  const existingServices = await Service.find({
+    provider: provider._id,
+    providerServiceId: { $in: providerServiceIds },
+  }).select("providerServiceId marginPercent").lean();
+  const existingById = new Map(existingServices.map((service) => [service.providerServiceId, service]));
+  const defaultMargins = settings.pricing.serviceMargins as Record<string, number>;
+  const operations = [...uniqueServices.entries()].map(([providerServiceId, item]) => {
+    const categoryName = cleanString(item.category, "Uncategorized");
+    const providerRate = toNumber(item.rate, 0);
+    const min = toNumber(item.min, 1);
+    const max = toNumber(item.max, 100000);
+    const existing = existingById.get(providerServiceId);
+    const serviceMargins = { ...defaultMargins };
+    if (existing?.marginPercent !== undefined && existing.marginPercent !== null) {
+      serviceMargins[providerServiceId] = existing.marginPercent;
+    }
+
+    return {
+      updateOne: {
+        filter: { provider: provider._id, providerServiceId },
+        update: {
+          $set: {
+            provider: provider._id,
+            providerServiceId,
+            name: cleanString(item.name, `Service ${providerServiceId}`),
+            categoryRef: categoryByName.get(categoryName),
+            category: categoryName,
+            type: cleanString(item.type, ""),
+            providerRate,
+            sellingRate: calculateSellingRate(
+              providerRate,
+              categoryName,
+              providerServiceId,
+              existing?.marginPercent !== undefined && existing?.marginPercent !== null
+                ? { ...settings.pricing, serviceMargins }
+                : settings.pricing,
+            ),
+            min,
+            max,
+            refill: parseProviderBoolean(item.refill),
+            cancel: parseProviderBoolean(item.cancel),
+            active: true,
+            lastSyncedAt: syncedAt,
+            providerData: item,
+          },
+        },
+        upsert: true,
+      },
+    };
+  });
+  let processed = 0;
+  const batchSize = 250;
+  for (let index = 0; index < operations.length; index += batchSize) {
+    const batch = operations.slice(index, index + batchSize);
+    const result = await Service.bulkWrite(batch);
+    processed += batch.length;
+    await onProgress?.(processed, operations.length);
+    console.info("[service-sync:diagnostic] service batch upsert complete", {
+      providerName: provider.name,
+      processed,
+      total: operations.length,
+      inserted: result.upsertedCount,
+      modified: result.modifiedCount,
+    });
   }
 
   const deactivation = await Service.updateMany(
-    {
-      provider: provider._id,
-      providerServiceId: { $nin: providerServiceIds },
-      active: true,
-    },
-    { active: false, lastSyncedAt: new Date() },
+    { provider: provider._id, providerServiceId: { $nin: providerServiceIds }, active: true },
+    { active: false, lastSyncedAt: syncedAt },
   );
+  const imported = providerServiceIds.filter((id) => !existingById.has(id)).length;
+  const updated = providerServiceIds.length - imported;
 
   provider.lastServiceSyncAt = new Date();
   provider.serviceCache = {
@@ -279,14 +285,23 @@ async function syncProvider(
 }
 
 async function updateCategoryMetrics() {
-  const activeCategoryNames = await Service.distinct("category", { active: true });
-  for (const name of activeCategoryNames) {
-    const serviceCount = await Service.countDocuments({ category: name, active: true });
-    await Category.updateOne({ name }, { serviceCount, active: true, lastSyncedAt: new Date() });
+  const counts = await Service.aggregate<{ _id: string; serviceCount: number }>([
+    { $match: { active: true } },
+    { $group: { _id: "$category", serviceCount: { $sum: 1 } } },
+  ]);
+  const activeCategoryNames = counts.map(({ _id }) => _id);
+  const syncedAt = new Date();
+  if (counts.length) {
+    await Category.bulkWrite(counts.map(({ _id, serviceCount }) => ({
+      updateOne: {
+        filter: { name: _id },
+        update: { $set: { serviceCount, active: true, lastSyncedAt: syncedAt } },
+      },
+    })));
   }
   await Category.updateMany(
     { name: { $nin: activeCategoryNames }, active: true },
-    { active: false, serviceCount: 0, lastSyncedAt: new Date() },
+    { active: false, serviceCount: 0, lastSyncedAt: syncedAt },
   );
   return activeCategoryNames.length;
 }
@@ -343,9 +358,9 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
       if (!dryRun) {
         await upsertSyncStatus(taskType, {
           status: "running",
-          processed: providerProgress,
-          total: totalProviders,
-          message: `${title} ${provider.name} (${providerProgress}/${totalProviders})`,
+          processed: 0,
+          total: 0,
+          message: `${title} starting ${provider.name} (${providerProgress}/${totalProviders})`,
           details: { providerName: provider.name, providerIndex: providerProgress },
         });
       }
@@ -365,7 +380,22 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
             serviceCount: services.length,
           };
         } else {
-          providerResult = await syncProvider(provider, settings);
+          await upsertSyncStatus(taskType, {
+            status: "running",
+            processed: 0,
+            total: 0,
+            message: `${title} fetching ${provider.name} catalog`,
+            details: { providerName: provider.name, providerIndex: providerProgress },
+          });
+          providerResult = await syncProvider(provider, settings, async (processed, total) => {
+            await upsertSyncStatus(taskType, {
+              status: "running",
+              processed,
+              total,
+              message: `${title} ${provider.name}: ${processed}/${total} services`,
+              details: { providerName: provider.name, providerIndex: providerProgress, serviceCount: total },
+            });
+          });
         }
         providerResults.push(providerResult);
       } catch (error) {
@@ -401,14 +431,25 @@ async function runProviderSyncTask(taskType: TaskType, title: string) {
 
     const categoriesSynced = await updateCategoryMetrics();
 
+    const providerErrors = providerResults.filter((item) => item.error);
     await upsertSyncStatus(taskType, {
-      status: "completed",
-      message: `${title} completed. Imported ${imported}, updated ${updated}, deactivated ${deactivated}`,
+      status: providerErrors.length ? "failed" : "completed",
+      message: providerErrors.length
+        ? `${title} finished with ${providerErrors.length} provider error${providerErrors.length === 1 ? "" : "s"}`
+        : `${title} completed. Imported ${imported}, updated ${updated}, deactivated ${deactivated}`,
       processed: totalProviders,
       total: totalProviders,
       finishedAt: new Date(),
       details: { imported, updated, deactivated, categoriesSynced, providerResults },
     });
+
+    if (providerErrors.length) {
+      throw new Error(
+        `${title} failed for ${providerErrors.length} provider${providerErrors.length === 1 ? "" : "s"}: ${
+          providerErrors.map((item) => `${item.providerName}: ${item.error}`).join("; ")
+        }`,
+      );
+    }
 
     return { imported, updated, deactivated, categoriesSynced, providerResults };
   } catch (error) {
@@ -430,8 +471,7 @@ export async function priceSyncTask() {
   try {
     await dbConnect();
     const settings = await getSettings();
-    const services = await Service.find().limit(5000);
-    const total = services.length;
+    const total = await Service.countDocuments();
 
     await upsertSyncStatus("price_sync", {
       status: "running",
@@ -442,8 +482,10 @@ export async function priceSyncTask() {
     });
 
     let updated = 0;
-    const step = Math.max(1, Math.floor(total / 40));
-    const batchSize = Number(process.env.PRICE_SYNC_BATCH_SIZE ?? 250);
+    const configuredBatchSize = Number(process.env.PRICE_SYNC_BATCH_SIZE ?? 250);
+    const batchSize = Number.isInteger(configuredBatchSize) && configuredBatchSize > 0
+      ? Math.min(configuredBatchSize, 1000)
+      : 250;
     const operations: Array<{
       updateOne: {
         filter: { _id: unknown };
@@ -457,7 +499,11 @@ export async function priceSyncTask() {
       operations.length = 0;
     }
 
-    for (const [index, service] of services.entries()) {
+    const cursor = Service.find()
+      .select("_id providerRate category providerServiceId marginPercent")
+      .lean()
+      .cursor({ batchSize });
+    for await (const service of cursor) {
       const serviceMargins: Record<string, number> = {
         ...(settings.pricing.serviceMargins as Record<string, number>),
       };
@@ -486,20 +532,24 @@ export async function priceSyncTask() {
 
       if (operations.length >= batchSize) {
         await flushBatch();
-      }
-
-      if (index % step === 0 || index === total - 1) {
-        await flushBatch();
         await upsertSyncStatus("price_sync", {
           status: "running",
-          processed: index + 1,
+          processed: updated,
           total,
-          message: `Recalculating price ${index + 1}/${total}`,
+          message: `Recalculating prices ${updated}/${total} services`,
         });
       }
     }
 
     await flushBatch();
+    if (updated % batchSize !== 0) {
+      await upsertSyncStatus("price_sync", {
+        status: "running",
+        processed: updated,
+        total,
+        message: `Recalculating prices ${updated}/${total} services`,
+      });
+    }
 
     await logProviderEvent({
       scope: "price_sync",
@@ -526,8 +576,20 @@ export async function priceSyncTask() {
 }
 
 export async function runAutoSync() {
-  const importResult = await serviceImportTask();
-  const syncResult = await serviceSyncTask();
-  const priceResult = await priceSyncTask();
-  return { importResult, syncResult, priceResult };
+  const errors: string[] = [];
+  async function runStep<T>(label: string, task: () => Promise<T>) {
+    try {
+      return await task();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : `${label} failed`;
+      errors.push(`${label}: ${message}`);
+      console.error(`Automatic catalog ${label} failed.`, error);
+      return null;
+    }
+  }
+
+  const importResult = await runStep("service import", serviceImportTask);
+  const syncResult = await runStep("service sync", serviceSyncTask);
+  const priceResult = await runStep("price recalculation", priceSyncTask);
+  return { importResult, syncResult, priceResult, errors };
 }

@@ -100,9 +100,8 @@ export async function providerRequest<T>(
         signal: controller.signal,
       });
 
-      clearTimeout(timer);
-
       if (!response.ok) {
+        clearTimeout(timer);
         const message = `${provider.name} responded with ${response.status}`;
         if (attempt >= maxAttempts || response.status < 500) {
           throw new Error(message);
@@ -113,6 +112,7 @@ export async function providerRequest<T>(
       }
 
       const text = await response.text();
+      clearTimeout(timer);
 
       await logProviderEvent({
         provider,

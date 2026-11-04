@@ -70,7 +70,7 @@ For local password-reset OTP email, set `EMAIL_WORKER_URL=http://localhost:3000/
 ## Frontend and Backend Deployment
 
 - Frontend: deploy the next.js application to Vercel.
-- Backend: deploy the API routes and cron jobs to Render.
+- Backend: deploy the API routes to Render. GitHub Actions runs the scheduled catalog refresh and email campaign jobs.
 - The frontend uses `NEXT_PUBLIC_API_URL` for all backend requests.
 - The backend allows CORS for configured Vercel domains via `FRONTEND_URL` and `ALLOWED_ORIGINS`.
 - Configure `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and optionally `ADMIN_NAME` only in the backend environment. Do not add admin credentials to Vercel/frontend variables.
@@ -154,13 +154,15 @@ The workflow sends an authenticated request every 5 minutes; the backend endpoin
 
 ### Nightly Catalog Refresh
 
-The Render blueprint includes `smm-nightly-catalog-refresh`, a cron service that calls:
+The **Nightly catalog refresh** GitHub Actions workflow imports provider services, syncs the catalog, and recalculates every service price sequentially. It runs daily at midnight India Standard Time (`30 18 * * *` UTC) and can also be started manually from the Actions tab. It waits for each task's persisted progress and fails the workflow if a task fails or stops reporting progress.
+
+Set the repository Actions variable `BACKEND_URL` to the Render backend origin and the Actions secret `CRON_SECRET` to the same value configured on the backend. The workflow calls:
 
 ```text
 /api/cron/auto-sync
 ```
 
-It runs service import first, then recalculates prices so the catalog shows updated rates. Render evaluates cron schedules in UTC, so the blueprint uses `30 18 * * *`, which runs at 12:00 AM IST.
+The workflow polls `/api/admin/sync-status` using the same cron secret. GitHub scheduled runs can be delayed during high load; use **Run workflow** to start a refresh immediately when needed.
 
 ## Useful Commands
 

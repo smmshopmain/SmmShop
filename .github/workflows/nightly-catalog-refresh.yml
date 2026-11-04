@@ -1,0 +1,90 @@
+name: Nightly catalog refresh
+
+on:
+  schedule:
+    - cron: "30 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-catalog-refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh-catalog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Import, sync, and recalculate catalog
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "$BACKEND_URL" ]]; then
+            echo "::error::Set the BACKEND_URL Actions variable to the deployed backend URL."
+            exit 1
+          fi
+          if [[ -z "$CRON_SECRET" ]]; then
+            echo "::error::Set the CRON_SECRET Actions secret to match the backend."
+            exit 1
+          fi
+
+          backend_url="${BACKEND_URL%/}"
+          started_epoch=$(( $(date -u +%s) - 2 ))
+          response=$(curl --fail --silent --show-error --connect-timeout 20 --max-time 60 \
+            --header "x-cron-secret: $CRON_SECRET" \
+            "$backend_url/api/cron/auto-sync")
+          echo "Catalog refresh trigger response: $response"
+
+          failures=0
+          for task in service_import service_sync price_sync; do
+            echo "Waiting for $task to complete..."
+            task_complete=false
+
+            for attempt in $(seq 1 120); do
+              statuses=$(curl --fail --silent --show-error --connect-timeout 20 --max-time 60 \
+                --header "x-cron-secret: $CRON_SECRET" \
+                "$backend_url/api/admin/sync-status")
+              task_row=$(jq -r --arg task "$task" \
+                '.data.statuses[]? | select(.taskType == $task) | [.status, .updatedAt, (.message // "")] | @tsv' \
+                <<< "$statuses" | head -n 1)
+
+              if [[ -z "$task_row" ]]; then
+                sleep 30
+                continue
+              fi
+
+              IFS=$'\t' read -r status updated_at message <<< "$task_row"
+              updated_epoch=$(date -u -d "$updated_at" +%s)
+              if (( updated_epoch < started_epoch )); then
+                sleep 30
+                continue
+              fi
+
+              echo "$task status: $status — $message"
+              if [[ "$status" == "completed" ]]; then
+                task_complete=true
+                break
+              fi
+              if [[ "$status" == "failed" ]]; then
+                echo "::error::$task failed: $message"
+                failures=$((failures + 1))
+                task_complete=true
+                break
+              fi
+
+              sleep 30
+            done
+
+            if [[ "$task_complete" != "true" ]]; then
+              echo "::error::Timed out waiting for $task progress."
+              failures=$((failures + 1))
+            fi
+          done
+
+          if (( failures > 0 )); then
+            echo "::error::$failures catalog refresh task(s) failed or timed out."
+            exit 1
+          fi

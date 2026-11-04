@@ -28,18 +28,23 @@ export function ActionButton({
     if (confirmMessage && !window.confirm(confirmMessage)) return;
     setLoading(true);
     setMessage("");
-    const response = await apiFetch(endpoint, {
-      method,
-      headers: body ? { "content-type": "application/json" } : undefined,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    const result = await response.json().catch(() => ({}));
-    setLoading(false);
-    const errors = Array.isArray(result.errors) ? result.errors : undefined;
-    const successMessage = result.message || "Done";
-    const errorMessage = errors?.length ? errors.join("; ") : result.message;
-    setMessage(response.ok ? successMessage : errorMessage ?? "Failed");
-    if (response.ok && !errors?.length) window.location.reload();
+    try {
+      const response = await apiFetch(endpoint, {
+        method,
+        headers: body ? { "content-type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const result = await response.json().catch(() => ({}));
+      const errors = Array.isArray(result.errors) ? result.errors : undefined;
+      const successMessage = result.message || "Done";
+      const errorMessage = errors?.length ? errors.join("; ") : result.message;
+      setMessage(response.ok ? successMessage : errorMessage ?? "Failed");
+      if (response.ok && !errors?.length) window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to start this task.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -64,6 +69,7 @@ export function SyncStatusPanel() {
     taskType: string;
     status: string;
     message?: string;
+    details?: { serviceCount?: number };
     total?: number;
     processed?: number;
     startedAt?: string;
@@ -126,7 +132,7 @@ export function SyncStatusPanel() {
   function formatTimeLabel(status: string) {
     if (status === "completed") return "Last refresh";
     if (status === "failed") return "Last attempt";
-    if (status === "running") return "Started";
+    if (status === "running") return "Last progress";
     return "Last update";
   }
 
@@ -141,7 +147,9 @@ export function SyncStatusPanel() {
           const total = status.total ?? 0;
           const processed = status.processed ?? 0;
           const percent = total > 0 ? Math.min(100, Math.round((processed / total) * 100)) : 0;
-          const displayTime = status.finishedAt ?? status.updatedAt ?? status.startedAt;
+          const displayTime = status.status === "running"
+            ? status.updatedAt ?? status.startedAt
+            : status.finishedAt ?? status.updatedAt ?? status.startedAt;
           return (
             <div key={status.taskType} className="rounded-md border border-neutral-200 bg-neutral-50 p-3">
               <div className="flex items-center justify-between gap-4 text-sm font-medium text-neutral-900">
