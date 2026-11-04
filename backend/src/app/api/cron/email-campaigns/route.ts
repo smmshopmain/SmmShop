@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     const recipients = await User.find(query)
       .sort({ _id: 1 })
       .limit(CAMPAIGN_BATCH_SIZE)
-      .select("_id email")
+      .select("_id name email")
       .lean();
 
     let sent = 0;
@@ -54,7 +54,11 @@ export async function POST(request: NextRequest) {
           try {
             const email = buildCampaignEmail({
               subject: campaign.subject,
+              greeting: campaign.greeting,
               body: campaign.body,
+              recipientName: recipient.name,
+              recipientEmail: recipient.email,
+              services: campaign.services ?? [],
               brandName: settings.email.brandName,
               primaryColor: settings.email.primaryColor,
               accentColor: settings.email.accentColor,
