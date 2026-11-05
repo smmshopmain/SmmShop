@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { apiFetch, backendAssetUrl } from "@/lib/client-api";
 import { ASSIGNABLE_USER_ROLES, AssignableUserRole, roleLabel } from "@/lib/roles";
@@ -502,7 +502,27 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
   const [bulkMargin, setBulkMargin] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const allSelected = services.length > 0 && selectedIds.length === services.length;
+  const [minimumMargin, setMinimumMargin] = useState("");
+  const [maximumMargin, setMaximumMargin] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"all" | "enabled" | "disabled">("all");
+  const minimumMarginValue = minimumMargin === "" ? null : Number(minimumMargin);
+  const maximumMarginValue = maximumMargin === "" ? null : Number(maximumMargin);
+  const filteredServices = useMemo(() => services.filter((service) => {
+    if (activeFilter === "enabled" && !service.active) return false;
+    if (activeFilter === "disabled" && service.active) return false;
+    if (minimumMarginValue !== null || maximumMarginValue !== null) {
+      if (service.marginPercent === undefined) return false;
+      if (minimumMarginValue !== null && service.marginPercent < minimumMarginValue) return false;
+      if (maximumMarginValue !== null && service.marginPercent > maximumMarginValue) return false;
+    }
+    return true;
+  }), [services, activeFilter, minimumMarginValue, maximumMarginValue]);
+  const filteredServiceIds = useMemo(
+    () => new Set(filteredServices.map((service) => service._id)),
+    [filteredServices],
+  );
+  const visibleSelectedIds = selectedIds.filter((id) => filteredServiceIds.has(id));
+  const allSelected = filteredServices.length > 0 && visibleSelectedIds.length === filteredServices.length;
 
   function toggleService(serviceId: string) {
     setSelectedIds((current) =>
@@ -513,12 +533,16 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
   }
 
   function toggleAll() {
-    setSelectedIds(allSelected ? [] : services.map((service) => service._id));
+    setSelectedIds((current) => {
+      const visibleIds = new Set(filteredServices.map((service) => service._id));
+      const withoutVisible = current.filter((id) => !visibleIds.has(id));
+      return allSelected ? withoutVisible : [...withoutVisible, ...visibleIds];
+    });
   }
 
   async function applyBulkMargin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (selectedIds.length === 0) {
+    if (visibleSelectedIds.length === 0) {
       setMessage("Select at least one service.");
       return;
     }
@@ -529,13 +553,13 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        ids: selectedIds,
+        ids: visibleSelectedIds,
         marginPercent: Number(bulkMargin),
       }),
     });
     const result = await response.json().catch(() => ({}));
     setLoading(false);
-    setMessage(response.ok ? `Updated ${result.data?.updated ?? selectedIds.length} services.` : result.message ?? "Unable to update services.");
+    setMessage(response.ok ? `Updated ${result.data?.updated ?? visibleSelectedIds.length} services.` : result.message ?? "Unable to update services.");
     if (response.ok) window.location.reload();
   }
 
@@ -543,6 +567,71 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
     <section className="rounded-md border border-neutral-200 bg-white">
       {services.length > 0 && (
         <div className="border-b border-neutral-200 bg-neutral-50 p-4">
+          <div className="mb-4 flex flex-wrap items-end gap-3 border-b border-neutral-200 pb-4">
+            <label className="grid gap-1 text-xs font-medium">
+              Minimum margin %
+              <input
+                type="number"
+                min={0}
+                max={500}
+                step="0.01"
+                value={minimumMargin}
+                onChange={(event) => {
+                  setMinimumMargin(event.target.value);
+                  setSelectedIds([]);
+                }}
+                className="w-36 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-medium">
+              Maximum margin %
+              <input
+                type="number"
+                min={0}
+                max={500}
+                step="0.01"
+                value={maximumMargin}
+                onChange={(event) => {
+                  setMaximumMargin(event.target.value);
+                  setSelectedIds([]);
+                }}
+                className="w-36 rounded-md border border-neutral-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="grid gap-1 text-xs font-medium">
+              Service status
+              <select
+                value={activeFilter}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (value === "all" || value === "enabled" || value === "disabled") {
+                    setActiveFilter(value);
+                    setSelectedIds([]);
+                  }
+                }}
+                className="min-w-36 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+              >
+                <option value="all">All services</option>
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                setMinimumMargin("");
+                setMaximumMargin("");
+                setActiveFilter("all");
+                setSelectedIds([]);
+              }}
+              className="rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm font-medium"
+            >
+              Clear filters
+            </button>
+            <span className="pb-2 text-xs text-neutral-500">
+              Showing {filteredServices.length} of {services.length} services
+            </span>
+          </div>
           <form onSubmit={applyBulkMargin} className="flex flex-wrap items-end gap-3 text-sm">
             <label className="flex min-h-10 items-center gap-2 font-medium">
               <input type="checkbox" checked={allSelected} onChange={toggleAll} className="size-4 rounded border-neutral-300" />
@@ -562,16 +651,16 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
               />
             </label>
             <button
-              disabled={loading || selectedIds.length === 0}
+              disabled={loading || visibleSelectedIds.length === 0}
               className="rounded-md bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {loading ? "Applying..." : `Apply to selected (${selectedIds.length})`}
+              {loading ? "Applying..." : `Apply to selected (${visibleSelectedIds.length})`}
             </button>
             {message && <span className="text-xs text-neutral-600">{message}</span>}
           </form>
         </div>
       )}
-      {services.map((service) => (
+      {filteredServices.map((service) => (
         <div key={service._id} className="grid gap-3 border-b border-neutral-100 p-4 text-sm xl:grid-cols-[32px_1fr_140px_120px_120px_220px]">
           <label className="flex items-start pt-1">
             <input
@@ -603,6 +692,9 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
         </div>
       ))}
       {services.length === 0 && <p className="p-4 text-sm text-neutral-500">No services imported yet. Run service sync after adding a provider.</p>}
+      {services.length > 0 && filteredServices.length === 0 && (
+        <p className="p-4 text-sm text-neutral-500">No services match these filters.</p>
+      )}
     </section>
   );
 }
