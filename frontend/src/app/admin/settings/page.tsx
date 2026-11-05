@@ -137,6 +137,7 @@ export default function SettingsPage() {
       <SiteFooterSettings initialSettings={settings.siteFooter} />
       <DeveloperCreditSettings initialSettings={settings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT} />
       <SettingsForm
+        key={JSON.stringify([settings.deposits, settings.provider, settings.referrals])}
         mode={settings.deposits.verificationMode}
         startTime={settings.deposits.verificationStartTime}
         endTime={settings.deposits.verificationEndTime}
