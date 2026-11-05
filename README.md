@@ -179,7 +179,7 @@ npm run start
 
 ## Telegram Deposit Verification
 
-Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `TELEGRAM_ADMIN_ID`, and `APP_BASE_URL`.
+Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_ID`, and `APP_BASE_URL`. Set `TELEGRAM_CHAT_ID` to the notification destination (group or private chat); if it is omitted, notifications are sent to `TELEGRAM_ADMIN_ID` as a private-chat fallback.
 The app auto-configures the Telegram webhook when a new deposit request is submitted. You can also configure it manually to:
 
 ```text

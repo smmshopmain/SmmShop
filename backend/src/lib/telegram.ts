@@ -1,44 +1,32 @@
 import { createHash } from "node:crypto";
 
+function telegramBotToken() {
+  return process.env.TELEGRAM_BOT_TOKEN?.trim() ?? "";
+}
+
+function telegramNotificationChatId() {
+  return process.env.TELEGRAM_CHAT_ID?.trim() || process.env.TELEGRAM_ADMIN_ID?.trim() || "";
+}
+
 export async function notifyTelegram(title: string, lines: string[] = [], replyMarkup?: unknown) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const token = telegramBotToken();
+  const chatId = telegramNotificationChatId();
   if (!token || !chatId) {
-    console.warn("Telegram notification skipped because bot credentials are not configured.");
+    console.error("Telegram notification skipped because required configuration is missing.", {
+      botTokenConfigured: Boolean(token),
+      chatIdConfigured: Boolean(chatId),
+    });
     return false;
   }
 
   const text = [`*${escapeMarkdown(title)}*`, ...lines.map(escapeMarkdown)].join("\n");
-
-  try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "MarkdownV2",
-        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-      }),
-      signal: AbortSignal.timeout(10000),
-    });
-    if (!response.ok) {
-      console.error("Telegram notification failed", { status: response.status });
-      return false;
-    }
-
-    const result: unknown = await response.json();
-    if (!result || typeof result !== "object" || !("ok" in result) || result.ok !== true) {
-      console.error("Telegram rejected a notification request.");
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error("Telegram notification request failed", {
-      error: error instanceof Error ? error.message : "Unknown Telegram error",
-    });
-    return false;
-  }
+  const result = await telegramRequest("sendMessage", {
+    chat_id: chatId,
+    text,
+    parse_mode: "MarkdownV2",
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
+  return result?.ok === true;
 }
 
 export function supportTicketKeyboard(ticketId: string, status: string, priority: string) {
@@ -61,14 +49,20 @@ export function supportTicketKeyboard(ticketId: string, status: string, priority
 }
 
 export function telegramWebhookSecret() {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = telegramBotToken();
   return token ? createHash("sha256").update(token).digest("hex") : "";
 }
 
 export async function ensureTelegramWebhook(origin?: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const token = telegramBotToken();
   const baseUrl = process.env.APP_BASE_URL || origin;
-  if (!token || !baseUrl) return null;
+  if (!token || !baseUrl) {
+    console.error("Telegram webhook setup skipped because required configuration is missing.", {
+      botTokenConfigured: Boolean(token),
+      baseUrlConfigured: Boolean(baseUrl),
+    });
+    return null;
+  }
 
   const webhookUrl = new URL("/api/telegram/deposits", baseUrl).toString();
   return telegramRequest("setWebhook", {
@@ -79,7 +73,7 @@ export async function ensureTelegramWebhook(origin?: string) {
 }
 
 export async function sendTelegramMessage({
-  chatId = process.env.TELEGRAM_CHAT_ID,
+  chatId = telegramNotificationChatId(),
   text,
   replyMarkup,
 }: {
@@ -87,8 +81,14 @@ export async function sendTelegramMessage({
   text: string;
   replyMarkup?: unknown;
 }) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || !chatId) return null;
+  const token = telegramBotToken();
+  if (!token || !chatId) {
+    console.error("Telegram message skipped because required configuration is missing.", {
+      botTokenConfigured: Boolean(token),
+      chatIdConfigured: Boolean(chatId),
+    });
+    return null;
+  }
 
   return telegramRequest("sendMessage", {
     chat_id: chatId,
@@ -98,7 +98,7 @@ export async function sendTelegramMessage({
 }
 
 export async function sendTelegramAttachment({
-  chatId = process.env.TELEGRAM_CHAT_ID,
+  chatId = telegramNotificationChatId(),
   caption,
   fileUrl,
   replyMarkup,
@@ -108,8 +108,14 @@ export async function sendTelegramAttachment({
   fileUrl: string;
   replyMarkup?: unknown;
 }) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token || !chatId) return null;
+  const token = telegramBotToken();
+  if (!token || !chatId) {
+    console.error("Telegram attachment skipped because required configuration is missing.", {
+      botTokenConfigured: Boolean(token),
+      chatIdConfigured: Boolean(chatId),
+    });
+    return null;
+  }
 
   const method = /\.(jpg|jpeg|png|webp)(\?|$)/i.test(fileUrl) ? "sendPhoto" : "sendDocument";
   return telegramRequest(method, {
@@ -144,23 +150,47 @@ export async function editTelegramMessageReplyMarkup({
   });
 }
 
-async function telegramRequest(method: string, payload: Record<string, unknown>) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  if (!token) return null;
+type TelegramApiResponse = {
+  ok: boolean;
+  description?: string;
+  error_code?: number;
+  result?: unknown;
+};
+
+async function telegramRequest(method: string, payload: Record<string, unknown>): Promise<TelegramApiResponse | null> {
+  const token = telegramBotToken();
+  if (!token) {
+    console.error("Telegram API request skipped because TELEGRAM_BOT_TOKEN is not configured.", { method });
+    return null;
+  }
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(10000),
     });
-    if (!response.ok) return null;
-    return response.json();
-  } catch {
+    const result = await response.json().catch(() => null) as TelegramApiResponse | null;
+    if (!response.ok || !result || result.ok !== true) {
+      console.error("Telegram API request failed.", {
+        method,
+        status: response.status,
+        errorCode: result?.error_code,
+        description: result?.description ?? "Telegram returned an unreadable response.",
+      });
+      return result;
+    }
+    return result;
+  } catch (error) {
+    console.error("Telegram API request could not be completed.", {
+      method,
+      error: error instanceof Error ? error.message : "Unknown Telegram error",
+    });
     return null;
   }
 }
 
 function escapeMarkdown(value: string) {
-  return value.replace(/[_*[\]()~`>#+\-=|{}.!]/g, "\\$&");
+  return value.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, "\\$1");
 }
