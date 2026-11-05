@@ -29,7 +29,7 @@ export function DashboardOrderStats({ initialSummary }: { initialSummary: OrderS
 
     async function refreshOrders() {
       try {
-        const result = await apiJson("/api/orders?sync=1", { cache: "no-store" });
+        const result = await apiJson("/api/orders", { cache: "no-store" });
         const orders = Array.isArray(result.orders)
           ? result.orders
           : Array.isArray(result.data?.orders)
@@ -42,7 +42,9 @@ export function DashboardOrderStats({ initialSummary }: { initialSummary: OrderS
     }
 
     refreshOrders();
-    const intervalId = window.setInterval(refreshOrders, 15000);
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshOrders();
+    }, 60000);
     window.addEventListener("focus", refreshOrders);
 
     return () => {

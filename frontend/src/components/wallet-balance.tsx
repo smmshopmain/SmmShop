@@ -15,7 +15,7 @@ export function LiveWalletBalance({ initialBalance }: { initialBalance: number }
 
     async function refreshBalance() {
       try {
-        const result = await apiJson("/api/wallet", { cache: "no-store" });
+        const result = await apiJson("/api/wallet?summary=1", { cache: "no-store" });
         const nextBalance = Number(result.data?.balance ?? result.balance ?? NaN);
         if (active && Number.isFinite(nextBalance)) {
           setBalance(nextBalance);
@@ -26,7 +26,9 @@ export function LiveWalletBalance({ initialBalance }: { initialBalance: number }
     }
 
     refreshBalance();
-    const intervalId = window.setInterval(refreshBalance, 15000);
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshBalance();
+    }, 60000);
     window.addEventListener("focus", refreshBalance);
 
     return () => {

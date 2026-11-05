@@ -24,7 +24,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
   }> = [];
 
   try {
-    const result = await serverApiJson("/api/orders?sync=1");
+    const result = await serverApiJson("/api/orders");
     orders = Array.isArray(result.orders) ? result.orders : [];
   } catch {
       orders = [];
@@ -77,7 +77,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900">
               <span className="workspace-live-dot size-2 rounded-full" />
-              Live status updates every 15 seconds
+              Order status refreshes automatically
             </div>
           </div>
           <div className="orders-filter-wrap border-t border-neutral-200 bg-slate-50/80 p-5 sm:p-7 lg:border-l lg:border-t-0">

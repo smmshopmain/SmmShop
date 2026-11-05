@@ -81,6 +81,7 @@ export function SyncStatusPanel() {
     let active = true;
 
     async function fetchStatuses() {
+      if (document.visibilityState !== "visible") return;
       try {
         const response = await apiFetch("/api/admin/sync-status");
         const result = await response.json();
@@ -92,10 +93,12 @@ export function SyncStatusPanel() {
     }
 
     fetchStatuses();
-    const interval = setInterval(fetchStatuses, 2000);
+    const interval = setInterval(fetchStatuses, 5000);
+    document.addEventListener("visibilitychange", fetchStatuses);
     return () => {
       active = false;
       clearInterval(interval);
+      document.removeEventListener("visibilitychange", fetchStatuses);
     };
   }, []);
 

@@ -20,7 +20,7 @@ export function DashboardRecentTransactions({ initialTransactions }: { initialTr
 
     async function refreshTransactions() {
       try {
-        const result = await apiJson("/api/wallet", { cache: "no-store" });
+        const result = await apiJson("/api/wallet?limit=5", { cache: "no-store" });
         const nextTransactions = Array.isArray(result.transactions)
           ? result.transactions
           : Array.isArray(result.data?.transactions)
@@ -33,7 +33,9 @@ export function DashboardRecentTransactions({ initialTransactions }: { initialTr
     }
 
     refreshTransactions();
-    const intervalId = window.setInterval(refreshTransactions, 15000);
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refreshTransactions();
+    }, 60000);
     window.addEventListener("focus", refreshTransactions);
 
     return () => {

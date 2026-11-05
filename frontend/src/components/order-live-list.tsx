@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, RefreshCcw, ShoppingBag, Wifi, X } from "lucide-react";
 import { ActionButton } from "@/components/admin-controls";
 import { StatusBadge } from "@/components/status-badge";
@@ -70,12 +70,15 @@ export function OrderLiveList({
   const [cancelCandidate, setCancelCandidate] = useState<LiveOrder | null>(null);
   const [cancelError, setCancelError] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
+  const refreshing = useRef(false);
 
   const refreshOrders = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
     setLoading(true);
     setError("");
     try {
-      const response = await apiFetch("/api/orders?sync=1", { cache: "no-store" });
+      const response = await apiFetch("/api/orders", { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) {
         setError("Unable to refresh order status right now.");
@@ -86,6 +89,7 @@ export function OrderLiveList({
     } catch {
       setError("Unable to refresh order status right now.");
     } finally {
+      refreshing.current = false;
       setLoading(false);
     }
   }, []);
@@ -93,7 +97,7 @@ export function OrderLiveList({
   useEffect(() => {
     const interval = window.setInterval(() => {
       if (document.visibilityState === "visible") void refreshOrders();
-    }, 15000);
+    }, 30000);
 
     const initialRefresh = window.setTimeout(() => void refreshOrders(), 250);
 

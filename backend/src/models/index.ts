@@ -85,6 +85,7 @@ const WalletTransactionSchema = new Schema(
   },
   { timestamps: true },
 );
+WalletTransactionSchema.index({ user: 1, createdAt: -1 });
 
 const DepositSchema = new Schema(
   {
@@ -189,6 +190,8 @@ const OrderSchema = new Schema(
   { timestamps: true },
 );
 OrderSchema.index({ queueKey: 1, status: 1, createdAt: 1 });
+OrderSchema.index({ user: 1, createdAt: -1 });
+OrderSchema.index({ user: 1, status: 1, createdAt: -1 });
 
 const OrderQueueSchema = new Schema(
   {

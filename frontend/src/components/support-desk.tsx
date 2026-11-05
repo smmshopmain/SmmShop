@@ -119,7 +119,7 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
     const refreshWhenVisible = () => {
       if (document.visibilityState === "visible") void loadTickets(true);
     };
-    const timer = window.setInterval(refreshWhenVisible, 3000);
+    const timer = window.setInterval(refreshWhenVisible, 10000);
     document.addEventListener("visibilitychange", refreshWhenVisible);
     return () => {
       window.clearInterval(timer);
