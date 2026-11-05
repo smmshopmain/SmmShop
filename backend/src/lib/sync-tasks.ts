@@ -7,6 +7,7 @@ import {
   parseProviderBoolean,
   providerRequest,
 } from "@/lib/provider";
+import { notifyTelegram } from "@/lib/telegram";
 import { Category, getSettings, Provider, Service, SyncStatus } from "@/models";
 
 type TaskType = "service_import" | "service_sync" | "price_sync";
@@ -568,6 +569,13 @@ export async function priceSyncTask() {
       details: { updated },
     });
 
+    const priceNotificationSent = await notifyTelegram("Price Recalculation Completed", [
+      `Recalculated prices for ${updated} services.`,
+    ]);
+    if (!priceNotificationSent) {
+      console.error("Price recalculation completed, but its Telegram notification was not delivered.");
+    }
+
     let balanceSync: Awaited<ReturnType<typeof syncProviderBalancesAndNotify>> | null = null;
     try {
       balanceSync = await syncProviderBalancesAndNotify();
@@ -579,6 +587,12 @@ export async function priceSyncTask() {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Price sync failed";
     await failSyncStatus("price_sync", message, { error });
+    const failureNotificationSent = await notifyTelegram("Price Recalculation Failed", [
+      message,
+    ]);
+    if (!failureNotificationSent) {
+      console.error("Price recalculation failed, and its Telegram failure notification was not delivered.");
+    }
     throw error;
   }
 }
