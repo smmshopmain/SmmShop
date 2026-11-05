@@ -760,73 +760,67 @@ export function SettingsForm({
     const form = new FormData(event.currentTarget);
     setLoading(true);
     setMessage("");
-
-    let qrImageUrl = String(form.get("qrImageUrl") ?? "").trim();
-    const qrFile = form.get("qrFile");
-    if (qrFile instanceof File && qrFile.size > 0) {
-      const uploadForm = new FormData();
-      uploadForm.set("file", qrFile);
-      const uploadResponse = await apiFetch("/api/admin/payment-qr", {
-        method: "POST",
-        body: uploadForm,
-      });
-      const uploadResult = await uploadResponse.json().catch(() => ({}));
-      if (!uploadResponse.ok) {
-        setLoading(false);
-        setMessage(uploadResult.message ?? "QR upload failed.");
-        return;
+    try {
+      let qrImageUrl = String(form.get("qrImageUrl") ?? "").trim();
+      const qrFile = form.get("qrFile");
+      if (qrFile instanceof File && qrFile.size > 0) {
+        const uploadForm = new FormData();
+        uploadForm.set("file", qrFile);
+        const uploadResponse = await apiFetch("/api/admin/payment-qr", {
+          method: "POST",
+          body: uploadForm,
+        });
+        const uploadResult = await uploadResponse.json().catch(() => ({}));
+        if (!uploadResponse.ok) throw new Error(uploadResult.message ?? "QR upload failed.");
+        qrImageUrl = uploadResult.data.url;
       }
-      qrImageUrl = uploadResult.data.url;
-    }
 
-    const requests = [
-      apiFetch("/api/admin/settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          key: "deposits",
-          value: {
-            verificationMode: form.get("verificationMode"),
-            verificationStartTime: form.get("verificationStartTime"),
-            verificationEndTime: form.get("verificationEndTime"),
-            minimumWalletAddAmount: Number(form.get("minimumWalletAddAmount")),
-            payment: {
-              qrImageUrl,
-              upiId: String(form.get("upiId") ?? "").trim(),
-              accountNumber: String(form.get("accountNumber") ?? "").trim(),
-              ifsc: String(form.get("ifsc") ?? "").trim().toUpperCase(),
-              accountName: String(form.get("accountName") ?? "").trim(),
-              bankName: String(form.get("bankName") ?? "").trim(),
-              instructions: String(form.get("instructions") ?? "").trim(),
-            },
+      const saveSetting = async (name: string, value: Record<string, unknown>) => {
+        try {
+          const response = await apiFetch("/api/admin/settings", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ key: name, value }),
+          });
+          const result = await response.json().catch(() => ({}));
+          return response.ok ? null : `${name}: ${result.message ?? "save failed"}`;
+        } catch (error) {
+          return `${name}: ${error instanceof Error ? error.message : "request failed"}`;
+        }
+      };
+
+      const failures = (await Promise.all([
+        saveSetting("deposits", {
+          verificationMode: form.get("verificationMode"),
+          verificationStartTime: form.get("verificationStartTime"),
+          verificationEndTime: form.get("verificationEndTime"),
+          minimumWalletAddAmount: Number(form.get("minimumWalletAddAmount")),
+          payment: {
+            qrImageUrl,
+            upiId: String(form.get("upiId") ?? "").trim(),
+            accountNumber: String(form.get("accountNumber") ?? "").trim(),
+            ifsc: String(form.get("ifsc") ?? "").trim().toUpperCase(),
+            accountName: String(form.get("accountName") ?? "").trim(),
+            bankName: String(form.get("bankName") ?? "").trim(),
+            instructions: String(form.get("instructions") ?? "").trim(),
           },
         }),
-      }),
-      apiFetch("/api/admin/settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          key: "provider",
-          value: { lowBalanceThreshold: Number(form.get("lowBalanceThreshold")) },
+        saveSetting("provider", {
+          lowBalanceThreshold: Number(form.get("lowBalanceThreshold")),
         }),
-      }),
-      apiFetch("/api/admin/settings", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          key: "referrals",
-          value: {
-            enabled: form.get("referralEnabled") === "on",
-            commissionPercent: Number(form.get("referralCommissionPercent")),
-            commissionAmount: Number(form.get("referralCommissionAmount")),
-            minimumReferredWalletAddAmount: Number(form.get("referralMinimumWalletAddAmount")),
-          },
+        saveSetting("referrals", {
+          enabled: form.get("referralEnabled") === "on",
+          commissionPercent: Number(form.get("referralCommissionPercent")),
+          commissionAmount: Number(form.get("referralCommissionAmount")),
+          minimumReferredWalletAddAmount: Number(form.get("referralMinimumWalletAddAmount")),
         }),
-      }),
-    ];
-    const responses = await Promise.all(requests);
-    setLoading(false);
-    setMessage(responses.every((response) => response.ok) ? "Settings saved." : "Unable to save all settings.");
+      ])).filter((failure): failure is string => Boolean(failure));
+      setMessage(failures.length ? `Some settings were not saved: ${failures.join(" · ")}` : "Settings saved.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to save settings.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -896,10 +890,12 @@ export function SettingsForm({
       <label className="grid gap-2 text-sm font-medium">
         Minimum wallet top-up amount
         <input name="minimumWalletAddAmount" type="number" min={0} step="0.01" defaultValue={minimumWalletAddAmount} className="rounded-md border border-neutral-300 px-3 py-2" />
+        <span className="text-xs font-normal text-neutral-500">Set to 0 to allow any wallet top-up amount.</span>
       </label>
       <label className="grid gap-2 text-sm font-medium">
         Low provider balance alert
         <input name="lowBalanceThreshold" type="number" min={0} step="0.01" defaultValue={lowBalanceThreshold} className="rounded-md border border-neutral-300 px-3 py-2" />
+        <span className="text-xs font-normal text-neutral-500">Telegram alerts are sent when a refreshed provider balance is at or below this amount.</span>
       </label>
       <label className="flex items-center gap-2 text-sm font-medium">
         <input name="referralEnabled" type="checkbox" defaultChecked={referralEnabled} className="size-4 rounded border-neutral-300" />
@@ -912,16 +908,18 @@ export function SettingsForm({
       <label className="grid gap-2 text-sm font-medium">
         Referral reward per successful referral (Rs)
         <input name="referralCommissionAmount" type="number" min={0} step="0.01" defaultValue={referralCommissionAmount} className="rounded-md border border-neutral-300 px-3 py-2" />
+        <span className="text-xs font-normal text-neutral-500">A fixed reward overrides the percentage commission when greater than zero.</span>
       </label>
       <label className="grid gap-2 text-sm font-medium">
         Minimum referred wallet add for bonus (Rs)
         <input name="referralMinimumWalletAddAmount" type="number" min={0} step="0.01" defaultValue={referralMinimumWalletAddAmount} className="rounded-md border border-neutral-300 px-3 py-2" />
+        <span className="text-xs font-normal text-neutral-500">Calculated from the referred user’s total approved wallet top-ups.</span>
       </label>
       <div className="flex items-end gap-3">
         <button disabled={loading} className="rounded-md bg-teal-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
           {loading ? "Saving..." : "Save settings"}
         </button>
-        {message && <p className="text-sm text-neutral-600">{message}</p>}
+        {message && <p role={message.startsWith("Some settings") || message.startsWith("Unable") ? "alert" : "status"} className="text-sm text-neutral-600">{message}</p>}
       </div>
     </form>
   );

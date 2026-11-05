@@ -116,6 +116,7 @@ const ProviderSchema = new Schema(
     priority: { type: Number, default: 1, index: true },
     balance: money,
     lastBalanceSyncAt: Date,
+    lowBalanceAlertSentAt: Date,
     lastServiceSyncAt: Date,
     serviceCache: {
       lastFetchedAt: Date,

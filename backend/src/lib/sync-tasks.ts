@@ -1,5 +1,6 @@
 import { calculateSellingRate } from "@/lib/pricing";
 import { dbConnect } from "@/lib/db";
+import { syncProviderBalancesAndNotify } from "@/lib/provider-balance";
 import {
   ensureDefaultProviderFromEnv,
   logProviderEvent,
@@ -567,7 +568,14 @@ export async function priceSyncTask() {
       details: { updated },
     });
 
-    return { updated };
+    let balanceSync: Awaited<ReturnType<typeof syncProviderBalancesAndNotify>> | null = null;
+    try {
+      balanceSync = await syncProviderBalancesAndNotify();
+    } catch (error) {
+      console.error("Provider balance check after price recalculation failed.", error);
+    }
+
+    return { updated, balanceSync };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Price sync failed";
     await failSyncStatus("price_sync", message, { error });

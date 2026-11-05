@@ -165,6 +165,14 @@ function hasPaymentDetail(value: unknown) {
   return isRecord(value) && Object.values(value).some((entry) => String(entry ?? "").trim() !== "");
 }
 
+function nonNegativeSetting(value: unknown, label: string, maximum = Number.MAX_SAFE_INTEGER) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > maximum) {
+    throw new Error(`${label} must be a number between 0 and ${maximum}.`);
+  }
+  return parsed;
+}
+
 function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Record<string, unknown>) {
   if (!isRecord(existingValue)) return nextValue;
 
@@ -241,31 +249,43 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
   }
 
   if (key === "referrals") {
-    const commissionPercent = Number(value.commissionPercent ?? 0);
-    const commissionAmount = Number(value.commissionAmount ?? 0);
-    const minimumReferredWalletAddAmount = Number(value.minimumReferredWalletAddAmount ?? 0);
+    const normalized: Record<string, unknown> = {};
+    if (value.enabled !== undefined) {
+      if (typeof value.enabled !== "boolean") throw new Error("Referral system enabled must be true or false.");
+      normalized.enabled = value.enabled;
+    }
+    if (value.commissionPercent !== undefined) {
+      normalized.commissionPercent = nonNegativeSetting(value.commissionPercent, "Referral commission percentage", 100);
+    }
+    if (value.commissionAmount !== undefined) {
+      normalized.commissionAmount = nonNegativeSetting(value.commissionAmount, "Referral reward amount");
+    }
+    if (value.minimumReferredWalletAddAmount !== undefined) {
+      normalized.minimumReferredWalletAddAmount = nonNegativeSetting(
+        value.minimumReferredWalletAddAmount,
+        "Minimum referred wallet top-up for bonus",
+      );
+    }
+    return normalized;
+  }
 
-    return {
-      ...value,
-      enabled: value.enabled !== false,
-      commissionPercent: Number.isFinite(commissionPercent)
-        ? Math.max(0, Math.min(100, commissionPercent))
-        : 0,
-      commissionAmount: Number.isFinite(commissionAmount) ? Math.max(0, commissionAmount) : 0,
-      minimumReferredWalletAddAmount: Number.isFinite(minimumReferredWalletAddAmount)
-        ? Math.max(0, minimumReferredWalletAddAmount)
-        : 0,
-    };
+  if (key === "provider") {
+    return value.lowBalanceThreshold === undefined
+      ? {}
+      : {
+          lowBalanceThreshold: nonNegativeSetting(value.lowBalanceThreshold, "Low provider balance alert threshold"),
+        };
   }
 
   if (key !== "deposits") return value;
 
-  const minimumWalletAddAmount = Number(value.minimumWalletAddAmount ?? 0);
   return {
     ...value,
-    minimumWalletAddAmount: Number.isFinite(minimumWalletAddAmount)
-      ? Math.max(0, minimumWalletAddAmount)
-      : 0,
+    ...(value.minimumWalletAddAmount === undefined
+      ? {}
+      : {
+          minimumWalletAddAmount: nonNegativeSetting(value.minimumWalletAddAmount, "Minimum wallet top-up amount"),
+        }),
   };
 }
 
