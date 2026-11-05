@@ -61,8 +61,39 @@ export async function PATCH(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
     const body = await request.json();
-    const id = z.string().parse(body.id);
     const action = z.enum(["ban", "unban", "freeze_wallet", "unfreeze_wallet", "reset_password", "set_role"]).parse(body.action);
+    if (body.ids !== undefined) {
+      if (action !== "ban" && action !== "unban") {
+        return fail("Bulk updates only support enabling or disabling users.", 400);
+      }
+
+      const ids = z.array(z.string().min(1)).min(1).max(100).parse(body.ids);
+      const uniqueIds = [...new Set(ids)];
+      const users = await User.find({ _id: { $in: uniqueIds } })
+        .select("-passwordHash -passwordResetTokenHash -passwordResetAttempts -activeSessionId")
+        .lean();
+      if (users.length !== uniqueIds.length) return fail("One or more users could not be found.", 404);
+      if (users.some((user) => String(user._id) === auth.id)) {
+        return fail("You cannot change access for your own active admin account.", 403);
+      }
+      if (users.some((user) => !canMutateUser(auth.role, String(user.role), action))) {
+        return fail("You do not have permission to change one or more selected users.", 403);
+      }
+
+      const isBanned = action === "ban";
+      await User.updateMany({ _id: { $in: uniqueIds } }, { $set: { isBanned } });
+      await AuditLog.insertMany(users.map((user) => ({
+        actor: auth.id,
+        action: `user.${action}`,
+        entity: "User",
+        entityId: String(user._id),
+        before: user,
+        after: { ...user, isBanned },
+      })));
+      return ok({ updated: users.length, message: `${users.length} users ${isBanned ? "disabled" : "enabled"}.` });
+    }
+
+    const id = z.string().parse(body.id);
     const before = await User.findById(id).lean();
     if (!before) return fail("User not found", 404);
     if (id === auth.id && action !== "reset_password") return fail("Use profile settings for your own account.", 403);

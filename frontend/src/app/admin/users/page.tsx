@@ -6,7 +6,7 @@ import { ActionButton, AdminResetPasswordForm, UserRoleForm, WalletAdjustForm } 
 import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { StatusBadge } from "@/components/status-badge";
-import { apiJson } from "@/lib/client-api";
+import { apiFetch, apiJson } from "@/lib/client-api";
 import { roleLabel } from "@/lib/roles";
 import { LoginHistoryEntry, LoginHistoryList } from "@/components/login-history-list";
 import { Search, Users } from "lucide-react";
@@ -26,6 +26,62 @@ export default function UsersPage() {
   }>>([]);
   const [currentAdminId, setCurrentAdminId] = useState("");
   const [currentAdminRole, setCurrentAdminRole] = useState("");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkMessage, setBulkMessage] = useState("");
+  const manageableUsers = users.filter((user) => {
+    const userId = String(user._id);
+    const isMainAdminTarget = user.role === "admin";
+    return userId !== currentAdminId
+      && currentAdminRole !== "staff"
+      && !(currentAdminRole !== "admin" && isMainAdminTarget);
+  });
+  const manageableIds = new Set(manageableUsers.map((user) => String(user._id)));
+  const selectedManageableIds = selectedIds.filter((id) => manageableIds.has(id));
+  const allManageableSelected = manageableUsers.length > 0
+    && selectedManageableIds.length === manageableUsers.length;
+
+  function toggleUser(userId: string) {
+    setSelectedIds((current) => current.includes(userId)
+      ? current.filter((id) => id !== userId)
+      : [...current, userId]);
+  }
+
+  function toggleAllUsers() {
+    setSelectedIds((current) => {
+      const currentVisibleIds = new Set(manageableUsers.map((user) => String(user._id)));
+      const withoutVisible = current.filter((id) => !currentVisibleIds.has(id));
+      return allManageableSelected
+        ? withoutVisible
+        : [...withoutVisible, ...currentVisibleIds];
+    });
+  }
+
+  async function setSelectedUsersEnabled(enabled: boolean) {
+    if (selectedManageableIds.length === 0) return;
+    setBulkLoading(true);
+    setBulkMessage("");
+    try {
+      const response = await apiFetch("/api/admin/users", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ids: selectedManageableIds,
+          action: enabled ? "unban" : "ban",
+        }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setBulkMessage(result.message ?? "Unable to update selected users.");
+        return;
+      }
+      window.location.reload();
+    } catch (error) {
+      setBulkMessage(error instanceof Error ? error.message : "Unable to update selected users.");
+    } finally {
+      setBulkLoading(false);
+    }
+  }
 
   useEffect(() => {
     let mounted = true;
@@ -70,18 +126,60 @@ export default function UsersPage() {
         }
       />
       <AdminSection title="User accounts" description="Access controls and wallet tools" icon={Users}>
+        {manageableUsers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-3 border-b border-neutral-200 bg-neutral-50 p-4 text-sm">
+            <label className="flex items-center gap-2 font-medium">
+              <input
+                type="checkbox"
+                checked={allManageableSelected}
+                onChange={toggleAllUsers}
+                className="size-4 rounded border-neutral-300"
+                aria-label="Select all manageable users"
+              />
+              Select all ({manageableUsers.length})
+            </label>
+            <button
+              type="button"
+              onClick={() => void setSelectedUsersEnabled(true)}
+              disabled={bulkLoading || selectedManageableIds.length === 0}
+              className="rounded-md bg-teal-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {bulkLoading ? "Updating..." : `Enable selected (${selectedManageableIds.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => void setSelectedUsersEnabled(false)}
+              disabled={bulkLoading || selectedManageableIds.length === 0}
+              className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+            >
+              {bulkLoading ? "Updating..." : `Disable selected (${selectedManageableIds.length})`}
+            </button>
+            {bulkMessage && <span role="alert" className="text-xs text-rose-700">{bulkMessage}</span>}
+          </div>
+        )}
         {users.map((user) => {
           const userId = String(user._id);
           const isSelf = userId === currentAdminId;
           const isMainAdminTarget = user.role === "admin";
-          const canModify = currentAdminRole !== "staff" && !(currentAdminRole !== "admin" && isMainAdminTarget);
+          const canModify = !isSelf && currentAdminRole !== "staff" && !(currentAdminRole !== "admin" && isMainAdminTarget);
           const canMainAdminChangeRole = currentAdminRole === "admin" && !isSelf && !isMainAdminTarget;
 
           return (
           <div key={userId} className="grid gap-3 border-b border-neutral-100 p-4 text-sm">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_100px_120px_110px] md:items-center">
               <div className="min-w-0">
-                <p className="font-semibold text-neutral-950">{user.name}</p>
+                <div className="flex items-center gap-2">
+                  {canModify && (
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(userId)}
+                      onChange={() => toggleUser(userId)}
+                      aria-label={`Select ${user.name ?? user.email ?? "user"}`}
+                      className="size-4 shrink-0 rounded border-neutral-300"
+                    />
+                  )}
+                  <p className="font-semibold text-neutral-950">{user.name}</p>
+                </div>
                 <p className="text-neutral-500">{user.email}</p>
               </div>
               <span className="rounded-md bg-neutral-100 px-2 py-1 text-center text-xs font-semibold text-neutral-700">{roleLabel(user.role)}</span>
