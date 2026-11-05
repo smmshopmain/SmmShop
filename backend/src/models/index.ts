@@ -116,8 +116,10 @@ const ProviderSchema = new Schema(
     enabled: { type: Boolean, default: true, index: true },
     priority: { type: Number, default: 1, index: true },
     balance: money,
+    balanceCurrency: String,
     lastBalanceSyncAt: Date,
     lowBalanceAlertSentAt: Date,
+    lowBalanceAlertThreshold: Number,
     lastServiceSyncAt: Date,
     serviceCache: {
       lastFetchedAt: Date,

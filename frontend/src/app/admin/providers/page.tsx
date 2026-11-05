@@ -18,6 +18,8 @@ export default function ProvidersPage() {
     enabled: boolean;
     priority: number;
     balance?: number;
+    balanceCurrency?: string;
+    lastBalanceSyncAt?: string;
     lastError?: string;
   }>>([]);
   const [loading, setLoading] = useState(true);
@@ -73,11 +75,18 @@ export default function ProvidersPage() {
                   <p className="font-semibold text-neutral-950">{provider.name}</p>
                   <p className="truncate text-neutral-500">{provider.apiUrl}</p>
                   {provider.username && <p className="truncate text-neutral-500">Username: {provider.username}</p>}
+                  <p className="text-xs text-neutral-500">
+                    Balance updated: {provider.lastBalanceSyncAt
+                      ? new Date(provider.lastBalanceSyncAt).toLocaleString("en-IN")
+                      : "Not synced yet"}
+                  </p>
                   {provider.lastError && <p className="text-rose-700">{provider.lastError}</p>}
                 </div>
                 <span>#{provider.priority}</span>
                 <StatusBadge status={provider.enabled ? "Approved" : "Canceled"} />
-                <strong>Rs.{provider.balance ?? 0}</strong>
+                <strong>
+                  {provider.balance === undefined ? "—" : `${provider.balanceCurrency ?? "Rs."} ${provider.balance}`}
+                </strong>
                 <div className="flex flex-wrap gap-2">
                   <ActionButton
                     label={provider.enabled ? "Disable" : "Enable"}
