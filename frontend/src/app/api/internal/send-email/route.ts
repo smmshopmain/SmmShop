@@ -8,6 +8,7 @@ type SendEmailPayload = {
   subject: string;
   text: string;
   html?: string;
+  inlineImages?: Array<{ cid: string; url: string }>;
 };
 
 function requireEnv(name: string) {
@@ -34,7 +35,50 @@ function parsePort(value: string) {
 function isValidPayload(value: unknown): value is SendEmailPayload {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const candidate = value as Partial<SendEmailPayload>;
-  return typeof candidate.to === "string" && typeof candidate.subject === "string" && typeof candidate.text === "string";
+  return typeof candidate.to === "string"
+    && typeof candidate.subject === "string"
+    && typeof candidate.text === "string"
+    && (candidate.inlineImages === undefined || (
+      Array.isArray(candidate.inlineImages)
+      && candidate.inlineImages.length <= 2
+      && candidate.inlineImages.every((image) =>
+        image !== null
+        && typeof image === "object"
+        && ["campaign-banner", "campaign-background"].includes(image.cid)
+        && typeof image.url === "string",
+      )
+    ));
+}
+
+async function fetchInlineImage(image: { cid: string; url: string }) {
+  const apiBase = new URL(requireEnv("NEXT_PUBLIC_API_URL"));
+  const url = new URL(image.url);
+  if (
+    url.origin !== apiBase.origin
+    || !/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(url.pathname)
+  ) {
+    throw new Error("Campaign email image URL is invalid.");
+  }
+
+  const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!response.ok) throw new Error(`Campaign email image could not be loaded (HTTP ${response.status}).`);
+
+  const contentType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+  if (contentType !== "image/jpeg" && contentType !== "image/png" && contentType !== "image/webp") {
+    throw new Error("Campaign email image has an unsupported content type.");
+  }
+
+  const data = Buffer.from(await response.arrayBuffer());
+  if (data.length === 0 || data.length > 10 * 1024 * 1024) {
+    throw new Error("Campaign email image must be between 1 byte and 10MB.");
+  }
+
+  return {
+    cid: image.cid,
+    filename: `${image.cid}.${contentType === "image/jpeg" ? "jpg" : contentType.slice("image/".length)}`,
+    contentType,
+    content: data,
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -58,6 +102,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const attachments = await Promise.all((payload.inlineImages ?? []).map(fetchInlineImage));
     const transporter = nodemailer.createTransport({
       host: requireEnv("SMTP_HOST"),
       port: parsePort(requireEnv("SMTP_PORT")),
@@ -78,6 +123,7 @@ export async function POST(request: NextRequest) {
         subject: payload.subject,
         text: payload.text,
         html: payload.html,
+        attachments,
       });
 
       if (info.accepted.length === 0 || info.rejected.length > 0) {

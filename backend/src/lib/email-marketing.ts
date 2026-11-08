@@ -124,14 +124,18 @@ export function buildCampaignEmail(input: {
   const emailBackgroundImageUrl = input.banner?.backgroundImageUrl
     ? safeHttpUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString())
     : "";
+  const inlineImages = [
+    ...(bannerImageUrl ? [{ cid: "campaign-banner", url: bannerImageUrl }] : []),
+    ...(emailBackgroundImageUrl ? [{ cid: "campaign-background", url: emailBackgroundImageUrl }] : []),
+  ];
   const festivalBannerHtml = bannerPreset
     ? `<tr><td align="center" bgcolor="${bannerPreset.colors[0]}" style="padding:30px 20px;background-color:${bannerPreset.colors[0]};background-image:linear-gradient(120deg,${bannerPreset.colors[0]},${bannerPreset.colors[1]});color:#ffffff;font-family:Arial,Helvetica,sans-serif"><div style="font-size:36px;line-height:1.2">${bannerPreset.emoji}</div><div style="margin-top:8px;font-size:22px;font-weight:700">${escapeHtml(bannerPreset.title)}</div></td></tr>`
     : "";
   const customBannerHtml = bannerImageUrl
-    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="${bannerImageUrl}" alt="Campaign banner" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr>`
+    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:campaign-banner" alt="Campaign banner" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr>`
     : "";
   const bannerHtml = `${festivalBannerHtml}${customBannerHtml}`;
-  const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? `\n\nCampaign banner: ${bannerImageUrl}` : ""}`;
+  const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? "\n\nA campaign banner image is attached." : ""}`;
   const services = input.services ?? [];
   const serviceText = services.length
     ? `\n\nFeatured services:\n${services.map((service) => `${service.platform}${service.country ? ` · ${service.country}` : ""} · ${service.name} · Rs.${service.sellingRate.toFixed(2)} per 1,000`).join("\n")}`
@@ -148,13 +152,14 @@ export function buildCampaignEmail(input: {
         <div style="font-size:11px;color:#829ab1">per 1,000</div>
       </td>
     </tr>`).join("");
-  const backgroundAttribute = emailBackgroundImageUrl ? ` background="${emailBackgroundImageUrl}"` : "";
+  const backgroundAttribute = emailBackgroundImageUrl ? ` background="cid:campaign-background"` : "";
   const backgroundImageStyle = emailBackgroundImageUrl
-    ? `background-image:url('${emailBackgroundImageUrl}');background-position:center top;background-repeat:no-repeat;background-size:cover;`
+    ? "background-image:url('cid:campaign-background');background-position:center top;background-repeat:no-repeat;background-size:cover;"
     : "";
   return {
     subject,
     text: `${greeting}\n\n${body}${bannerText}${serviceText}\n\n${input.brandName}\n${input.siteUrl}\n\nUnsubscribe: ${input.unsubscribeUrl}`,
+    inlineImages,
     html: `
       <table role="presentation" cellpadding="0" cellspacing="0" width="100%" bgcolor="${themeBackground}"${backgroundAttribute} style="width:100%;margin:0;padding:0;background-color:${themeBackground};${backgroundImageStyle}font-family:Arial,Helvetica,sans-serif;color:#243b53">
         <tbody><tr><td align="center" style="padding:28px 12px">

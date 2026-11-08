@@ -5,6 +5,7 @@ type MailInput = {
   subject: string;
   text: string;
   html?: string;
+  inlineImages?: Array<{ cid: string; url: string }>;
 };
 
 type MailResult = {
@@ -15,7 +16,7 @@ type MailResult = {
   response: string;
 };
 
-const REQUEST_TIMEOUT_MS = 15000;
+const REQUEST_TIMEOUT_MS = 45000;
 const OTP_EXPIRY_MINUTES = 10;
 
 async function emailSettings(): Promise<EmailManagementSettings> {
@@ -91,7 +92,7 @@ function requireEnv(name: string) {
   return value;
 }
 
-async function sendViaWorker({ to, subject, text, html }: MailInput) {
+async function sendViaWorker({ to, subject, text, html, inlineImages }: MailInput) {
   const workerUrl = requireEnv("EMAIL_WORKER_URL");
   const workerSecret = requireEnv("EMAIL_WORKER_SECRET");
 
@@ -106,7 +107,7 @@ async function sendViaWorker({ to, subject, text, html }: MailInput) {
         "x-email-worker-secret": workerSecret,
       },
       signal: controller.signal,
-      body: JSON.stringify({ to, subject, text, html }),
+      body: JSON.stringify({ to, subject, text, html, inlineImages }),
     });
 
     let payload: { ok?: boolean; message?: string; messageId?: string } | null = null;
@@ -128,9 +129,9 @@ async function sendViaWorker({ to, subject, text, html }: MailInput) {
   }
 }
 
-export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
+export async function sendMail({ to, subject, text, html, inlineImages }: MailInput): Promise<MailResult> {
   try {
-    const workerResponse = await sendViaWorker({ to, subject, text, html });
+    const workerResponse = await sendViaWorker({ to, subject, text, html, inlineImages });
     const result: MailResult = {
       provider: "smtp",
       messageId: workerResponse.messageId,
