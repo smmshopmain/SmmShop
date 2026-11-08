@@ -507,7 +507,7 @@ export default function EmailManagementPage() {
       const imageUrl = await uploadCampaignImage(file, setBannerUploadProgress);
       setCampaignForm((current) => ({
         ...current,
-        banner: { presetId: null, imageUrl, backgroundImageUrl: "", backgroundColor: "" },
+        banner: { ...current.banner, imageUrl },
       }));
       setMessage("Custom banner uploaded. It will appear in the preview and campaign email.");
     } catch (cause) {
@@ -616,7 +616,7 @@ export default function EmailManagementPage() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-800"><ImagePlus className="size-5" /></span>
                   <div>
                     <h3 id="campaign-banner-heading" className="font-bold text-neutral-900">Email banner <span className="font-medium text-neutral-500">(optional)</span></h3>
-                    <p className="mt-1 text-xs leading-5 text-neutral-500">Choose a festival design or upload your own JPG, PNG, or WEBP image (up to 10MB). The banner is included in the preview and email.</p>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">Choose a festival design, upload your own JPG, PNG, or WEBP image (up to 10MB), or use both together. The preview and email show both selections.</p>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -629,7 +629,10 @@ export default function EmailManagementPage() {
                         aria-pressed={selected}
                         onClick={() => setCampaignForm((current) => ({
                           ...current,
-                          banner: { presetId: preset.id, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+                          banner: {
+                            ...current.banner,
+                            presetId: selected ? null : preset.id,
+                          },
                         }))}
                         className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
                           selected ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600/20" : "border-neutral-200 hover:border-teal-300"
@@ -678,11 +681,11 @@ export default function EmailManagementPage() {
                       type="button"
                       onClick={() => setCampaignForm((current) => ({
                         ...current,
-                        banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+                        banner: { ...current.banner, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
                       }))}
                       className="rounded-lg border border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50"
                     >
-                      Remove banner
+                      Remove custom banner
                     </button>
                   </div>
                 )}

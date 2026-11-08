@@ -124,12 +124,14 @@ export function buildCampaignEmail(input: {
   const emailBackgroundImageUrl = input.banner?.backgroundImageUrl
     ? safeHttpUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString())
     : "";
-  const bannerHtml = bannerImageUrl
+  const festivalBannerHtml = bannerPreset
+    ? `<tr><td align="center" bgcolor="${bannerPreset.colors[0]}" style="padding:30px 20px;background-color:${bannerPreset.colors[0]};background-image:linear-gradient(120deg,${bannerPreset.colors[0]},${bannerPreset.colors[1]});color:#ffffff;font-family:Arial,Helvetica,sans-serif"><div style="font-size:36px;line-height:1.2">${bannerPreset.emoji}</div><div style="margin-top:8px;font-size:22px;font-weight:700">${escapeHtml(bannerPreset.title)}</div></td></tr>`
+    : "";
+  const customBannerHtml = bannerImageUrl
     ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="${bannerImageUrl}" alt="Campaign banner" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr>`
-    : bannerPreset
-      ? `<tr><td align="center" bgcolor="${bannerPreset.colors[0]}" style="padding:30px 20px;background-color:${bannerPreset.colors[0]};background-image:linear-gradient(120deg,${bannerPreset.colors[0]},${bannerPreset.colors[1]});color:#ffffff;font-family:Arial,Helvetica,sans-serif"><div style="font-size:36px;line-height:1.2">${bannerPreset.emoji}</div><div style="margin-top:8px;font-size:22px;font-weight:700">${escapeHtml(bannerPreset.title)}</div></td></tr>`
-      : "";
-  const bannerText = bannerPreset ? `\n\n${bannerPreset.title}` : bannerImageUrl ? `\n\nCampaign banner: ${bannerImageUrl}` : "";
+    : "";
+  const bannerHtml = `${festivalBannerHtml}${customBannerHtml}`;
+  const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? `\n\nCampaign banner: ${bannerImageUrl}` : ""}`;
   const services = input.services ?? [];
   const serviceText = services.length
     ? `\n\nFeatured services:\n${services.map((service) => `${service.platform}${service.country ? ` · ${service.country}` : ""} · ${service.name} · Rs.${service.sellingRate.toFixed(2)} per 1,000`).join("\n")}`

@@ -19,12 +19,11 @@ const schema = z.object({
     backgroundImageUrl: z.string().trim().max(500).default(""),
     backgroundColor: z.string().regex(/^$|^#[\da-f]{6}$/i).default(""),
   }).refine(
-    ({ presetId, imageUrl, backgroundImageUrl, backgroundColor }) =>
-      !(presetId && imageUrl) &&
+    ({ imageUrl, backgroundImageUrl, backgroundColor }) =>
       (!imageUrl || /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(imageUrl)) &&
       (!backgroundImageUrl || (/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(backgroundImageUrl) && Boolean(imageUrl))) &&
       (!backgroundColor || Boolean(imageUrl)),
-    "Choose one festival banner or upload a valid custom banner and optional background.",
+    "Choose a valid festival design and custom banner, with an optional background.",
   ).default({ presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" }),
   serviceIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(10).default([]),
   serviceCountries: z.array(z.object({
