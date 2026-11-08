@@ -2,15 +2,30 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { CAMPAIGN_BANNER_PRESETS, type CampaignBannerPresetId } from "@/lib/campaign-banners";
 import { SERVICE_PLATFORMS } from "@/lib/service-platforms";
 import { EmailCampaign, Service, User } from "@/models";
 
+const bannerPresetIds = Object.keys(CAMPAIGN_BANNER_PRESETS) as [CampaignBannerPresetId, ...CampaignBannerPresetId[]];
 const schema = z.object({
   title: z.string().trim().min(1).max(120),
   kind: z.enum(["announcement", "advertisement"]),
   subject: z.string().trim().min(1).max(200),
   greeting: z.string().trim().max(200).default("Hello {{name}},"),
   body: z.string().trim().min(1).max(10000),
+  banner: z.object({
+    presetId: z.enum(bannerPresetIds).nullable(),
+    imageUrl: z.string().trim().max(500),
+    backgroundImageUrl: z.string().trim().max(500).default(""),
+    backgroundColor: z.string().regex(/^$|^#[\da-f]{6}$/i).default(""),
+  }).refine(
+    ({ presetId, imageUrl, backgroundImageUrl, backgroundColor }) =>
+      !(presetId && imageUrl) &&
+      (!imageUrl || /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(imageUrl)) &&
+      (!backgroundImageUrl || (/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(backgroundImageUrl) && Boolean(imageUrl))) &&
+      (!backgroundColor || Boolean(imageUrl)),
+    "Choose one festival banner or upload a valid custom banner and optional background.",
+  ).default({ presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" }),
   serviceIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(10).default([]),
   serviceCountries: z.array(z.object({
     serviceId: z.string().regex(/^[a-f\d]{24}$/i),
@@ -31,7 +46,7 @@ export async function GET() {
     const campaigns = await EmailCampaign.find()
       .sort({ createdAt: -1 })
       .limit(50)
-      .select("title kind subject greeting body services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError createdAt")
+      .select("title kind subject greeting body banner services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError createdAt")
       .populate({ path: "recipientUserIds", select: "name email" })
       .lean();
     return ok({ campaigns });

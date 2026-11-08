@@ -1,11 +1,13 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { GoogleAuthSettings } from "@/components/google-auth-settings";
-import { apiFetch, apiJson } from "@/lib/client-api";
-import { Search, Sparkles, X } from "lucide-react";
+import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
+import { CAMPAIGN_BANNER_PRESETS, type CampaignBanner } from "@/lib/campaign-banners";
+import { ImagePlus, Search, Sparkles, X } from "lucide-react";
 
 type Template = { subject: string; body: string };
 type CampaignRecipient = { _id: string; name: string; email: string };
@@ -33,6 +35,7 @@ type CampaignForm = {
   subject: string;
   greeting: string;
   body: string;
+  banner: CampaignBanner;
   services: CampaignService[];
   audienceMode: "all" | "selected";
   selectedRecipients: CampaignRecipient[];
@@ -58,6 +61,7 @@ type Campaign = {
   subject: string;
   greeting: string;
   body: string;
+  banner?: CampaignBanner;
   services: CampaignService[];
   status: string;
   recipientCount: number;
@@ -104,6 +108,12 @@ function localDateTimeValue(date: Date) {
   return local.toISOString().slice(0, 16);
 }
 
+function tintBannerColor(color: string, whiteAmount: number) {
+  const hex = color.slice(1);
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  return `#${channels.map((channel) => Math.round(channel + (255 - channel) * whiteAmount).toString(16).padStart(2, "0")).join("")}`;
+}
+
 function Field({
   label,
   value,
@@ -144,6 +154,7 @@ export default function EmailManagementPage() {
     subject: "",
     greeting: "Hello {{name}},",
     body: "",
+    banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
     services: [],
     audienceMode: "all",
     selectedRecipients: [],
@@ -153,8 +164,14 @@ export default function EmailManagementPage() {
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [bannerUploading, setBannerUploading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const previewBannerPreset = CAMPAIGN_BANNER_PRESETS.find(({ id }) => id === campaignForm.banner.presetId);
+  const previewPrimary = previewBannerPreset?.colors[0] ?? email.primaryColor;
+  const previewAccent = previewBannerPreset?.colors[1] ?? email.accentColor;
+  const previewBackgroundColor = campaignForm.banner.backgroundColor
+    || (previewBannerPreset ? tintBannerColor(previewPrimary, 0.92) : "#f1f5f9");
 
   useEffect(() => {
     let active = true;
@@ -274,7 +291,16 @@ export default function EmailManagementPage() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to schedule campaign.");
       setMessage(campaignForm.sendMode === "now" ? "Campaign created. Starting delivery now…" : "Campaign confirmed and scheduled.");
-      setCampaignForm((current) => ({ ...current, title: "", subject: "", greeting: "Hello {{name}},", body: "", services: [], selectedRecipients: [] }));
+      setCampaignForm((current) => ({
+        ...current,
+        title: "",
+        subject: "",
+        greeting: "Hello {{name}},",
+        body: "",
+        banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+        services: [],
+        selectedRecipients: [],
+      }));
       if (campaignForm.sendMode === "now") {
         let continueSending = true;
         let sent = 0;
@@ -401,6 +427,12 @@ export default function EmailManagementPage() {
       subject: campaign.subject,
       greeting: campaign.greeting || "Hello {{name}},",
       body: campaign.body,
+      banner: {
+        presetId: campaign.banner?.presetId ?? null,
+        imageUrl: campaign.banner?.imageUrl ?? "",
+        backgroundImageUrl: campaign.banner?.backgroundImageUrl ?? "",
+        backgroundColor: campaign.banner?.backgroundColor ?? "",
+      },
       services: campaign.services ?? [],
       audienceMode: campaign.audienceMode ?? "all",
       selectedRecipients: campaign.recipientUserIds ?? [],
@@ -411,6 +443,82 @@ export default function EmailManagementPage() {
     setError("");
     setMessage(`“${campaign.title}” loaded as a draft. Edit it and confirm when ready.`);
     document.getElementById("campaign-composer")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function uploadCampaignBanner(file: File | undefined) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Choose a JPG, PNG, or WEBP banner image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Banner image must be 2MB or smaller.");
+      return;
+    }
+
+    setBannerUploading(true);
+    setError("");
+    setMessage("");
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await apiFetch("/api/admin/campaign-banner", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      const imageUrl = result.data?.url ?? result.url;
+      if (!response.ok || typeof imageUrl !== "string") {
+        throw new Error(result.message ?? "Unable to upload banner image.");
+      }
+      setCampaignForm((current) => ({
+        ...current,
+        banner: { presetId: null, imageUrl, backgroundImageUrl: "", backgroundColor: "" },
+      }));
+      setMessage("Custom banner uploaded. It will appear in the preview and campaign email.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to upload banner image.");
+    } finally {
+      setBannerUploading(false);
+    }
+  }
+
+  async function uploadCampaignBackground(file: File | undefined) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Choose a JPG, PNG, or WEBP email background image.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Email background image must be 2MB or smaller.");
+      return;
+    }
+
+    setBannerUploading(true);
+    setError("");
+    setMessage("");
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await apiFetch("/api/admin/campaign-banner", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      const backgroundImageUrl = result.data?.url ?? result.url;
+      if (!response.ok || typeof backgroundImageUrl !== "string") {
+        throw new Error(result.message ?? "Unable to upload email background image.");
+      }
+      setCampaignForm((current) => ({
+        ...current,
+        banner: { ...current.banner, backgroundImageUrl },
+      }));
+      setMessage("Email background uploaded and added to the preview.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to upload email background image.");
+    } finally {
+      setBannerUploading(false);
+    }
   }
 
   return (
@@ -473,6 +581,153 @@ export default function EmailManagementPage() {
               <Field label="Personalized greeting" value={campaignForm.greeting} onChange={(value) => setCampaignForm({ ...campaignForm, greeting: value })} />
               <p className="-mt-2 text-xs text-neutral-500">Available placeholders: {"{{name}}, {{email}}, {{brandName}}"} — recipient name and email are read from their account.</p>
               <Field label="Email message (plain text)" multiline value={campaignForm.body} onChange={(value) => setCampaignForm({ ...campaignForm, body: value })} />
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5" aria-labelledby="campaign-banner-heading">
+                <div className="flex items-start gap-3">
+                  <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-800"><ImagePlus className="size-5" /></span>
+                  <div>
+                    <h3 id="campaign-banner-heading" className="font-bold text-neutral-900">Email banner <span className="font-medium text-neutral-500">(optional)</span></h3>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">Choose a festival design or upload your own JPG, PNG, or WEBP image (up to 2MB). The banner is included in the preview and email.</p>
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {CAMPAIGN_BANNER_PRESETS.map((preset) => {
+                    const selected = campaignForm.banner.presetId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setCampaignForm((current) => ({
+                          ...current,
+                          banner: { presetId: preset.id, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+                        }))}
+                        className={`flex items-center gap-3 rounded-xl border p-3 text-left transition ${
+                          selected ? "border-teal-600 bg-teal-50 ring-2 ring-teal-600/20" : "border-neutral-200 hover:border-teal-300"
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className="grid size-12 shrink-0 place-items-center rounded-lg text-2xl text-white"
+                          style={{ backgroundImage: `linear-gradient(130deg, ${preset.colors[0]}, ${preset.colors[1]})` }}
+                        >
+                          {preset.emoji}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-bold text-neutral-900">{preset.name}</span>
+                          <span className="block truncate text-xs text-neutral-500">{preset.title}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="mt-4 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
+                  <ImagePlus className="size-4" />
+                  {bannerUploading ? "Uploading image…" : "Upload custom banner"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="sr-only"
+                    disabled={bannerUploading}
+                    onChange={(event) => {
+                      void uploadCampaignBanner(event.target.files?.[0]);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                {campaignForm.banner.imageUrl && (
+                  <div className="mt-4 flex flex-wrap items-start gap-3">
+                    <Image
+                      src={apiUrl(campaignForm.banner.imageUrl)}
+                      alt="Custom campaign banner preview"
+                      width={592}
+                      height={320}
+                      unoptimized
+                      className="max-h-44 max-w-full rounded-xl border border-neutral-200 object-contain"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setCampaignForm((current) => ({
+                        ...current,
+                        banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+                      }))}
+                      className="rounded-lg border border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                    >
+                      Remove banner
+                    </button>
+                  </div>
+                )}
+                {campaignForm.banner.imageUrl && (
+                  <div className="mt-4 grid gap-4 rounded-xl border border-dashed border-neutral-300 p-4 sm:grid-cols-2">
+                    <label className="block text-sm font-semibold text-neutral-800">
+                      Email background color <span className="font-normal text-neutral-500">(optional)</span>
+                      <span className="mt-2 flex items-center gap-3">
+                        <input
+                          type="color"
+                          aria-label="Email background color"
+                          value={campaignForm.banner.backgroundColor || "#f1f5f9"}
+                          onChange={(event) => setCampaignForm((current) => ({
+                            ...current,
+                            banner: { ...current.banner, backgroundColor: event.target.value },
+                          }))}
+                          className="size-10 rounded border border-neutral-300"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setCampaignForm((current) => ({
+                            ...current,
+                            banner: { ...current.banner, backgroundColor: "" },
+                          }))}
+                          className="text-xs font-semibold text-teal-800 hover:underline"
+                        >
+                          Use theme default
+                        </button>
+                      </span>
+                    </label>
+                    <div className="text-sm font-semibold text-neutral-800">
+                      Email background image <span className="font-normal text-neutral-500">(optional)</span>
+                      <label className="mt-2 flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold text-neutral-800 transition hover:bg-neutral-50">
+                        <ImagePlus className="size-4" />
+                        {bannerUploading ? "Uploading image…" : campaignForm.banner.backgroundImageUrl ? "Replace background image" : "Upload background image · auto-fit to email"}
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          className="sr-only"
+                          disabled={bannerUploading}
+                          onChange={(event) => {
+                            void uploadCampaignBackground(event.target.files?.[0]);
+                            event.currentTarget.value = "";
+                          }}
+                        />
+                      </label>
+                    </div>
+                    {campaignForm.banner.backgroundImageUrl && (
+                      <div className="flex items-start gap-3 sm:col-span-2">
+                        <Image
+                          src={apiUrl(campaignForm.banner.backgroundImageUrl)}
+                          alt="Email background preview"
+                          width={320}
+                          height={120}
+                          unoptimized
+                          className="h-20 w-40 rounded-lg border border-neutral-200 object-cover"
+                        />
+                        <div>
+                          <p className="text-xs text-neutral-600">Background auto-fits the email canvas.</p>
+                          <button
+                            type="button"
+                            onClick={() => setCampaignForm((current) => ({
+                              ...current,
+                              banner: { ...current.banner, backgroundImageUrl: "" },
+                            }))}
+                            className="mt-2 rounded-lg border border-neutral-300 px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50"
+                          >
+                            Remove background
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </section>
               <section className="rounded-2xl border border-neutral-200 bg-white p-4 sm:p-5" aria-labelledby="campaign-audience-heading">
                 <h3 id="campaign-audience-heading" className="font-bold text-neutral-900">Recipients</h3>
                 <label className="mt-3 block max-w-md text-sm font-semibold text-neutral-800">
@@ -611,23 +866,72 @@ export default function EmailManagementPage() {
                 <label className="block text-sm font-semibold text-neutral-800">Send at<input type="datetime-local" required className="mt-1 block rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" value={campaignForm.scheduledAt} onChange={(event) => setCampaignForm({ ...campaignForm, scheduledAt: event.target.value })} /></label>
               )}
               <label className="flex items-start gap-3 text-sm text-neutral-700"><input type="checkbox" className="mt-1 size-4" checked={campaignForm.includeUnsubscribed} onChange={(event) => setCampaignForm({ ...campaignForm, includeUnsubscribed: event.target.checked })} /><span>Include users who opted out of marketing emails (use only for appropriate, non-promotional service communications).</span></label>
-              <div className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
-                <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Preview</p>
-                <h3 className="mt-2 font-bold text-neutral-900">{campaignForm.subject || "Email subject preview"}</h3>
-                <p className="mt-3 text-sm font-semibold text-neutral-800">{campaignForm.greeting.replaceAll("{{name}}", "Alex Morgan").replaceAll("{{email}}", "alex@example.com").replaceAll("{{brandName}}", email.brandName) || "Greeting preview"}</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-neutral-700">{campaignForm.body.replaceAll("{{name}}", "Alex Morgan").replaceAll("{{email}}", "alex@example.com").replaceAll("{{brandName}}", email.brandName) || "Your message preview will appear here."}</p>
-                {campaignForm.services.length > 0 && (
-                  <div className="mt-4 grid gap-2 border-t border-neutral-200 pt-4 sm:grid-cols-2">
-                    {campaignForm.services.map((service) => (
-                      <div key={service.serviceId} className="rounded-xl border border-neutral-200 bg-white p-3">
-                        <span className="text-[10px] font-bold uppercase tracking-wide text-teal-800">{service.platform}</span>
-                        <p className="mt-1 text-sm font-bold text-neutral-900">{service.name}</p>
-                        <p className="mt-1 text-xs text-neutral-500">{service.category}{service.country ? ` · ${service.country}` : ""} · Rs.{Number(service.sellingRate).toFixed(2)} / 1k</p>
+              <section className="rounded-2xl border border-neutral-200 bg-white p-4" aria-label="Campaign email preview">
+                <p className="text-xs font-bold uppercase tracking-wide text-neutral-500">Email preview</p>
+                <div
+                  className="mt-3 rounded-xl p-3 sm:p-6"
+                  style={{
+                    backgroundColor: previewBackgroundColor,
+                    backgroundImage: campaignForm.banner.backgroundImageUrl
+                      ? `url("${apiUrl(campaignForm.banner.backgroundImageUrl)}")`
+                      : undefined,
+                    backgroundPosition: "center",
+                    backgroundRepeat: "no-repeat",
+                    backgroundSize: "cover",
+                  }}
+                >
+                  <div className="mx-auto max-w-2xl overflow-hidden border border-neutral-200/80 bg-white shadow-sm">
+                    <div
+                      className="px-5 py-5 text-white sm:px-7"
+                      style={{ backgroundColor: previewPrimary, backgroundImage: `linear-gradient(125deg, ${previewPrimary}, ${previewAccent})` }}
+                    >
+                      <p className="text-xs font-bold uppercase tracking-[0.16em]">{email.brandName}</p>
+                      <h3 className="mt-2 text-xl font-bold">{campaignForm.subject || "Email subject preview"}</h3>
+                    </div>
+                    {previewBannerPreset && (
+                      <div
+                        className="px-5 py-7 text-center text-white sm:py-9"
+                        style={{ backgroundColor: previewBannerPreset.colors[0], backgroundImage: `linear-gradient(120deg, ${previewBannerPreset.colors[0]}, ${previewBannerPreset.colors[1]})` }}
+                      >
+                        <span className="block text-4xl" aria-hidden="true">{previewBannerPreset.emoji}</span>
+                        <span className="mt-2 block text-xl font-bold">{previewBannerPreset.title}</span>
                       </div>
-                    ))}
+                    )}
+                    {campaignForm.banner.imageUrl && (
+                      <Image
+                        src={apiUrl(campaignForm.banner.imageUrl)}
+                        alt="Custom campaign banner preview"
+                        width={640}
+                        height={320}
+                        unoptimized
+                        className="block h-auto w-full"
+                      />
+                    )}
+                    <div className="px-5 py-5 text-sm leading-6 text-neutral-700 sm:px-7">
+                      <p className="font-semibold" style={{ color: previewPrimary }}>
+                        {campaignForm.greeting.replaceAll("{{name}}", "Alex Morgan").replaceAll("{{email}}", "alex@example.com").replaceAll("{{brandName}}", email.brandName) || "Greeting preview"}
+                      </p>
+                      <p className="mt-3 whitespace-pre-wrap">
+                        {campaignForm.body.replaceAll("{{name}}", "Alex Morgan").replaceAll("{{email}}", "alex@example.com").replaceAll("{{brandName}}", email.brandName) || "Your message preview will appear here."}
+                      </p>
+                    </div>
+                    {campaignForm.services.length > 0 && (
+                      <div className="grid gap-2 border-t border-neutral-100 px-5 py-4 sm:grid-cols-2 sm:px-7">
+                        {campaignForm.services.map((service) => (
+                          <div key={service.serviceId} className="rounded-lg border border-neutral-200 bg-white p-3">
+                            <span className="text-[10px] font-bold uppercase tracking-wide" style={{ color: previewAccent }}>{service.platform}</span>
+                            <p className="mt-1 text-sm font-bold text-neutral-900">{service.name}</p>
+                            <p className="mt-1 text-xs text-neutral-500">{service.category}{service.country ? ` · ${service.country}` : ""} · Rs.{Number(service.sellingRate).toFixed(2)} / 1k</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="border-t border-neutral-200 px-5 py-3 text-center text-xs text-neutral-500 sm:px-7">
+                      {email.brandName} · Unsubscribe from marketing emails
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              </section>
               <button disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? (campaignForm.sendMode === "now" ? "Starting…" : "Scheduling…") : (campaignForm.sendMode === "now" ? "Confirm and send now" : "Confirm and schedule campaign")}</button>
             </form>
           </AdminSection>

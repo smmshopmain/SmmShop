@@ -13,7 +13,7 @@ const contentTypes: Record<string, string> = {
   ".pdf": "application/pdf",
 };
 
-const allowedFolders = new Set(["deposit-proofs", "payment-qr"]);
+const allowedFolders = new Set(["deposit-proofs", "payment-qr", "campaign-banners"]);
 
 function bufferFromUploadData(data: unknown) {
   if (Buffer.isBuffer(data)) return data;

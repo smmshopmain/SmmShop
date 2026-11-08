@@ -282,6 +282,12 @@ const EmailCampaignSchema = new Schema(
     subject: { type: String, required: true, trim: true, maxlength: 200 },
     greeting: { type: String, trim: true, maxlength: 200, default: "Hello {{name}}," },
     body: { type: String, required: true, maxlength: 10000 },
+    banner: {
+      presetId: { type: String, maxlength: 40, default: null },
+      imageUrl: { type: String, trim: true, maxlength: 500, default: "" },
+      backgroundImageUrl: { type: String, trim: true, maxlength: 500, default: "" },
+      backgroundColor: { type: String, trim: true, maxlength: 7, default: "" },
+    },
     services: {
       type: [{
         serviceId: { type: String, required: true },
@@ -321,7 +327,7 @@ EmailCampaignSchema.index({ status: 1, scheduledAt: 1, lockUntil: 1 });
 
 const UploadedFileSchema = new Schema(
   {
-    folder: { type: String, enum: ["deposit-proofs", "payment-qr"], required: true, index: true },
+    folder: { type: String, enum: ["deposit-proofs", "payment-qr", "campaign-banners"], required: true, index: true },
     fileName: { type: String, required: true, trim: true },
     contentType: { type: String, required: true },
     data: { type: Buffer, required: true },

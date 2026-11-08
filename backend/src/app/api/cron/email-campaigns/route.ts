@@ -74,7 +74,9 @@ export async function POST(request: NextRequest) {
               primaryColor: settings.email.primaryColor,
               accentColor: settings.email.accentColor,
               siteUrl,
+              backendUrl,
               unsubscribeUrl,
+              banner: campaign.banner,
             });
             await sendMail({ to: recipient.email, ...email });
             return null;

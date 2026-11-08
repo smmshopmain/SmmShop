@@ -46,7 +46,7 @@ export async function GET(
     const { path: segments } = await context.params;
     if (!segments || segments.length !== 2) return fail("Invalid upload path", 404);
     const [folder, fileName] = segments;
-    if (!["deposit-proofs", "payment-qr"].includes(folder)) return fail("Invalid upload folder", 404);
+    if (!["deposit-proofs", "payment-qr", "campaign-banners"].includes(folder)) return fail("Invalid upload folder", 404);
 
     const uploadsRoot = path.join(process.cwd(), "uploads");
     const filePath = path.join(uploadsRoot, folder, path.basename(fileName));

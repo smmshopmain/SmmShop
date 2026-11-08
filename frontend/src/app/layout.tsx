@@ -4,7 +4,6 @@ import {
   DEFAULT_MOTION_SETTINGS,
   MotionSettingsProvider,
 } from "@/components/motion-settings-provider";
-import { normalizeMotionSettings, type MotionSettings } from "@/lib/motion-settings";
 import { CopyProtection } from "@/components/copy-protection";
 import "./globals.css";
 
@@ -16,44 +15,12 @@ export const metadata: Metadata = {
   description: "Manage social media services, orders, wallet, and support from one modern reseller workspace.",
 };
 
-async function loadInitialMotionSettings(): Promise<MotionSettings> {
-  const apiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
-  if (!apiBase) {
-    console.error("Unable to load site appearance before first render: NEXT_PUBLIC_API_URL is not configured.");
-    return DEFAULT_MOTION_SETTINGS;
-  }
-
-  try {
-    const response = await fetch(`${apiBase}/api/settings`, {
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) {
-      throw new Error(`Settings request failed with status ${response.status}.`);
-    }
-
-    const payload = await response.json() as {
-      data?: {
-        appearance?: Partial<MotionSettings>;
-      };
-      appearance?: Partial<MotionSettings>;
-    };
-    const appearance = payload.data?.appearance ?? payload.appearance;
-    if (!appearance) throw new Error("Appearance settings were missing from the settings response.");
-
-    return normalizeMotionSettings(appearance);
-  } catch (error) {
-    console.error("Unable to load site appearance before first render.", error);
-    return DEFAULT_MOTION_SETTINGS;
-  }
-}
-
-export default async function RootLayout({
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialMotionSettings = await loadInitialMotionSettings();
+  const initialMotionSettings = DEFAULT_MOTION_SETTINGS;
 
   return (
     <html
