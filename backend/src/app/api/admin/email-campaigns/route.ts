@@ -46,7 +46,7 @@ export async function GET() {
     const campaigns = await EmailCampaign.find()
       .sort({ createdAt: -1 })
       .limit(50)
-      .select("title kind subject greeting body banner services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError createdAt")
+      .select("title kind subject greeting body banner services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError bannerCleanupError createdAt")
       .populate({ path: "recipientUserIds", select: "name email" })
       .lean();
     return ok({ campaigns });

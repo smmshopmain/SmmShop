@@ -4,10 +4,57 @@ import { dbConnect } from "@/lib/db";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { buildCampaignEmail, createUnsubscribeToken } from "@/lib/email-marketing";
 import { sendMail } from "@/lib/email";
-import { EmailCampaign, getSettings, User } from "@/models";
+import { EmailCampaign, getSettings, UploadedFile, User } from "@/models";
 
 const CAMPAIGN_BATCH_SIZE = 25;
 const LOCK_DURATION_MS = 5 * 60 * 1000;
+
+function campaignUploadFileName(url: string) {
+  const match = /^\/api\/uploads\/file\/campaign-banners\/([a-f\d-]+\.(?:jpg|png|webp))$/i.exec(url);
+  return match?.[1] ?? null;
+}
+
+async function cleanupSentCampaignBanners(campaign: {
+  _id: unknown;
+  banner?: { imageUrl?: string; backgroundImageUrl?: string } | null;
+}) {
+  const urls = [...new Set([campaign.banner?.imageUrl, campaign.banner?.backgroundImageUrl].filter(
+    (url): url is string => Boolean(url),
+  ))];
+  if (!urls.length) return;
+
+  const activeCampaigns = await EmailCampaign.find({
+    _id: { $ne: campaign._id },
+    status: { $in: ["scheduled", "queued", "sending"] },
+    $or: [
+      { "banner.imageUrl": { $in: urls } },
+      { "banner.backgroundImageUrl": { $in: urls } },
+    ],
+  })
+    .select("banner.imageUrl banner.backgroundImageUrl")
+    .lean();
+  const activeUrls = new Set(
+    activeCampaigns.flatMap((item) => [item.banner?.imageUrl, item.banner?.backgroundImageUrl])
+      .filter((url): url is string => Boolean(url)),
+  );
+  const unusedUrls = urls.filter((url) => !activeUrls.has(url));
+  const fileNames = unusedUrls.map(campaignUploadFileName).filter((name): name is string => Boolean(name));
+
+  if (fileNames.length) {
+    await UploadedFile.deleteMany({ folder: "campaign-banners", fileName: { $in: fileNames } });
+  }
+
+  await EmailCampaign.updateOne(
+    { _id: campaign._id },
+    {
+      $unset: {
+        "banner.imageUrl": 1,
+        "banner.backgroundImageUrl": 1,
+      },
+      $set: { bannerCleanupError: null },
+    },
+  );
+}
 
 export async function POST(request: NextRequest) {
   const authError = await requireCronOrAdmin(request);
@@ -134,6 +181,23 @@ export async function POST(request: NextRequest) {
       },
     );
 
+    let cleanupWarning: string | undefined;
+    if (status === "sent") {
+      try {
+        await cleanupSentCampaignBanners(campaign);
+      } catch (error) {
+        cleanupWarning = error instanceof Error ? error.message : "Unable to delete campaign banner uploads.";
+        console.error("Email campaign sent, but banner cleanup failed", {
+          campaignId: String(campaign._id),
+          error,
+        });
+        await EmailCampaign.updateOne(
+          { _id: campaign._id },
+          { $set: { bannerCleanupError: cleanupWarning } },
+        );
+      }
+    }
+
     return ok({
       processed: true,
       campaignId: campaign._id,
@@ -142,6 +206,7 @@ export async function POST(request: NextRequest) {
       failed,
       hasMore: Boolean(hasMore),
       status,
+      ...(cleanupWarning ? { cleanupWarning } : {}),
     });
   } catch (error) {
     console.error("Email campaign batch failed", error);

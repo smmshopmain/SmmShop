@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { NextRequest } from "next/server";
 import { fail, ok, requireAdmin } from "@/lib/api";
+import { dbConnect } from "@/lib/db";
 import { UploadedFile } from "@/models";
 
 const allowedTypes = new Map([
@@ -12,6 +13,7 @@ const allowedTypes = new Map([
 export async function POST(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
+    await dbConnect();
     const form = await request.formData();
     const file = form.get("file");
     if (!(file instanceof File)) return fail("Banner image is required.");

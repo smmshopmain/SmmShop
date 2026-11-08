@@ -72,6 +72,7 @@ type Campaign = {
   recipientUserIds?: CampaignRecipient[];
   scheduledAt: string;
   lastError?: string;
+  bannerCleanupError?: string;
 };
 type SettingsResponse = {
   email?: EmailSettings;
@@ -106,6 +107,41 @@ const DEFAULT_EMAIL: EmailSettings = {
 function localDateTimeValue(date: Date) {
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
   return local.toISOString().slice(0, 16);
+}
+
+function uploadCampaignImage(file: File, onProgress: (progress: number) => void) {
+  return new Promise<string>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", apiUrl("/api/admin/campaign-banner"));
+    request.withCredentials = true;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    request.onerror = () => reject(new Error("Banner upload failed. Check your connection and try again."));
+    request.onabort = () => reject(new Error("Banner upload was cancelled."));
+    request.onload = () => {
+      let result: { data?: { url?: string }; url?: string; message?: string };
+      try {
+        result = JSON.parse(request.responseText);
+      } catch {
+        reject(new Error(`Banner upload failed with status ${request.status}.`));
+        return;
+      }
+
+      const url = result.data?.url ?? result.url;
+      if (request.status < 200 || request.status >= 300 || typeof url !== "string") {
+        reject(new Error(result.message ?? `Banner upload failed with status ${request.status}.`));
+        return;
+      }
+
+      onProgress(100);
+      resolve(url);
+    };
+
+    const formData = new FormData();
+    formData.set("file", file);
+    request.send(formData);
+  });
 }
 
 function tintBannerColor(color: string, whiteAmount: number) {
@@ -165,6 +201,8 @@ export default function EmailManagementPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [bannerUploading, setBannerUploading] = useState(false);
+  const [bannerUploadProgress, setBannerUploadProgress] = useState<number | null>(null);
+  const [bannerUploadFileName, setBannerUploadFileName] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const previewBannerPreset = CAMPAIGN_BANNER_PRESETS.find(({ id }) => id === campaignForm.banner.presetId);
@@ -305,6 +343,7 @@ export default function EmailManagementPage() {
         let continueSending = true;
         let sent = 0;
         let failed = 0;
+        let cleanupWarning: string | undefined;
         while (continueSending) {
           const startResponse = await apiFetch("/api/cron/email-campaigns", { method: "POST" });
           const startResult = await startResponse.json();
@@ -316,6 +355,7 @@ export default function EmailManagementPage() {
             setMessage("Campaign is queued. Delivery will continue automatically in the background.");
             break;
           }
+          cleanupWarning = batch.cleanupWarning ?? cleanupWarning;
           sent += Number(batch.sent ?? 0);
           failed += Number(batch.failed ?? 0);
           continueSending = batch.hasMore === true;
@@ -325,6 +365,7 @@ export default function EmailManagementPage() {
               : `Campaign delivery finished. ${sent} sent${failed ? `, ${failed} failed` : ""}.`,
           );
         }
+        if (cleanupWarning) setError(`Campaign sent, but its uploaded image could not be deleted: ${cleanupWarning}`);
       }
       const campaignData = await apiJson("/api/admin/email-campaigns");
       setCampaigns(campaignData.campaigns ?? []);
@@ -457,20 +498,12 @@ export default function EmailManagementPage() {
     }
 
     setBannerUploading(true);
+    setBannerUploadProgress(0);
+    setBannerUploadFileName(file.name);
     setError("");
     setMessage("");
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const response = await apiFetch("/api/admin/campaign-banner", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await response.json();
-      const imageUrl = result.data?.url ?? result.url;
-      if (!response.ok || typeof imageUrl !== "string") {
-        throw new Error(result.message ?? "Unable to upload banner image.");
-      }
+      const imageUrl = await uploadCampaignImage(file, setBannerUploadProgress);
       setCampaignForm((current) => ({
         ...current,
         banner: { presetId: null, imageUrl, backgroundImageUrl: "", backgroundColor: "" },
@@ -480,6 +513,8 @@ export default function EmailManagementPage() {
       setError(cause instanceof Error ? cause.message : "Unable to upload banner image.");
     } finally {
       setBannerUploading(false);
+      setBannerUploadProgress(null);
+      setBannerUploadFileName("");
     }
   }
 
@@ -495,20 +530,12 @@ export default function EmailManagementPage() {
     }
 
     setBannerUploading(true);
+    setBannerUploadProgress(0);
+    setBannerUploadFileName(file.name);
     setError("");
     setMessage("");
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const response = await apiFetch("/api/admin/campaign-banner", {
-        method: "POST",
-        body: formData,
-      });
-      const result = await response.json();
-      const backgroundImageUrl = result.data?.url ?? result.url;
-      if (!response.ok || typeof backgroundImageUrl !== "string") {
-        throw new Error(result.message ?? "Unable to upload email background image.");
-      }
+      const backgroundImageUrl = await uploadCampaignImage(file, setBannerUploadProgress);
       setCampaignForm((current) => ({
         ...current,
         banner: { ...current.banner, backgroundImageUrl },
@@ -518,6 +545,8 @@ export default function EmailManagementPage() {
       setError(cause instanceof Error ? cause.message : "Unable to upload email background image.");
     } finally {
       setBannerUploading(false);
+      setBannerUploadProgress(null);
+      setBannerUploadFileName("");
     }
   }
 
@@ -725,6 +754,29 @@ export default function EmailManagementPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+                {bannerUploadProgress !== null && (
+                  <div className="mt-4 rounded-xl border border-teal-100 bg-teal-50/70 p-3" role="status" aria-live="polite">
+                    <div className="flex items-center justify-between gap-3 text-xs">
+                      <span className="min-w-0 truncate font-medium text-neutral-700">
+                        Uploading {bannerUploadFileName}
+                      </span>
+                      <span className="shrink-0 font-bold text-teal-800">{bannerUploadProgress}%</span>
+                    </div>
+                    <div
+                      className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100"
+                      role="progressbar"
+                      aria-label="Image upload progress"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={bannerUploadProgress}
+                    >
+                      <div
+                        className="h-full rounded-full bg-teal-700 transition-[width] duration-150"
+                        style={{ width: `${bannerUploadProgress}%` }}
+                      />
+                    </div>
                   </div>
                 )}
               </section>
@@ -941,7 +993,7 @@ export default function EmailManagementPage() {
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left text-sm">
                   <thead className="bg-neutral-50 text-xs uppercase text-neutral-500"><tr><th className="p-3">Campaign</th><th className="p-3">Status</th><th className="p-3">Scheduled</th><th className="p-3">Recipients</th><th className="p-3">Sent / failed</th><th className="p-3">Unsubscribed included</th><th className="p-3">Delivery details</th><th className="p-3">Actions</th></tr></thead>
-                  <tbody>{campaigns.map((campaign) => <tr key={campaign._id} className="border-t border-neutral-100"><td className="p-3"><span className="font-semibold">{campaign.title}</span><span className="block text-xs text-neutral-500">{campaign.kind}: {campaign.subject}</span></td><td className="p-3 capitalize">{campaign.status}</td><td className="p-3 whitespace-nowrap">{new Date(campaign.scheduledAt).toLocaleString()}</td><td className="p-3">{campaign.recipientCount}</td><td className="p-3">{campaign.sentCount} / {campaign.failedCount}</td><td className="p-3">{campaign.includeUnsubscribed ? "Yes" : "No"}</td><td className="max-w-xs p-3 text-xs text-rose-700">{campaign.lastError || "—"}</td><td className="p-3"><button type="button" onClick={() => duplicateCampaign(campaign)} className="whitespace-nowrap rounded-lg border border-teal-200 px-3 py-2 text-xs font-bold text-teal-800 transition hover:bg-teal-50">Duplicate &amp; edit</button></td></tr>)}</tbody>
+                  <tbody>{campaigns.map((campaign) => <tr key={campaign._id} className="border-t border-neutral-100"><td className="p-3"><span className="font-semibold">{campaign.title}</span><span className="block text-xs text-neutral-500">{campaign.kind}: {campaign.subject}</span></td><td className="p-3 capitalize">{campaign.status}</td><td className="p-3 whitespace-nowrap">{new Date(campaign.scheduledAt).toLocaleString()}</td><td className="p-3">{campaign.recipientCount}</td><td className="p-3">{campaign.sentCount} / {campaign.failedCount}</td><td className="p-3">{campaign.includeUnsubscribed ? "Yes" : "No"}</td><td className="max-w-xs p-3 text-xs text-rose-700">{campaign.lastError || campaign.bannerCleanupError || "—"}</td><td className="p-3"><button type="button" onClick={() => duplicateCampaign(campaign)} className="whitespace-nowrap rounded-lg border border-teal-200 px-3 py-2 text-xs font-bold text-teal-800 transition hover:bg-teal-50">Duplicate &amp; edit</button></td></tr>)}</tbody>
                 </table>
               </div>
             ) : <p className="p-5 text-sm text-neutral-500">No campaigns created yet.</p>}

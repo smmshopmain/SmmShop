@@ -319,6 +319,7 @@ const EmailCampaignSchema = new Schema(
     failedCount: { type: Number, default: 0, min: 0 },
     lockUntil: Date,
     lastError: String,
+    bannerCleanupError: String,
     createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },
   },
   { timestamps: true },
