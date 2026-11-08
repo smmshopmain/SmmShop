@@ -29,6 +29,7 @@ const SERVICE_COUNTRIES = [
   "Saudi Arabia", "United Arab Emirates", "Nigeria", "South Africa",
   "Bangladesh", "Pakistan",
 ];
+const MAX_CAMPAIGN_IMAGE_SIZE = 10 * 1024 * 1024;
 type CampaignForm = {
   title: string;
   kind: Campaign["kind"];
@@ -492,8 +493,8 @@ export default function EmailManagementPage() {
       setError("Choose a JPG, PNG, or WEBP banner image.");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Banner image must be 2MB or smaller.");
+    if (file.size > MAX_CAMPAIGN_IMAGE_SIZE) {
+      setError("Banner image must be 10MB or smaller.");
       return;
     }
 
@@ -524,8 +525,8 @@ export default function EmailManagementPage() {
       setError("Choose a JPG, PNG, or WEBP email background image.");
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Email background image must be 2MB or smaller.");
+    if (file.size > MAX_CAMPAIGN_IMAGE_SIZE) {
+      setError("Email background image must be 10MB or smaller.");
       return;
     }
 
@@ -615,7 +616,7 @@ export default function EmailManagementPage() {
                   <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-teal-50 text-teal-800"><ImagePlus className="size-5" /></span>
                   <div>
                     <h3 id="campaign-banner-heading" className="font-bold text-neutral-900">Email banner <span className="font-medium text-neutral-500">(optional)</span></h3>
-                    <p className="mt-1 text-xs leading-5 text-neutral-500">Choose a festival design or upload your own JPG, PNG, or WEBP image (up to 2MB). The banner is included in the preview and email.</p>
+                    <p className="mt-1 text-xs leading-5 text-neutral-500">Choose a festival design or upload your own JPG, PNG, or WEBP image (up to 10MB). The banner is included in the preview and email.</p>
                   </div>
                 </div>
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

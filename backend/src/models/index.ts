@@ -417,7 +417,19 @@ export const PromoCode = models.PromoCode || model("PromoCode", PromoCodeSchema)
 export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", EmailCampaignSchema);
-export const UploadedFile = models.UploadedFile || model("UploadedFile", UploadedFileSchema);
+const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners"] as const;
+const existingUploadedFile = models.UploadedFile;
+if (existingUploadedFile) {
+  const folderPath = existingUploadedFile.schema.path("folder") as Schema.Types.String & {
+    options: { enum?: string[] };
+  };
+  const missingFolders = uploadedFileFolders.filter((folder) => !folderPath.options.enum?.includes(folder));
+  if (missingFolders.length) {
+    for (const folder of missingFolders) folderPath.enum(folder);
+    folderPath.options.enum = [...(folderPath.options.enum ?? []), ...missingFolders];
+  }
+}
+export const UploadedFile = existingUploadedFile || model("UploadedFile", UploadedFileSchema);
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
 export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSchema);

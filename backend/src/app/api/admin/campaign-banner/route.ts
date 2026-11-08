@@ -9,6 +9,7 @@ const allowedTypes = new Map([
   ["image/png", "png"],
   ["image/webp", "webp"],
 ]);
+const MAX_CAMPAIGN_IMAGE_SIZE = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const file = form.get("file");
     if (!(file instanceof File)) return fail("Banner image is required.");
     if (!allowedTypes.has(file.type)) return fail("Only JPG, PNG, or WEBP banner images are allowed.");
-    if (file.size > 2 * 1024 * 1024) return fail("Banner image must be 2MB or smaller.");
+    if (file.size > MAX_CAMPAIGN_IMAGE_SIZE) return fail("Banner and background images must be 10MB or smaller.");
 
     const fileName = `${randomUUID()}.${allowedTypes.get(file.type)}`;
     const data = Buffer.from(await file.arrayBuffer());
