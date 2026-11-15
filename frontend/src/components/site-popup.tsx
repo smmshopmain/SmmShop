@@ -176,14 +176,29 @@ export function SitePopup() {
   const PopupContent = (
     <>
       {currentPopup.imageUrl && (
-        <Image
-          src={apiUrl(currentPopup.imageUrl)}
-          alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
-          width={640}
-          height={360}
-          unoptimized
-          className={`block max-h-[min(76dvh,760px)] w-full object-contain ${imageOnly ? "" : "mb-5 rounded-xl"}`}
-        />
+        imageOnly ? (
+          <div className="relative h-dvh w-screen">
+            <Image
+              src={apiUrl(currentPopup.imageUrl)}
+              alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+              fill
+              sizes="100vw"
+              unoptimized
+              className="object-contain"
+            />
+          </div>
+        ) : (
+          <div className="relative mb-5 h-[min(60dvh,520px)] w-full">
+            <Image
+              src={apiUrl(currentPopup.imageUrl)}
+              alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+              fill
+              sizes="(max-width: 768px) 100vw, 768px"
+              unoptimized
+              className="rounded-xl object-contain"
+            />
+          </div>
+        )
       )}
       {(hasTitle || hasMessage) && (
         <div className={hasImage ? "" : "mt-1"}>
@@ -207,7 +222,7 @@ export function SitePopup() {
           )}
         </div>
       )}
-      {currentPopup.linkHref && (
+      {currentPopup.linkHref && !imageOnly && (
         <span className={`${hasImage ? "mt-4" : "mt-5"} inline-flex items-center gap-2 rounded-xl bg-[var(--motion-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95`}>
           {currentPopup.linkLabel || "Explore now"} <ArrowRight className="size-4" />
         </span>
@@ -216,14 +231,19 @@ export function SitePopup() {
   );
 
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm sm:p-6" role="presentation">
+    <div
+      className={`fixed inset-0 z-[80] ${imageOnly ? "overflow-hidden bg-slate-950/90" : "grid place-items-center overflow-y-auto bg-slate-950/60 p-4 backdrop-blur-sm sm:p-6"}`}
+      role="presentation"
+    >
       <section
         ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={hasTitle ? "site-popup-title" : undefined}
         aria-label={hasTitle ? undefined : (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
-        className={`relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`}
+        className={imageOnly
+          ? "relative h-dvh w-screen overflow-hidden bg-transparent"
+          : `relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`}
         style={hasImage ? undefined : { borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }}
       >
         <button
@@ -232,16 +252,18 @@ export function SitePopup() {
           id="site-popup-close"
           onClick={dismissCurrentPopup}
           aria-label="Close announcement"
-          className={`absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-950 ${imageOnly ? "right-3 top-3" : ""}`}
+          className={imageOnly
+            ? "absolute right-4 top-4 z-20 grid size-11 place-items-center rounded-full border border-white/30 bg-black/20 text-white/90 shadow-sm backdrop-blur-sm transition hover:bg-black/40 hover:text-white"
+            : "absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-950"}
         >
           <X className="size-5" />
         </button>
-        <div className={imageOnly ? "" : "px-6 pb-5 pt-8 sm:px-9 sm:pb-7 sm:pt-10"}>
+        <div className={imageOnly ? "h-full w-full" : "px-6 pb-5 pt-8 sm:px-9 sm:pb-7 sm:pt-10"}>
           {currentPopup.linkHref ? (
             <a
               href={currentPopup.linkHref}
               onClick={dismissCurrentPopup}
-              className="block rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[var(--motion-accent)] focus-visible:ring-offset-4"
+              className={`block ${imageOnly ? "h-full w-full" : "rounded-2xl"} outline-none focus-visible:ring-2 focus-visible:ring-[var(--motion-accent)] focus-visible:ring-offset-4`}
             >
               {PopupContent}
             </a>
@@ -250,8 +272,11 @@ export function SitePopup() {
               {PopupContent}
             </div>
           )}
-          <div className={`${imageOnly ? "px-5 py-4" : "mt-7 border-t border-neutral-100 pt-4"} flex flex-wrap items-center justify-between gap-4`}>
-            <label className="flex cursor-pointer items-center gap-2.5 text-xs font-medium text-neutral-600">
+          <div className={imageOnly
+            ? "absolute bottom-4 left-4 z-20"
+            : "mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-neutral-100 pt-4"}
+          >
+            <label className={`flex cursor-pointer items-center gap-2.5 text-xs font-medium ${imageOnly ? "rounded-full border border-white/20 bg-black/30 px-3 py-2 text-white shadow-sm backdrop-blur-sm" : "text-neutral-600"}`}>
               <input
                 type="checkbox"
                 checked={hideToday}
@@ -263,9 +288,11 @@ export function SitePopup() {
               />
               Hide this popup for today
             </label>
-            <button type="button" onClick={dismissCurrentPopup} className="text-xs font-semibold text-neutral-500 transition hover:text-neutral-900">
-              Maybe later
-            </button>
+            {!imageOnly && (
+              <button type="button" onClick={dismissCurrentPopup} className="text-xs font-semibold text-neutral-500 transition hover:text-neutral-900">
+                Maybe later
+              </button>
+            )}
           </div>
         </div>
       </section>
