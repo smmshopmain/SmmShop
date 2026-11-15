@@ -341,6 +341,7 @@ const SitePopupSchema = new Schema(
     startsAt: { type: Date, required: true, index: true },
     expiresAt: { type: Date, required: true, index: true },
     autoCloseAfterSeconds: { type: Number, min: 0, max: 3600, default: 0 },
+    slideshowGroupId: { type: String, trim: true, default: "", index: true },
     showOnEveryRefresh: { type: Boolean, default: false },
     active: { type: Boolean, default: true, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },

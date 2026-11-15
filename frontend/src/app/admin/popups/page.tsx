@@ -21,6 +21,7 @@ type PopupForm = {
   startsAt: string;
   expiresAt: string;
   autoCloseAfterSeconds: number;
+  slideshowGroupId: string;
   showOnEveryRefresh: boolean;
   active: boolean;
 };
@@ -49,6 +50,7 @@ function emptyPopupForm(): PopupForm {
     startsAt: localDateTimeValue(now),
     expiresAt: localDateTimeValue(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
     autoCloseAfterSeconds: 0,
+    slideshowGroupId: "",
     showOnEveryRefresh: false,
     active: true,
   };
@@ -172,6 +174,7 @@ export default function PopupManagementPage() {
       startsAt: localDateTimeValue(new Date(popup.startsAt)),
       expiresAt: localDateTimeValue(new Date(popup.expiresAt)),
       autoCloseAfterSeconds: popup.autoCloseAfterSeconds ?? 0,
+      slideshowGroupId: popup.slideshowGroupId || "",
       showOnEveryRefresh: popup.showOnEveryRefresh ?? false,
       active: popup.active,
     });
@@ -316,6 +319,14 @@ export default function PopupManagementPage() {
     }
   }
 
+  const popupById = new Map<string, Popup>();
+  for (const popup of popups) popupById.set(popup._id, popup);
+  const mergeTargets = new Map<string, Popup>();
+  for (const popup of popups) {
+    const rootId = popup.slideshowGroupId || popup._id;
+    mergeTargets.set(rootId, popupById.get(rootId) ?? popup);
+  }
+
   return (
     <AppShell>
       <AdminHeader
@@ -326,10 +337,10 @@ export default function PopupManagementPage() {
       {error && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
       {message && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p>}
 
-      <AdminSection title="Campaign slideshow" description="Live campaigns rotate one by one with an animation. This shared display time applies to every campaign unless it has a custom time set.">
+      <AdminSection title="Campaign slideshow" description="Unmerged campaigns share one animated round. Campaigns merged with a base campaign share that base campaign’s custom total time; if it has no custom time, the shared total is used.">
         <form onSubmit={saveSlideshowSettings} className="flex flex-wrap items-end gap-3 p-4 sm:p-6">
           <label className="block min-w-48 flex-1 text-sm font-semibold text-neutral-800">
-            Shared display time (seconds)
+            Total slideshow time (seconds)
             <input
               type="number"
               min={3}
@@ -340,7 +351,7 @@ export default function PopupManagementPage() {
               onChange={(event) => setSlideshowDurationSeconds(Number(event.target.value))}
               className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
             />
-            <span className="mt-1 block text-xs font-normal text-neutral-500">Used by every live campaign set to “Use shared time”. Range: 3–3600 seconds.</span>
+            <span className="mt-1 block text-xs font-normal text-neutral-500">This is the total time for one round of unmerged campaigns and the fallback for merged groups without a custom base time. Range: 3–3600 seconds.</span>
           </label>
           <button disabled={savingSlideshowSettings} className="rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60">
             {savingSlideshowSettings ? "Saving…" : "Save slideshow time"}
@@ -542,6 +553,30 @@ export default function PopupManagementPage() {
                 <input required type="datetime-local" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm" />
               </label>
             </div>
+            {!editingId && (
+              <label className="block text-sm font-semibold text-neutral-800">
+                Merge with existing campaign (optional)
+                <select
+                  value={form.slideshowGroupId}
+                  onChange={(event) => setForm({
+                    ...form,
+                    slideshowGroupId: event.target.value,
+                    autoCloseAfterSeconds: event.target.value ? 0 : form.autoCloseAfterSeconds,
+                  })}
+                  className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+                >
+                  <option value="">No merge — use the shared slideshow</option>
+                  {Array.from(mergeTargets, ([groupId, campaign]) => (
+                    <option key={groupId} value={groupId}>
+                      {campaign.title || "Image-only campaign"} — {campaign.autoCloseAfterSeconds > 0
+                        ? `${campaign.autoCloseAfterSeconds}s group total`
+                        : `${slideshowDurationSeconds}s shared total`}
+                    </option>
+                  ))}
+                </select>
+                <span className="mt-1 block text-xs font-normal text-neutral-500">The selected campaign is the group’s base. Its total display time is divided evenly among it and all merged campaigns.</span>
+              </label>
+            )}
             <label className="block text-sm font-semibold text-neutral-800">
               Custom display time for this campaign (seconds)
               <input
@@ -550,11 +585,16 @@ export default function PopupManagementPage() {
                 max={3600}
                 step={1}
                 value={form.autoCloseAfterSeconds}
+                disabled={Boolean(form.slideshowGroupId)}
                 onChange={(event) => setForm({ ...form, autoCloseAfterSeconds: Number(event.target.value) })}
                 required
-                className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+                className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm disabled:bg-neutral-100 disabled:text-neutral-500"
               />
-              <span className="mt-1 block text-xs font-normal text-neutral-500">Enter 0 to use the shared slideshow time ({slideshowDurationSeconds} seconds). Enter 3–3600 to override it for this campaign.</span>
+              <span className="mt-1 block text-xs font-normal text-neutral-500">
+                {form.slideshowGroupId
+                  ? "Merged campaigns use the selected base campaign’s total time; this campaign’s own timer is ignored."
+                  : `Enter 0 to use this campaign’s share of the ${slideshowDurationSeconds}-second shared total. Set 3–3600 seconds to use a custom time, or to set the total for campaigns merged into this one.`}
+              </span>
             </label>
             <label className="flex items-start gap-3 text-sm text-neutral-700">
               <input

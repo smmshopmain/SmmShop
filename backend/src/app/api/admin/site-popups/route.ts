@@ -19,6 +19,7 @@ const popupFieldsSchema = z.object({
   autoCloseAfterSeconds: z.number().int().min(0).max(3600)
     .refine((seconds) => seconds === 0 || seconds >= 3, "Custom display time must be 0 or between 3 and 3600 seconds.")
     .default(0),
+  slideshowGroupId: z.union([z.string().regex(/^[a-f\d]{24}$/i), z.literal("")]).default(""),
   showOnEveryRefresh: z.boolean().default(false),
   active: z.boolean().default(true),
 });
@@ -107,6 +108,15 @@ async function validatePopupImage(imageUrl: string) {
   }
 }
 
+async function resolveSlideshowGroupId(groupId: string, currentPopupId = "") {
+  if (!groupId) return "";
+  const groupCampaign = await SitePopup.findById(groupId).select("_id slideshowGroupId").lean();
+  if (!groupCampaign) throw new Error("Choose an existing campaign to merge with.");
+  const rootId = String(groupCampaign.slideshowGroupId || groupCampaign._id);
+  if (rootId === currentPopupId) throw new Error("A campaign cannot be merged with itself.");
+  return rootId;
+}
+
 export async function GET() {
   try {
     await requireAdmin();
@@ -134,8 +144,10 @@ export async function POST(request: NextRequest) {
     await dbConnect();
     const input = popupSchema.parse(await request.json());
     await validatePopupImage(input.imageUrl);
+    const slideshowGroupId = await resolveSlideshowGroupId(input.slideshowGroupId);
     const popup = await SitePopup.create({
       ...input,
+      slideshowGroupId,
       startsAt: new Date(input.startsAt),
       expiresAt: new Date(input.expiresAt),
       createdBy: auth.id,
@@ -202,6 +214,10 @@ export async function PATCH(request: NextRequest) {
     const updated = popupSchema.parse({
       ...before,
       ...input,
+      slideshowGroupId: await resolveSlideshowGroupId(
+        input.slideshowGroupId ?? before.slideshowGroupId ?? "",
+        id,
+      ),
       startsAt: input.startsAt ?? new Date(before.startsAt).toISOString(),
       expiresAt: input.expiresAt ?? new Date(before.expiresAt).toISOString(),
     });
@@ -235,6 +251,9 @@ export async function DELETE(request: NextRequest) {
     const before = await SitePopup.findById(id).lean();
     if (!before) return fail("Popup not found", 404);
     await SitePopup.deleteOne({ _id: id });
+    if (!before.slideshowGroupId) {
+      await SitePopup.updateMany({ slideshowGroupId: id }, { slideshowGroupId: "" });
+    }
     if (before.imageUrl) await removeUnusedImage(before.imageUrl);
     await AuditLog.create({
       actor: auth.id,

@@ -19,6 +19,7 @@ type SitePopupItem = {
   startsAt: string;
   expiresAt: string;
   autoCloseAfterSeconds?: number;
+  displayDurationSeconds?: number;
   showOnEveryRefresh?: boolean;
 };
 
@@ -54,7 +55,6 @@ function readDismissedSession() {
 export function SitePopup() {
   const pathname = usePathname();
   const [popups, setPopups] = useState<SitePopupItem[]>([]);
-  const [slideshowDurationSeconds, setSlideshowDurationSeconds] = useState(10);
   const [dismissedSession, setDismissedSession] = useState<string[]>(readDismissedSession);
   const [dismissedPage, setDismissedPage] = useState<string[]>([]);
   const [hideToday, setHideToday] = useState(false);
@@ -74,12 +74,6 @@ export function SitePopup() {
           throw new Error(result?.message ?? "Unable to load current announcements.");
         }
         setPopups(result.popups as SitePopupItem[]);
-        const sharedDuration = Number(result.slideshowDurationSeconds);
-        setSlideshowDurationSeconds(
-          Number.isInteger(sharedDuration) && sharedDuration >= 3 && sharedDuration <= 3600
-            ? sharedDuration
-            : 10,
-        );
       } catch (error) {
         console.error("Unable to load website announcements.", error);
       }
@@ -157,18 +151,20 @@ export function SitePopup() {
     setHideToday(false);
   }, [dismissedSession]);
 
+  const displayDurationSeconds = currentPopup?.displayDurationSeconds
+    ?? currentPopup?.autoCloseAfterSeconds
+    ?? 10;
+
   useEffect(() => {
     const popupId = currentPopup?._id;
-    const campaignDuration = currentPopup?.autoCloseAfterSeconds ?? 0;
-    const autoCloseAfterSeconds = campaignDuration > 0 ? campaignDuration : slideshowDurationSeconds;
     const showOnEveryRefresh = currentPopup?.showOnEveryRefresh ?? false;
     if (!popupId) return;
     const timeout = window.setTimeout(
       () => dismissPopup(popupId, hideTodayRef.current, showOnEveryRefresh),
-      autoCloseAfterSeconds * 1000,
+      displayDurationSeconds * 1000,
     );
     return () => window.clearTimeout(timeout);
-  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, currentPopup?.showOnEveryRefresh, dismissPopup, slideshowDurationSeconds]);
+  }, [currentPopup?._id, currentPopup?.showOnEveryRefresh, dismissPopup, displayDurationSeconds]);
 
   function dismissCurrentPopup() {
     if (!currentPopup) return;
@@ -253,7 +249,10 @@ export function SitePopup() {
         className={`${imageOnly
           ? "relative h-dvh w-screen overflow-hidden bg-transparent"
           : `relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`} popup-slide-in`}
-        style={hasImage ? undefined : { borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }}
+        style={{
+          animationDuration: `${Math.min(420, displayDurationSeconds * 800)}ms`,
+          ...(hasImage ? {} : { borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }),
+        }}
       >
         <button
           ref={closeButton}
