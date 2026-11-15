@@ -16,6 +16,7 @@ const popupFieldsSchema = z.object({
   startsAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
   autoCloseAfterSeconds: z.number().int().min(0).max(3600).default(0),
+  showOnEveryRefresh: z.boolean().default(false),
   active: z.boolean().default(true),
 });
 

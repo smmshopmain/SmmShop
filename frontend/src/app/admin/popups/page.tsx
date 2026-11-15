@@ -21,6 +21,7 @@ type PopupForm = {
   startsAt: string;
   expiresAt: string;
   autoCloseAfterSeconds: number;
+  showOnEveryRefresh: boolean;
   active: boolean;
 };
 type Popup = Omit<PopupForm, "startsAt" | "expiresAt"> & {
@@ -48,6 +49,7 @@ function emptyPopupForm(): PopupForm {
     startsAt: localDateTimeValue(now),
     expiresAt: localDateTimeValue(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
     autoCloseAfterSeconds: 0,
+    showOnEveryRefresh: false,
     active: true,
   };
 }
@@ -167,6 +169,7 @@ export default function PopupManagementPage() {
       startsAt: localDateTimeValue(new Date(popup.startsAt)),
       expiresAt: localDateTimeValue(new Date(popup.expiresAt)),
       autoCloseAfterSeconds: popup.autoCloseAfterSeconds ?? 0,
+      showOnEveryRefresh: popup.showOnEveryRefresh ?? false,
       active: popup.active,
     });
     setMessage(`Editing “${popup.title || "image-only popup"}”. Save changes when you're ready.`);
@@ -512,6 +515,18 @@ export default function PopupManagementPage() {
                 <option value={300}>5 minutes</option>
               </select>
               <span className="mt-1 block text-xs font-normal text-neutral-500">The popup will close automatically after this time unless the customer closes it sooner.</span>
+            </label>
+            <label className="flex items-start gap-3 text-sm text-neutral-700">
+              <input
+                type="checkbox"
+                checked={form.showOnEveryRefresh}
+                onChange={(event) => setForm({ ...form, showOnEveryRefresh: event.target.checked })}
+                className="mt-0.5 size-4 rounded accent-teal-700"
+              />
+              <span>
+                <span className="block font-semibold">Show again on every page refresh</span>
+                <span className="mt-0.5 block text-xs text-neutral-500">When enabled, closing or auto-closing only hides it until the page is refreshed. “Hide this popup for today” still applies.</span>
+              </span>
             </label>
             <label className="flex items-start gap-3 text-sm text-neutral-700">
               <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} className="mt-0.5 size-4 rounded accent-teal-700" />

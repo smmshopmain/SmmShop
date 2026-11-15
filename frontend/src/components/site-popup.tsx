@@ -19,6 +19,7 @@ type SitePopupItem = {
   startsAt: string;
   expiresAt: string;
   autoCloseAfterSeconds?: number;
+  showOnEveryRefresh?: boolean;
 };
 
 function todayKey() {
@@ -54,6 +55,7 @@ export function SitePopup() {
   const pathname = usePathname();
   const [popups, setPopups] = useState<SitePopupItem[]>([]);
   const [dismissedSession, setDismissedSession] = useState<string[]>(readDismissedSession);
+  const [dismissedPage, setDismissedPage] = useState<string[]>([]);
   const [hideToday, setHideToday] = useState(false);
   const [hiddenToday, setHiddenToday] = useState<Record<string, string>>(readHiddenToday);
   const hideTodayRef = useRef(false);
@@ -87,9 +89,11 @@ export function SitePopup() {
   const currentPopup = useMemo(() => {
     const today = todayKey();
     return popups.find((popup) =>
-      !dismissedSession.includes(popup._id) && hiddenToday[popup._id] !== today,
+      !dismissedPage.includes(popup._id)
+      && (popup.showOnEveryRefresh || !dismissedSession.includes(popup._id))
+      && hiddenToday[popup._id] !== today,
     ) ?? null;
-  }, [dismissedSession, hiddenToday, popups]);
+  }, [dismissedPage, dismissedSession, hiddenToday, popups]);
 
   useEffect(() => {
     if (!currentPopup || pathname?.startsWith("/admin")) return;
@@ -121,7 +125,7 @@ export function SitePopup() {
     };
   }, [currentPopup, pathname]);
 
-  const dismissPopup = useCallback((popupId: string, hideForToday: boolean) => {
+  const dismissPopup = useCallback((popupId: string, hideForToday: boolean, showOnEveryRefresh: boolean) => {
     if (hideForToday) {
       try {
         const hidden = readHiddenToday();
@@ -132,13 +136,16 @@ export function SitePopup() {
         console.error("Unable to save today's popup preference.", error);
       }
     }
-    const nextDismissed = [...new Set([...dismissedSession, popupId])];
-    try {
-      sessionStorage.setItem("site-popup-dismissed-session", JSON.stringify(nextDismissed));
-    } catch (error) {
-      console.error("Unable to save dismissed popup preferences.", error);
+    setDismissedPage((previous) => [...new Set([...previous, popupId])]);
+    if (!showOnEveryRefresh) {
+      const nextDismissed = [...new Set([...dismissedSession, popupId])];
+      try {
+        sessionStorage.setItem("site-popup-dismissed-session", JSON.stringify(nextDismissed));
+      } catch (error) {
+        console.error("Unable to save dismissed popup preferences.", error);
+      }
+      setDismissedSession(nextDismissed);
     }
-    setDismissedSession(nextDismissed);
     hideTodayRef.current = false;
     setHideToday(false);
   }, [dismissedSession]);
@@ -146,17 +153,18 @@ export function SitePopup() {
   useEffect(() => {
     const popupId = currentPopup?._id;
     const autoCloseAfterSeconds = currentPopup?.autoCloseAfterSeconds ?? 0;
+    const showOnEveryRefresh = currentPopup?.showOnEveryRefresh ?? false;
     if (!popupId || autoCloseAfterSeconds <= 0) return;
     const timeout = window.setTimeout(
-      () => dismissPopup(popupId, hideTodayRef.current),
+      () => dismissPopup(popupId, hideTodayRef.current, showOnEveryRefresh),
       autoCloseAfterSeconds * 1000,
     );
     return () => window.clearTimeout(timeout);
-  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, dismissPopup]);
+  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, currentPopup?.showOnEveryRefresh, dismissPopup]);
 
   function dismissCurrentPopup() {
     if (!currentPopup) return;
-    dismissPopup(currentPopup._id, hideTodayRef.current);
+    dismissPopup(currentPopup._id, hideTodayRef.current, currentPopup.showOnEveryRefresh ?? false);
   }
 
   if (!currentPopup || pathname?.startsWith("/admin")) return null;
