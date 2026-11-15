@@ -110,9 +110,11 @@ export default function PopupManagementPage() {
   const [serviceSearch, setServiceSearch] = useState("");
   const [searchingServices, setSearchingServices] = useState(false);
   const [form, setForm] = useState<PopupForm>(emptyPopupForm);
+  const [slideshowDurationSeconds, setSlideshowDurationSeconds] = useState(10);
   const [editingId, setEditingId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingSlideshowSettings, setSavingSlideshowSettings] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [message, setMessage] = useState("");
@@ -128,6 +130,7 @@ export default function PopupManagementPage() {
       if (!serviceData?.ok) throw new Error(serviceData?.message ?? "Unable to load services for popup links.");
       setError("");
       setPopups(popupData.popups ?? []);
+      setSlideshowDurationSeconds(popupData.slideshowDurationSeconds ?? 10);
       setServices((serviceData.services ?? []).filter((service: ServiceOption) => service.active));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load popup campaigns.");
@@ -260,6 +263,25 @@ export default function PopupManagementPage() {
     }
   }
 
+  async function saveSlideshowSettings(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSavingSlideshowSettings(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await apiJson("/api/admin/site-popups", {
+        method: "PATCH",
+        body: JSON.stringify({ slideshowDurationSeconds }),
+      });
+      if (!result?.ok) throw new Error(result?.message ?? "Unable to save slideshow settings.");
+      setMessage("Slideshow duration saved.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to save slideshow settings.");
+    } finally {
+      setSavingSlideshowSettings(false);
+    }
+  }
+
   async function togglePopup(popup: Popup) {
     setError("");
     setMessage("");
@@ -303,6 +325,28 @@ export default function PopupManagementPage() {
       />
       {error && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
       {message && <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{message}</p>}
+
+      <AdminSection title="Campaign slideshow" description="Live campaigns rotate one by one with an animation. This shared display time applies to every campaign unless it has a custom time set.">
+        <form onSubmit={saveSlideshowSettings} className="flex flex-wrap items-end gap-3 p-4 sm:p-6">
+          <label className="block min-w-48 flex-1 text-sm font-semibold text-neutral-800">
+            Shared display time (seconds)
+            <input
+              type="number"
+              min={3}
+              max={3600}
+              step={1}
+              required
+              value={slideshowDurationSeconds}
+              onChange={(event) => setSlideshowDurationSeconds(Number(event.target.value))}
+              className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+            />
+            <span className="mt-1 block text-xs font-normal text-neutral-500">Used by every live campaign set to “Use shared time”. Range: 3–3600 seconds.</span>
+          </label>
+          <button disabled={savingSlideshowSettings} className="rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60">
+            {savingSlideshowSettings ? "Saving…" : "Save slideshow time"}
+          </button>
+        </form>
+      </AdminSection>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <AdminSection
@@ -499,22 +543,18 @@ export default function PopupManagementPage() {
               </label>
             </div>
             <label className="block text-sm font-semibold text-neutral-800">
-              Automatically close popup after
-              <select
+              Custom display time for this campaign (seconds)
+              <input
+                type="number"
+                min={0}
+                max={3600}
+                step={1}
                 value={form.autoCloseAfterSeconds}
                 onChange={(event) => setForm({ ...form, autoCloseAfterSeconds: Number(event.target.value) })}
+                required
                 className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
-              >
-                <option value={0}>No automatic close — customer closes it</option>
-                <option value={5}>5 seconds</option>
-                <option value={10}>10 seconds</option>
-                <option value={15}>15 seconds</option>
-                <option value={30}>30 seconds</option>
-                <option value={60}>1 minute</option>
-                <option value={120}>2 minutes</option>
-                <option value={300}>5 minutes</option>
-              </select>
-              <span className="mt-1 block text-xs font-normal text-neutral-500">The popup will close automatically after this time unless the customer closes it sooner.</span>
+              />
+              <span className="mt-1 block text-xs font-normal text-neutral-500">Enter 0 to use the shared slideshow time ({slideshowDurationSeconds} seconds). Enter 3–3600 to override it for this campaign.</span>
             </label>
             <label className="flex items-start gap-3 text-sm text-neutral-700">
               <input

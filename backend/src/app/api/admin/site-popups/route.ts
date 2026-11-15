@@ -2,8 +2,9 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
-import { AuditLog, SitePopup, UploadedFile } from "@/models";
+import { AuditLog, Setting, SitePopup, UploadedFile } from "@/models";
 
+const DEFAULT_SLIDESHOW_DURATION_SECONDS = 10;
 const popupFieldsSchema = z.object({
   title: z.string().trim().max(120).default(""),
   kind: z.enum(["announcement", "advertisement"]),
@@ -15,7 +16,9 @@ const popupFieldsSchema = z.object({
   linkLabel: z.string().trim().max(60).default(""),
   startsAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
-  autoCloseAfterSeconds: z.number().int().min(0).max(3600).default(0),
+  autoCloseAfterSeconds: z.number().int().min(0).max(3600)
+    .refine((seconds) => seconds === 0 || seconds >= 3, "Custom display time must be 0 or between 3 and 3600 seconds.")
+    .default(0),
   showOnEveryRefresh: z.boolean().default(false),
   active: z.boolean().default(true),
 });
@@ -86,6 +89,9 @@ const popupStatusSchema = z.object({
   id: idSchema,
   active: z.boolean(),
 }).strict();
+const popupSlideshowSchema = z.object({
+  slideshowDurationSeconds: z.number().int().min(3).max(3600),
+}).strict();
 
 async function removeUnusedImage(imageUrl: string) {
   const fileName = /^\/api\/uploads\/file\/popup-images\/([a-f\d-]+\.(?:jpg|png|webp))$/i.exec(imageUrl)?.[1];
@@ -105,8 +111,18 @@ export async function GET() {
   try {
     await requireAdmin();
     await dbConnect();
-    const popups = await SitePopup.find().sort({ createdAt: -1 }).limit(100).lean();
-    return ok({ popups });
+    const [popups, slideshowSetting] = await Promise.all([
+      SitePopup.find().sort({ createdAt: -1 }).limit(100).lean(),
+      Setting.findOne({ key: "popupSlideshow" }).lean(),
+    ]);
+    const storedDuration = (slideshowSetting?.value as { durationSeconds?: unknown } | undefined)?.durationSeconds;
+    const slideshowDurationSeconds = typeof storedDuration === "number"
+      && Number.isInteger(storedDuration)
+      && storedDuration >= 3
+      && storedDuration <= 3600
+      ? storedDuration
+      : DEFAULT_SLIDESHOW_DURATION_SECONDS;
+    return ok({ popups, slideshowDurationSeconds });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load popups", 403);
   }
@@ -142,6 +158,24 @@ export async function PATCH(request: NextRequest) {
     const { auth } = await requireAdmin();
     await dbConnect();
     const body = await request.json();
+    if (body && typeof body === "object" && "slideshowDurationSeconds" in body) {
+      const slideshowUpdate = popupSlideshowSchema.parse(body);
+      const before = await Setting.findOne({ key: "popupSlideshow" }).lean();
+      const setting = await Setting.findOneAndUpdate(
+        { key: "popupSlideshow" },
+        { value: { durationSeconds: slideshowUpdate.slideshowDurationSeconds } },
+        { upsert: true, new: true },
+      );
+      await AuditLog.create({
+        actor: auth.id,
+        action: "site_popup.slideshow_settings_update",
+        entity: "Setting",
+        entityId: "popupSlideshow",
+        before,
+        after: setting,
+      });
+      return ok({ slideshowDurationSeconds: slideshowUpdate.slideshowDurationSeconds });
+    }
     const id = idSchema.parse(body.id);
     const before = await SitePopup.findById(id).lean();
     if (!before) return fail("Popup not found", 404);

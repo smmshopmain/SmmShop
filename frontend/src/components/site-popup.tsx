@@ -54,6 +54,7 @@ function readDismissedSession() {
 export function SitePopup() {
   const pathname = usePathname();
   const [popups, setPopups] = useState<SitePopupItem[]>([]);
+  const [slideshowDurationSeconds, setSlideshowDurationSeconds] = useState(10);
   const [dismissedSession, setDismissedSession] = useState<string[]>(readDismissedSession);
   const [dismissedPage, setDismissedPage] = useState<string[]>([]);
   const [hideToday, setHideToday] = useState(false);
@@ -73,6 +74,12 @@ export function SitePopup() {
           throw new Error(result?.message ?? "Unable to load current announcements.");
         }
         setPopups(result.popups as SitePopupItem[]);
+        const sharedDuration = Number(result.slideshowDurationSeconds);
+        setSlideshowDurationSeconds(
+          Number.isInteger(sharedDuration) && sharedDuration >= 3 && sharedDuration <= 3600
+            ? sharedDuration
+            : 10,
+        );
       } catch (error) {
         console.error("Unable to load website announcements.", error);
       }
@@ -152,15 +159,16 @@ export function SitePopup() {
 
   useEffect(() => {
     const popupId = currentPopup?._id;
-    const autoCloseAfterSeconds = currentPopup?.autoCloseAfterSeconds ?? 0;
+    const campaignDuration = currentPopup?.autoCloseAfterSeconds ?? 0;
+    const autoCloseAfterSeconds = campaignDuration > 0 ? campaignDuration : slideshowDurationSeconds;
     const showOnEveryRefresh = currentPopup?.showOnEveryRefresh ?? false;
-    if (!popupId || autoCloseAfterSeconds <= 0) return;
+    if (!popupId) return;
     const timeout = window.setTimeout(
       () => dismissPopup(popupId, hideTodayRef.current, showOnEveryRefresh),
       autoCloseAfterSeconds * 1000,
     );
     return () => window.clearTimeout(timeout);
-  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, currentPopup?.showOnEveryRefresh, dismissPopup]);
+  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, currentPopup?.showOnEveryRefresh, dismissPopup, slideshowDurationSeconds]);
 
   function dismissCurrentPopup() {
     if (!currentPopup) return;
@@ -236,14 +244,15 @@ export function SitePopup() {
       role="presentation"
     >
       <section
+        key={currentPopup._id}
         ref={dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby={hasTitle ? "site-popup-title" : undefined}
         aria-label={hasTitle ? undefined : (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
-        className={imageOnly
+        className={`${imageOnly
           ? "relative h-dvh w-screen overflow-hidden bg-transparent"
-          : `relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`}
+          : `relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`} popup-slide-in`}
         style={hasImage ? undefined : { borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }}
       >
         <button
