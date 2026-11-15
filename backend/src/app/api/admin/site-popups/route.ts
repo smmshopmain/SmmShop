@@ -82,6 +82,10 @@ const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
 });
 
 const idSchema = z.string().regex(/^[a-f\d]{24}$/i);
+const popupStatusSchema = z.object({
+  id: idSchema,
+  active: z.boolean(),
+}).strict();
 
 async function removeUnusedImage(imageUrl: string) {
   const fileName = /^\/api\/uploads\/file\/popup-images\/([a-f\d-]+\.(?:jpg|png|webp))$/i.exec(imageUrl)?.[1];
@@ -139,9 +143,28 @@ export async function PATCH(request: NextRequest) {
     await dbConnect();
     const body = await request.json();
     const id = idSchema.parse(body.id);
-    const input = popupFieldsSchema.partial().parse(body);
     const before = await SitePopup.findById(id).lean();
     if (!before) return fail("Popup not found", 404);
+    const statusUpdate = popupStatusSchema.safeParse(body);
+    if (statusUpdate.success) {
+      const popup = await SitePopup.findByIdAndUpdate(
+        id,
+        { active: statusUpdate.data.active },
+        { new: true, runValidators: true },
+      );
+      if (!popup) return fail("Popup not found", 404);
+      await AuditLog.create({
+        actor: auth.id,
+        action: "site_popup.update",
+        entity: "SitePopup",
+        entityId: id,
+        before,
+        after: popup,
+      });
+      return ok({ popup });
+    }
+
+    const input = popupFieldsSchema.partial().parse(body);
     const updated = popupSchema.parse({
       ...before,
       ...input,
