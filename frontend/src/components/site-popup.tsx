@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import { ArrowRight, Megaphone, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { apiJson } from "@/lib/client-api";
+import { apiJson, apiUrl } from "@/lib/client-api";
 
 type SitePopupItem = {
   _id: string;
@@ -11,6 +12,8 @@ type SitePopupItem = {
   kind: "announcement" | "advertisement";
   message: string;
   emoji: string;
+  imageUrl?: string;
+  linkType?: "none" | "internal" | "external";
   linkHref: string;
   linkLabel: string;
   startsAt: string;
@@ -142,6 +145,16 @@ export function SitePopup() {
 
   const PopupContent = (
     <>
+      {currentPopup.imageUrl && (
+        <Image
+          src={apiUrl(currentPopup.imageUrl)}
+          alt={`${currentPopup.title} announcement`}
+          width={640}
+          height={360}
+          unoptimized
+          className="mb-6 max-h-60 w-full rounded-2xl object-cover"
+        />
+      )}
       <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-3xl" aria-hidden="true">
         {currentPopup.emoji || <Megaphone className="size-7" />}
       </span>

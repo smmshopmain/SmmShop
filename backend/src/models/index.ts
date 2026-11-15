@@ -334,6 +334,8 @@ const SitePopupSchema = new Schema(
     kind: { type: String, enum: ["announcement", "advertisement"], required: true },
     message: { type: String, required: true, trim: true, maxlength: 2000 },
     emoji: { type: String, trim: true, maxlength: 16, default: "✨" },
+    imageUrl: { type: String, trim: true, maxlength: 500, default: "" },
+    linkType: { type: String, enum: ["none", "internal", "external"], default: "none" },
     linkHref: { type: String, trim: true, maxlength: 2048, default: "" },
     linkLabel: { type: String, trim: true, maxlength: 60, default: "" },
     startsAt: { type: Date, required: true, index: true },
@@ -437,7 +439,7 @@ export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", EmailCampaignSchema);
 export const SitePopup = models.SitePopup || model("SitePopup", SitePopupSchema);
-const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners"] as const;
+const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners", "popup-images"] as const;
 const existingUploadedFile = models.UploadedFile;
 if (existingUploadedFile) {
   const folderPath = existingUploadedFile.schema.path("folder") as Schema.Types.String & {

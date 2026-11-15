@@ -1,16 +1,21 @@
 "use client";
 
+import Image from "next/image";
+import { ImagePlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
-import { apiJson } from "@/lib/client-api";
+import { apiJson, apiUrl } from "@/lib/client-api";
 
 type PopupKind = "announcement" | "advertisement";
+type PopupLinkType = "none" | "internal" | "external";
 type PopupForm = {
   title: string;
   kind: PopupKind;
   message: string;
   emoji: string;
+  imageUrl: string;
+  linkType: PopupLinkType;
   linkHref: string;
   linkLabel: string;
   startsAt: string;
@@ -35,12 +40,56 @@ function emptyPopupForm(): PopupForm {
     kind: "announcement",
     message: "",
     emoji: "✨",
+    imageUrl: "",
+    linkType: "none",
     linkHref: "",
     linkLabel: "",
     startsAt: localDateTimeValue(now),
     expiresAt: localDateTimeValue(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
     active: true,
   };
+}
+
+function uploadPopupImage(file: File, onProgress: (progress: number) => void) {
+  return new Promise<string>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", apiUrl("/api/admin/site-popup-image"));
+    request.withCredentials = true;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
+    };
+    request.onerror = () => reject(new Error("Popup image upload failed. Check your connection and try again."));
+    request.onabort = () => reject(new Error("Popup image upload was cancelled."));
+    request.onload = () => {
+      let result: { data?: { url?: string }; message?: string };
+      try {
+        result = JSON.parse(request.responseText);
+      } catch {
+        reject(new Error(`Popup image upload failed with status ${request.status}.`));
+        return;
+      }
+
+      const url = result.data?.url;
+      if (request.status < 200 || request.status >= 300 || typeof url !== "string") {
+        reject(new Error(result.message ?? `Popup image upload failed with status ${request.status}.`));
+        return;
+      }
+      onProgress(100);
+      resolve(url);
+    };
+    const formData = new FormData();
+    formData.set("file", file);
+    request.send(formData);
+  });
+}
+
+async function removeUnusedPopupImage(imageUrl: string) {
+  if (!imageUrl) return;
+  const result = await apiJson("/api/admin/site-popup-image", {
+    method: "DELETE",
+    body: JSON.stringify({ imageUrl }),
+  });
+  if (!result?.ok) throw new Error(result?.message ?? "Unable to remove the unused popup image.");
 }
 
 function popupStatus(popup: Popup) {
@@ -60,6 +109,8 @@ export default function PopupManagementPage() {
   const [editingId, setEditingId] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -107,6 +158,8 @@ export default function PopupManagementPage() {
       kind: popup.kind,
       message: popup.message,
       emoji: popup.emoji || "✨",
+      imageUrl: popup.imageUrl || "",
+      linkType: popup.linkType ?? (popup.linkHref ? "internal" : "none"),
       linkHref: popup.linkHref || "",
       linkLabel: popup.linkLabel || "",
       startsAt: localDateTimeValue(new Date(popup.startsAt)),
@@ -119,10 +172,57 @@ export default function PopupManagementPage() {
   }
 
   function resetForm() {
+    if (form.imageUrl) void removeUnusedPopupImage(form.imageUrl).catch((cause) => {
+      console.error("Unable to clean up an unused popup image.", cause);
+    });
     setEditingId("");
     setForm(emptyPopupForm());
     setError("");
     setMessage("");
+  }
+
+  async function handlePopupImage(file: File | undefined) {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      setError("Choose a JPG, PNG, or WEBP popup image.");
+      return;
+    }
+    if (file.size === 0 || file.size > 10 * 1024 * 1024) {
+      setError("Popup image must be larger than 0 bytes and 10MB or smaller.");
+      return;
+    }
+
+    const previousImageUrl = form.imageUrl;
+    setUploadingImage(true);
+    setUploadProgress(0);
+    setError("");
+    setMessage("");
+    try {
+      const imageUrl = await uploadPopupImage(file, setUploadProgress);
+      setForm((current) => ({ ...current, imageUrl }));
+      if (previousImageUrl && previousImageUrl !== imageUrl) {
+        await removeUnusedPopupImage(previousImageUrl);
+      }
+      setMessage("Popup image uploaded. Review the preview and save your campaign.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to upload popup image.");
+    } finally {
+      setUploadingImage(false);
+      setUploadProgress(null);
+    }
+  }
+
+  async function removePopupImage() {
+    const imageUrl = form.imageUrl;
+    setForm((current) => ({ ...current, imageUrl: "" }));
+    setError("");
+    if (!imageUrl) return;
+    try {
+      await removeUnusedPopupImage(imageUrl);
+      setMessage("Popup image removed. Save the campaign to publish this change.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to remove popup image.");
+    }
   }
 
   async function savePopup(event: React.FormEvent<HTMLFormElement>) {
@@ -143,8 +243,9 @@ export default function PopupManagementPage() {
         }),
       });
       if (!result?.ok) throw new Error(result?.message ?? "Unable to save popup campaign.");
-      setMessage(editingId ? "Popup campaign updated." : "Popup campaign created.");
+      const savedMessage = editingId ? "Popup campaign updated." : "Popup campaign created.";
       resetForm();
+      setMessage(savedMessage);
       await loadData();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save popup campaign.");
@@ -253,9 +354,68 @@ export default function PopupManagementPage() {
               <span className="mt-1 block text-right text-xs font-normal text-neutral-500">{form.message.length}/2000</span>
             </label>
 
+            <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4" aria-labelledby="popup-image-heading">
+              <div>
+                <h3 id="popup-image-heading" className="text-sm font-bold text-neutral-900">Popup image <span className="font-normal text-neutral-500">(optional · up to 10MB)</span></h3>
+                <p className="mt-1 text-xs text-neutral-500">Add a festival banner, offer artwork, or announcement image.</p>
+              </div>
+              <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
+                <ImagePlus className="size-4" />
+                {uploadingImage ? "Uploading image…" : form.imageUrl ? "Replace image" : "Upload image"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="sr-only"
+                  disabled={uploadingImage}
+                  onChange={(event) => {
+                    void handlePopupImage(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              {uploadProgress !== null && (
+                <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50/70 p-3" role="status" aria-live="polite">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-medium text-neutral-700">Uploading popup image</span>
+                    <span className="font-bold text-teal-800">{uploadProgress}%</span>
+                  </div>
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100" role="progressbar" aria-label="Popup image upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress}>
+                    <div className="h-full rounded-full bg-teal-700 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} />
+                  </div>
+                </div>
+              )}
+              {form.imageUrl && (
+                <div className="mt-4 flex flex-wrap items-start gap-3">
+                  <Image src={apiUrl(form.imageUrl)} alt="Popup campaign image preview" width={640} height={360} unoptimized className="max-h-56 max-w-full rounded-xl border border-neutral-200 object-contain" />
+                  <button type="button" disabled={uploadingImage} onClick={() => void removePopupImage()} className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                    <X className="size-3.5" /> Remove image
+                  </button>
+                </div>
+              )}
+            </section>
+
             <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
               <h3 className="text-sm font-bold text-neutral-900">Optional destination</h3>
               <label className="block text-sm font-semibold text-neutral-800">
+                Link type
+                <select
+                  value={form.linkType}
+                  required
+                  onChange={(event) => setForm({
+                    ...form,
+                    linkType: event.target.value as PopupLinkType,
+                    linkHref: "",
+                    linkLabel: "",
+                  })}
+                  className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+                >
+                  <option value="none">No link</option>
+                  <option value="internal">Internal website page or service</option>
+                  <option value="external">External website link</option>
+                </select>
+                <span className="mt-1 block text-xs font-normal text-neutral-500">A link is optional. Every destination opens in the same tab.</span>
+              </label>
+                {form.linkType === "internal" && <label className="block text-sm font-semibold text-neutral-800">
                 Link directly to a service
                 <span className="mt-1 flex gap-2">
                   <input
@@ -284,18 +444,31 @@ export default function PopupManagementPage() {
                   ))}
                 </select>
                 <span className="mt-1 block text-xs font-normal text-neutral-500">Customers land on the service catalog with this service selected in the order builder.</span>
-              </label>
-              <label className="block text-sm font-semibold text-neutral-800">
-                Internal page link
+              </label>}
+              {form.linkType === "internal" && <label className="block text-sm font-semibold text-neutral-800">
+                Internal page path
                 <input
+                  required
                   value={form.linkHref}
                   onChange={(event) => setForm({ ...form, linkHref: event.target.value })}
                   placeholder="/dashboard/services or /dashboard/wallet"
                   className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
                 />
-                <span className="mt-1 block text-xs font-normal text-neutral-500">Use a path on this website. External links are not allowed.</span>
-              </label>
-              {form.linkHref && (
+                <span className="mt-1 block text-xs font-normal text-neutral-500">Use a path on this website, e.g. /dashboard/wallet. Or choose an active service above.</span>
+              </label>}
+              {form.linkType === "external" && <label className="block text-sm font-semibold text-neutral-800">
+                External URL
+                <input
+                  required
+                  type="url"
+                  value={form.linkHref}
+                  onChange={(event) => setForm({ ...form, linkHref: event.target.value })}
+                  placeholder="https://example.com/offer"
+                  className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+                />
+                <span className="mt-1 block text-xs font-normal text-neutral-500">Enter a full http:// or https:// URL. It opens in this same tab.</span>
+              </label>}
+              {form.linkType !== "none" && form.linkHref && (
                 <label className="block text-sm font-semibold text-neutral-800">
                   Button label
                   <input
@@ -324,10 +497,10 @@ export default function PopupManagementPage() {
               <span><span className="block font-semibold">Publish this popup</span><span className="mt-0.5 block text-xs text-neutral-500">It will only appear between the start and expiry times above.</span></span>
             </label>
             <div className="flex flex-wrap gap-2">
-              <button disabled={saving} className="rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60">
-                {saving ? "Saving…" : editingId ? "Save changes" : "Create popup"}
+              <button disabled={saving || uploadingImage} className="rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-teal-800 disabled:opacity-60">
+                {uploadingImage ? "Wait for image upload…" : saving ? "Saving…" : editingId ? "Save changes" : "Create popup"}
               </button>
-              {editingId && <button type="button" onClick={resetForm} className="rounded-xl border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50">Cancel edit</button>}
+              {editingId && <button type="button" disabled={saving || uploadingImage} onClick={resetForm} className="rounded-xl border border-neutral-300 bg-white px-5 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">Cancel edit</button>}
             </div>
           </form>
         </AdminSection>
@@ -336,7 +509,8 @@ export default function PopupManagementPage() {
           <AdminSection title="Live preview" description="Popup colors automatically follow the selected website theme.">
             <div className="p-4 sm:p-5">
               <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-neutral-200 border-t-4 bg-white p-6 shadow-xl" style={{ borderTopColor: "var(--motion-accent)" }}>
-                <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>
+                    {form.imageUrl && <Image src={apiUrl(form.imageUrl)} alt="Popup campaign preview" width={640} height={360} unoptimized className="mb-5 max-h-56 w-full rounded-xl object-cover" />}
+                    <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>
                 <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>
                 <h3 className="mt-2 text-xl font-bold text-neutral-950">{form.title || "Your announcement heading"}</h3>
                 <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">{form.message || "Your announcement or offer details will appear here."}</p>
@@ -355,7 +529,9 @@ export default function PopupManagementPage() {
                   return (
                     <li key={popup._id} className="p-4">
                       <div className="flex items-start gap-3">
-                        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-xl">{popup.emoji}</span>
+                        {popup.imageUrl
+                          ? <Image src={apiUrl(popup.imageUrl)} alt={`${popup.title} campaign`} width={48} height={48} unoptimized className="size-10 shrink-0 rounded-xl object-cover" />
+                          : <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-xl">{popup.emoji}</span>}
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="truncate text-sm font-bold text-neutral-900">{popup.title}</h3>
