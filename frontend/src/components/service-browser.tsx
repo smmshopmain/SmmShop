@@ -127,6 +127,34 @@ export function ServiceBrowser() {
     };
   }, [query, category, platform]);
 
+  useEffect(() => {
+    const serviceId = new URLSearchParams(window.location.search).get("serviceId");
+    if (!serviceId || !/^[a-f\d]{24}$/i.test(serviceId)) return;
+
+    let active = true;
+    apiFetch(`/api/services?id=${encodeURIComponent(serviceId)}`)
+      .then((response) => response.json())
+      .then((result) => {
+        if (!active) return;
+        const service = result.data?.services?.[0] as ServiceItem | undefined;
+        if (!service) {
+          setMessage("This service is no longer available.");
+          return;
+        }
+        setServices((current) => current.some((item) => item._id === service._id) ? current : [service, ...current]);
+        setSelected(service);
+        setQuantity(service.min);
+        document.querySelector(".order-builder")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      })
+      .catch(() => {
+        if (active) setMessage("Unable to open the selected service. Please try again from the service catalog.");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const rate = useMemo(() => selected?.sellingRate.toFixed(2) ?? "0.00", [selected]);
   const estimatedTotal = useMemo(() => {
     if (!selected || !quantity) return "0.00";

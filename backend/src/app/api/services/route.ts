@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get("q");
     const category = searchParams.get("category");
     const platformParam = searchParams.get("platform");
+    const serviceId = searchParams.get("id");
+    if (serviceId && !/^[a-f\d]{24}$/i.test(serviceId)) return fail("Invalid service id.");
     const platform = getServicePlatform(platformParam);
     const platformFilter = platform
       ? buildPlatformFilter(platform)
@@ -38,6 +40,7 @@ export async function GET(request: NextRequest) {
         ? buildOtherPlatformFilter()
         : null;
     const filter: Record<string, unknown> = { active: true };
+    if (serviceId) filter._id = serviceId;
     if (category) filter.category = category;
     if (query) filter.$text = { $search: query };
     if (platformFilter) Object.assign(filter, platformFilter);

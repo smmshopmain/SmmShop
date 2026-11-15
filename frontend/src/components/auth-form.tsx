@@ -32,6 +32,17 @@ function googleAuthErrorMessage(errorCode: string | null) {
   return messages[errorCode] ?? "Google sign-in failed. Please try again.";
 }
 
+function internalNextPath(value: string | null) {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
+  try {
+    const url = new URL(value, "https://internal.invalid");
+    if (url.origin !== "https://internal.invalid" || url.pathname === "/api" || url.pathname.startsWith("/api/")) return null;
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -123,17 +134,17 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
         return;
       }
       const user = result?.data ?? result;
-      const nextPath = searchParams.get("next");
+      const nextPath = internalNextPath(searchParams.get("next"));
       const defaultPath = user?.role === "admin" ? "/admin" : "/dashboard/services";
       if (user?.welcomeEmailSent === false) {
         setRegistrationComplete({
-          path: nextPath?.startsWith("/") ? nextPath : defaultPath,
+          path: nextPath ?? defaultPath,
           message: user.message ?? "Your account was created, but the welcome email could not be sent.",
           welcomeEmailSent: false,
         });
         return;
       }
-      router.push((nextPath?.startsWith("/") ? nextPath : defaultPath) as Route);
+      router.push((nextPath ?? defaultPath) as Route);
       router.refresh();
     } catch {
       setError("Unable to connect to the server. Please try again.");
@@ -162,17 +173,17 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       }
 
       const user = result?.data ?? result;
-      const nextPath = searchParams.get("next");
+      const nextPath = internalNextPath(searchParams.get("next"));
       const defaultPath = user?.role === "admin" ? "/admin" : "/dashboard/services";
       if (user?.welcomeEmailSent === false) {
         setRegistrationComplete({
-          path: nextPath?.startsWith("/") ? nextPath : defaultPath,
+          path: nextPath ?? defaultPath,
           message: user.message ?? "Your account was created, but the welcome email could not be sent.",
           welcomeEmailSent: false,
         });
         return;
       }
-      router.push((nextPath?.startsWith("/") ? nextPath : defaultPath) as Route);
+      router.push((nextPath ?? defaultPath) as Route);
       router.refresh();
     } catch {
       setError("Unable to connect to the server. Please try again.");

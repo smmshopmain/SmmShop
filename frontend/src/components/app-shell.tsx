@@ -12,6 +12,7 @@ import {
   LineChart,
   Bell,
   Mail,
+  Megaphone,
   LogOut,
   Menu,
   Palette,
@@ -48,6 +49,11 @@ type WorkspaceHealth = {
   detail: string;
 };
 
+function currentLoginPath() {
+  const nextPath = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  return `/login?next=${encodeURIComponent(nextPath)}` as Route;
+}
+
 const userLinks: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Gauge },
   { href: "/dashboard/services", label: "Explore", icon: Layers3 },
@@ -78,6 +84,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/audit-logs", label: "Audit Logs", icon: ClipboardList },
   { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Palette },
   { href: "/admin/email" as Route, label: "Email Management", icon: Mail },
+  { href: "/admin/popups" as Route, label: "Popup Campaigns", icon: Megaphone },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -107,7 +114,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
         if (!mounted) return;
         if (!data?.ok) {
           setUser(null);
-          router.replace("/login");
+          router.replace(currentLoginPath());
           return;
         }
         const user = data?.user ?? (data?.ok ? data : null);
@@ -116,7 +123,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       .catch(() => {
         if (mounted) {
           setUser(null);
-          router.replace("/login");
+          router.replace(currentLoginPath());
         }
       })
       .finally(() => {
@@ -139,7 +146,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
         const response = await apiFetch("/api/auth/me", { cache: "no-store" });
         if (active && response.status === 401) {
           setUser(null);
-          router.replace("/login");
+          router.replace(currentLoginPath());
         }
       } catch {
         // Retry on the next interval or focus if the network is temporarily unavailable.

@@ -5,6 +5,7 @@ import {
   MotionSettingsProvider,
 } from "@/components/motion-settings-provider";
 import { CopyProtection } from "@/components/copy-protection";
+import { SitePopup } from "@/components/site-popup";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,6 +43,7 @@ export default function RootLayout({
         <MotionSettingsProvider initialSettings={initialMotionSettings}>
           <CopyProtection />
           <React.Suspense fallback={null}>{children}</React.Suspense>
+          <SitePopup />
         </MotionSettingsProvider>
       </body>
     </html>

@@ -328,6 +328,23 @@ const EmailCampaignSchema = new Schema(
 );
 EmailCampaignSchema.index({ status: 1, scheduledAt: 1, lockUntil: 1 });
 
+const SitePopupSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    kind: { type: String, enum: ["announcement", "advertisement"], required: true },
+    message: { type: String, required: true, trim: true, maxlength: 2000 },
+    emoji: { type: String, trim: true, maxlength: 16, default: "✨" },
+    linkHref: { type: String, trim: true, maxlength: 2048, default: "" },
+    linkLabel: { type: String, trim: true, maxlength: 60, default: "" },
+    startsAt: { type: Date, required: true, index: true },
+    expiresAt: { type: Date, required: true, index: true },
+    active: { type: Boolean, default: true, index: true },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },
+  },
+  { timestamps: true },
+);
+SitePopupSchema.index({ active: 1, startsAt: 1, expiresAt: 1 });
+
 const UploadedFileSchema = new Schema(
   {
     folder: { type: String, enum: ["deposit-proofs", "payment-qr", "campaign-banners"], required: true, index: true },
@@ -419,6 +436,7 @@ export const PromoCode = models.PromoCode || model("PromoCode", PromoCodeSchema)
 export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", EmailCampaignSchema);
+export const SitePopup = models.SitePopup || model("SitePopup", SitePopupSchema);
 const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners"] as const;
 const existingUploadedFile = models.UploadedFile;
 if (existingUploadedFile) {
