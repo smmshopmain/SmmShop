@@ -15,6 +15,7 @@ const popupSchema = z.object({
   linkLabel: z.string().trim().max(60).default(""),
   startsAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
+  autoCloseAfterSeconds: z.number().int().min(0).max(3600).default(0),
   active: z.boolean().default(true),
 }).superRefine((popup, context) => {
   if (!popup.imageUrl) {

@@ -340,6 +340,7 @@ const SitePopupSchema = new Schema(
     linkLabel: { type: String, trim: true, maxlength: 60, default: "" },
     startsAt: { type: Date, required: true, index: true },
     expiresAt: { type: Date, required: true, index: true },
+    autoCloseAfterSeconds: { type: Number, min: 0, max: 3600, default: 0 },
     active: { type: Boolean, default: true, index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },
   },

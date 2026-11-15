@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     })
       .sort({ startsAt: 1, createdAt: -1 })
       .limit(20)
-      .select("title kind message emoji imageUrl linkType linkHref linkLabel startsAt expiresAt")
+      .select("title kind message emoji imageUrl linkType linkHref linkLabel startsAt expiresAt autoCloseAfterSeconds")
       .lean();
     return ok({ popups });
   } catch (error) {

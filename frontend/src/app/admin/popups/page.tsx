@@ -20,6 +20,7 @@ type PopupForm = {
   linkLabel: string;
   startsAt: string;
   expiresAt: string;
+  autoCloseAfterSeconds: number;
   active: boolean;
 };
 type Popup = Omit<PopupForm, "startsAt" | "expiresAt"> & {
@@ -46,6 +47,7 @@ function emptyPopupForm(): PopupForm {
     linkLabel: "",
     startsAt: localDateTimeValue(now),
     expiresAt: localDateTimeValue(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
+    autoCloseAfterSeconds: 0,
     active: true,
   };
 }
@@ -164,6 +166,7 @@ export default function PopupManagementPage() {
       linkLabel: popup.linkLabel || "",
       startsAt: localDateTimeValue(new Date(popup.startsAt)),
       expiresAt: localDateTimeValue(new Date(popup.expiresAt)),
+      autoCloseAfterSeconds: popup.autoCloseAfterSeconds ?? 0,
       active: popup.active,
     });
     setMessage(`Editing “${popup.title || "image-only popup"}”. Save changes when you're ready.`);
@@ -492,6 +495,24 @@ export default function PopupManagementPage() {
                 <input required type="datetime-local" value={form.expiresAt} onChange={(event) => setForm({ ...form, expiresAt: event.target.value })} className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm" />
               </label>
             </div>
+            <label className="block text-sm font-semibold text-neutral-800">
+              Automatically close popup after
+              <select
+                value={form.autoCloseAfterSeconds}
+                onChange={(event) => setForm({ ...form, autoCloseAfterSeconds: Number(event.target.value) })}
+                className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
+              >
+                <option value={0}>No automatic close — customer closes it</option>
+                <option value={5}>5 seconds</option>
+                <option value={10}>10 seconds</option>
+                <option value={15}>15 seconds</option>
+                <option value={30}>30 seconds</option>
+                <option value={60}>1 minute</option>
+                <option value={120}>2 minutes</option>
+                <option value={300}>5 minutes</option>
+              </select>
+              <span className="mt-1 block text-xs font-normal text-neutral-500">The popup will close automatically after this time unless the customer closes it sooner.</span>
+            </label>
             <label className="flex items-start gap-3 text-sm text-neutral-700">
               <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} className="mt-0.5 size-4 rounded accent-teal-700" />
               <span><span className="block font-semibold">Publish this popup</span><span className="mt-0.5 block text-xs text-neutral-500">It will only appear between the start and expiry times above.</span></span>

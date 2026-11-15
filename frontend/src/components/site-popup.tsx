@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { ArrowRight, Megaphone, X } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiJson, apiUrl } from "@/lib/client-api";
 
@@ -18,6 +18,7 @@ type SitePopupItem = {
   linkLabel: string;
   startsAt: string;
   expiresAt: string;
+  autoCloseAfterSeconds?: number;
 };
 
 function todayKey() {
@@ -55,6 +56,7 @@ export function SitePopup() {
   const [dismissedSession, setDismissedSession] = useState<string[]>(readDismissedSession);
   const [hideToday, setHideToday] = useState(false);
   const [hiddenToday, setHiddenToday] = useState<Record<string, string>>(readHiddenToday);
+  const hideTodayRef = useRef(false);
   const dialog = useRef<HTMLElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -119,26 +121,42 @@ export function SitePopup() {
     };
   }, [currentPopup, pathname]);
 
-  function dismissCurrentPopup() {
-    if (!currentPopup) return;
-    if (hideToday) {
+  const dismissPopup = useCallback((popupId: string, hideForToday: boolean) => {
+    if (hideForToday) {
       try {
         const hidden = readHiddenToday();
-        hidden[currentPopup._id] = todayKey();
+        hidden[popupId] = todayKey();
         localStorage.setItem("site-popup-hidden-today", JSON.stringify(hidden));
         setHiddenToday(hidden);
       } catch (error) {
         console.error("Unable to save today's popup preference.", error);
       }
     }
-    const nextDismissed = [...new Set([...dismissedSession, currentPopup._id])];
+    const nextDismissed = [...new Set([...dismissedSession, popupId])];
     try {
       sessionStorage.setItem("site-popup-dismissed-session", JSON.stringify(nextDismissed));
     } catch (error) {
       console.error("Unable to save dismissed popup preferences.", error);
     }
     setDismissedSession(nextDismissed);
+    hideTodayRef.current = false;
     setHideToday(false);
+  }, [dismissedSession]);
+
+  useEffect(() => {
+    const popupId = currentPopup?._id;
+    const autoCloseAfterSeconds = currentPopup?.autoCloseAfterSeconds ?? 0;
+    if (!popupId || autoCloseAfterSeconds <= 0) return;
+    const timeout = window.setTimeout(
+      () => dismissPopup(popupId, hideTodayRef.current),
+      autoCloseAfterSeconds * 1000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [currentPopup?._id, currentPopup?.autoCloseAfterSeconds, dismissPopup]);
+
+  function dismissCurrentPopup() {
+    if (!currentPopup) return;
+    dismissPopup(currentPopup._id, hideTodayRef.current);
   }
 
   if (!currentPopup || pathname?.startsWith("/admin")) return null;
@@ -229,7 +247,10 @@ export function SitePopup() {
               <input
                 type="checkbox"
                 checked={hideToday}
-                onChange={(event) => setHideToday(event.target.checked)}
+                onChange={(event) => {
+                  hideTodayRef.current = event.target.checked;
+                  setHideToday(event.target.checked);
+                }}
                 className="size-4 rounded accent-[var(--motion-accent)]"
               />
               Hide this popup for today
