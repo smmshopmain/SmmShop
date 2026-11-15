@@ -143,32 +143,46 @@ export function SitePopup() {
 
   if (!currentPopup || pathname?.startsWith("/admin")) return null;
 
+  const hasImage = Boolean(currentPopup.imageUrl);
+  const hasTitle = Boolean(currentPopup.title?.trim());
+  const hasMessage = Boolean(currentPopup.message?.trim());
+  const imageOnly = hasImage && !hasTitle && !hasMessage;
   const PopupContent = (
     <>
       {currentPopup.imageUrl && (
         <Image
           src={apiUrl(currentPopup.imageUrl)}
-          alt={`${currentPopup.title} announcement`}
+          alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
           width={640}
           height={360}
           unoptimized
-          className="mb-6 max-h-60 w-full rounded-2xl object-cover"
+          className={`block max-h-[min(76dvh,760px)] w-full object-contain ${imageOnly ? "" : "mb-5 rounded-xl"}`}
         />
       )}
-      <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-3xl" aria-hidden="true">
-        {currentPopup.emoji || <Megaphone className="size-7" />}
-      </span>
-      <span className="block text-xs font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">
-        {currentPopup.kind === "advertisement" ? "A special offer" : "A message for you"}
-      </span>
-      <span id="site-popup-title" className="mt-2 block text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
-        {currentPopup.title}
-      </span>
-      <span className="mt-3 block whitespace-pre-line text-sm leading-6 text-neutral-600 sm:text-base">
-        {currentPopup.message}
-      </span>
+      {(hasTitle || hasMessage) && (
+        <div className={hasImage ? "" : "mt-1"}>
+          {!hasImage && (
+            <span className="mb-4 grid size-14 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-3xl" aria-hidden="true">
+              {currentPopup.emoji || <Megaphone className="size-7" />}
+            </span>
+          )}
+          <span className="block text-xs font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">
+            {currentPopup.kind === "advertisement" ? "A special offer" : "A message for you"}
+          </span>
+          {hasTitle && (
+            <span id="site-popup-title" className="mt-2 block text-2xl font-bold tracking-tight text-neutral-950 sm:text-3xl">
+              {currentPopup.title}
+            </span>
+          )}
+          {hasMessage && (
+            <span className="mt-3 block whitespace-pre-line text-sm leading-6 text-neutral-600 sm:text-base">
+              {currentPopup.message}
+            </span>
+          )}
+        </div>
+      )}
       {currentPopup.linkHref && (
-        <span className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[var(--motion-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95">
+        <span className={`${hasImage ? "mt-4" : "mt-5"} inline-flex items-center gap-2 rounded-xl bg-[var(--motion-accent)] px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:brightness-95`}>
           {currentPopup.linkLabel || "Explore now"} <ArrowRight className="size-4" />
         </span>
       )}
@@ -181,9 +195,10 @@ export function SitePopup() {
         ref={dialog}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="site-popup-title"
-        className="relative my-auto w-full max-w-lg overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25"
-        style={{ borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }}
+        aria-labelledby={hasTitle ? "site-popup-title" : undefined}
+        aria-label={hasTitle ? undefined : (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+        className={`relative my-auto w-full overflow-hidden rounded-3xl border border-white/60 bg-white shadow-2xl shadow-slate-950/25 ${hasImage ? "max-w-3xl" : "max-w-lg"}`}
+        style={hasImage ? undefined : { borderTopColor: "var(--motion-accent)", borderTopWidth: "5px" }}
       >
         <button
           ref={closeButton}
@@ -191,11 +206,11 @@ export function SitePopup() {
           id="site-popup-close"
           onClick={dismissCurrentPopup}
           aria-label="Close announcement"
-          className="absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-950"
+          className={`absolute right-4 top-4 z-10 grid size-10 place-items-center rounded-full border border-neutral-200 bg-white/90 text-neutral-600 shadow-sm transition hover:bg-neutral-100 hover:text-neutral-950 ${imageOnly ? "right-3 top-3" : ""}`}
         >
           <X className="size-5" />
         </button>
-        <div className="px-6 pb-5 pt-8 sm:px-9 sm:pb-7 sm:pt-10">
+        <div className={imageOnly ? "" : "px-6 pb-5 pt-8 sm:px-9 sm:pb-7 sm:pt-10"}>
           {currentPopup.linkHref ? (
             <a
               href={currentPopup.linkHref}
@@ -209,7 +224,7 @@ export function SitePopup() {
               {PopupContent}
             </div>
           )}
-          <div className="mt-7 flex flex-wrap items-center justify-between gap-4 border-t border-neutral-100 pt-4">
+          <div className={`${imageOnly ? "px-5 py-4" : "mt-7 border-t border-neutral-100 pt-4"} flex flex-wrap items-center justify-between gap-4`}>
             <label className="flex cursor-pointer items-center gap-2.5 text-xs font-medium text-neutral-600">
               <input
                 type="checkbox"
@@ -217,7 +232,7 @@ export function SitePopup() {
                 onChange={(event) => setHideToday(event.target.checked)}
                 className="size-4 rounded accent-[var(--motion-accent)]"
               />
-              Don&apos;t show this again today
+              Hide this popup for today
             </label>
             <button type="button" onClick={dismissCurrentPopup} className="text-xs font-semibold text-neutral-500 transition hover:text-neutral-900">
               Maybe later

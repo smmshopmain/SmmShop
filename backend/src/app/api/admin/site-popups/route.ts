@@ -5,9 +5,9 @@ import { dbConnect } from "@/lib/db";
 import { AuditLog, SitePopup, UploadedFile } from "@/models";
 
 const popupSchema = z.object({
-  title: z.string().trim().min(2).max(120),
+  title: z.string().trim().max(120).default(""),
   kind: z.enum(["announcement", "advertisement"]),
-  message: z.string().trim().min(2).max(2000),
+  message: z.string().trim().max(2000).default(""),
   emoji: z.string().trim().max(16).default("✨"),
   imageUrl: z.string().trim().max(500).default(""),
   linkType: z.enum(["none", "internal", "external"]).default("none"),
@@ -17,6 +17,14 @@ const popupSchema = z.object({
   expiresAt: z.string().datetime(),
   active: z.boolean().default(true),
 }).superRefine((popup, context) => {
+  if (!popup.imageUrl) {
+    if (popup.title.length < 2) {
+      context.addIssue({ code: "custom", path: ["title"], message: "Add a heading or upload a popup image." });
+    }
+    if (popup.message.length < 2) {
+      context.addIssue({ code: "custom", path: ["message"], message: "Add a message or upload a popup image." });
+    }
+  }
   if (new Date(popup.expiresAt).getTime() <= new Date(popup.startsAt).getTime()) {
     context.addIssue({ code: "custom", path: ["expiresAt"], message: "Expiry must be after the start time." });
   }

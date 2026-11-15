@@ -166,7 +166,7 @@ export default function PopupManagementPage() {
       expiresAt: localDateTimeValue(new Date(popup.expiresAt)),
       active: popup.active,
     });
-    setMessage(`Editing “${popup.title}”. Save changes when you're ready.`);
+    setMessage(`Editing “${popup.title || "image-only popup"}”. Save changes when you're ready.`);
     setError("");
     document.getElementById("popup-composer")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -271,7 +271,7 @@ export default function PopupManagementPage() {
   }
 
   async function deletePopup(popup: Popup) {
-    if (!window.confirm(`Permanently delete “${popup.title}”?`)) return;
+    if (!window.confirm(`Permanently delete “${popup.title || "image-only popup"}”?`)) return;
     setError("");
     setMessage("");
     try {
@@ -328,10 +328,10 @@ export default function PopupManagementPage() {
               </label>
             </div>
             <label className="block text-sm font-semibold text-neutral-800">
-              Heading
+              Heading {form.imageUrl && <span className="font-normal text-neutral-500">(optional with image)</span>}
               <input
-                required
-                minLength={2}
+                required={!form.imageUrl}
+                minLength={form.imageUrl ? undefined : 2}
                 maxLength={120}
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -340,10 +340,10 @@ export default function PopupManagementPage() {
               />
             </label>
             <label className="block text-sm font-semibold text-neutral-800">
-              Message
+              Message {form.imageUrl && <span className="font-normal text-neutral-500">(optional with image)</span>}
               <textarea
-                required
-                minLength={2}
+                required={!form.imageUrl}
+                minLength={form.imageUrl ? undefined : 2}
                 maxLength={2000}
                 rows={4}
                 value={form.message}
@@ -357,7 +357,7 @@ export default function PopupManagementPage() {
             <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4" aria-labelledby="popup-image-heading">
               <div>
                 <h3 id="popup-image-heading" className="text-sm font-bold text-neutral-900">Popup image <span className="font-normal text-neutral-500">(optional · up to 10MB)</span></h3>
-                <p className="mt-1 text-xs text-neutral-500">Add a festival banner, offer artwork, or announcement image.</p>
+                <p className="mt-1 text-xs text-neutral-500">Add a festival banner or offer artwork. With an image, heading and message are optional.</p>
               </div>
               <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
                 <ImagePlus className="size-4" />
@@ -508,13 +508,15 @@ export default function PopupManagementPage() {
         <div className="grid content-start gap-6">
           <AdminSection title="Live preview" description="Popup colors automatically follow the selected website theme.">
             <div className="p-4 sm:p-5">
-              <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-neutral-200 border-t-4 bg-white p-6 shadow-xl" style={{ borderTopColor: "var(--motion-accent)" }}>
-                    {form.imageUrl && <Image src={apiUrl(form.imageUrl)} alt="Popup campaign preview" width={640} height={360} unoptimized className="mb-5 max-h-56 w-full rounded-xl object-cover" />}
-                    <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>
-                <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>
-                <h3 className="mt-2 text-xl font-bold text-neutral-950">{form.title || "Your announcement heading"}</h3>
-                <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">{form.message || "Your announcement or offer details will appear here."}</p>
-                {form.linkHref && <span className="mt-5 inline-flex rounded-xl bg-[var(--motion-accent)] px-4 py-2 text-xs font-bold text-white">{form.linkLabel || "Explore now"} →</span>}
+              <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-neutral-200 border-t-4 bg-white shadow-xl" style={{ borderTopColor: "var(--motion-accent)" }}>
+                {form.imageUrl && <Image src={apiUrl(form.imageUrl)} alt="Popup campaign preview" width={640} height={360} unoptimized className="max-h-[min(60dvh,520px)] w-full object-contain" />}
+                <div className={form.imageUrl && !form.title && !form.message && !form.linkHref ? "" : "p-6"}>
+                  {!form.imageUrl && <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>}
+                  {(form.title || form.message || !form.imageUrl) && <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>}
+                  {(form.title || !form.imageUrl) && <h3 className="mt-2 text-xl font-bold text-neutral-950">{form.title || "Your announcement heading"}</h3>}
+                  {(form.message || !form.imageUrl) && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">{form.message || "Your announcement or offer details will appear here."}</p>}
+                  {form.linkHref && <span className="mt-5 inline-flex rounded-xl bg-[var(--motion-accent)] px-4 py-2 text-xs font-bold text-white">{form.linkLabel || "Explore now"} →</span>}
+                </div>
               </div>
             </div>
           </AdminSection>
@@ -530,14 +532,14 @@ export default function PopupManagementPage() {
                     <li key={popup._id} className="p-4">
                       <div className="flex items-start gap-3">
                         {popup.imageUrl
-                          ? <Image src={apiUrl(popup.imageUrl)} alt={`${popup.title} campaign`} width={48} height={48} unoptimized className="size-10 shrink-0 rounded-xl object-cover" />
+                          ? <Image src={apiUrl(popup.imageUrl)} alt={`${popup.title || "Popup"} campaign image`} width={48} height={48} unoptimized className="size-10 shrink-0 rounded-xl object-cover" />
                           : <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-xl">{popup.emoji}</span>}
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-sm font-bold text-neutral-900">{popup.title}</h3>
+                            <h3 className="truncate text-sm font-bold text-neutral-900">{popup.title || "Image-only campaign"}</h3>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${status.className}`}>{status.label}</span>
                           </div>
-                          <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">{popup.message}</p>
+                          {popup.message && <p className="mt-1 line-clamp-2 text-xs leading-5 text-neutral-500">{popup.message}</p>}
                           <p className="mt-2 text-[10px] text-neutral-400">Ends {new Date(popup.expiresAt).toLocaleString()}</p>
                         </div>
                       </div>
