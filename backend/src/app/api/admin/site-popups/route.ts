@@ -4,7 +4,7 @@ import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { AuditLog, SitePopup, UploadedFile } from "@/models";
 
-const popupSchema = z.object({
+const popupFieldsSchema = z.object({
   title: z.string().trim().max(120).default(""),
   kind: z.enum(["announcement", "advertisement"]),
   message: z.string().trim().max(2000).default(""),
@@ -17,7 +17,9 @@ const popupSchema = z.object({
   expiresAt: z.string().datetime(),
   autoCloseAfterSeconds: z.number().int().min(0).max(3600).default(0),
   active: z.boolean().default(true),
-}).superRefine((popup, context) => {
+});
+
+const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
   if (!popup.imageUrl) {
     if (popup.title.length < 2) {
       context.addIssue({ code: "custom", path: ["title"], message: "Add a heading or upload a popup image." });
@@ -136,7 +138,7 @@ export async function PATCH(request: NextRequest) {
     await dbConnect();
     const body = await request.json();
     const id = idSchema.parse(body.id);
-    const input = popupSchema.partial().parse(body);
+    const input = popupFieldsSchema.partial().parse(body);
     const before = await SitePopup.findById(id).lean();
     if (!before) return fail("Popup not found", 404);
     const updated = popupSchema.parse({
