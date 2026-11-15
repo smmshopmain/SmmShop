@@ -36,6 +36,8 @@ type CampaignForm = {
   subject: string;
   greeting: string;
   body: string;
+  primaryColor?: string;
+  accentColor?: string;
   banner: CampaignBanner;
   services: CampaignService[];
   audienceMode: "all" | "selected";
@@ -62,6 +64,8 @@ type Campaign = {
   subject: string;
   greeting: string;
   body: string;
+  primaryColor?: string;
+  accentColor?: string;
   banner?: CampaignBanner;
   services: CampaignService[];
   status: string;
@@ -207,8 +211,8 @@ export default function EmailManagementPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const previewBannerPreset = CAMPAIGN_BANNER_PRESETS.find(({ id }) => id === campaignForm.banner.presetId);
-  const previewPrimary = previewBannerPreset?.colors[0] ?? email.primaryColor;
-  const previewAccent = previewBannerPreset?.colors[1] ?? email.accentColor;
+  const previewPrimary = campaignForm.primaryColor ?? email.primaryColor;
+  const previewAccent = campaignForm.accentColor ?? email.accentColor;
   const previewBackgroundColor = campaignForm.banner.backgroundColor
     || (previewBannerPreset ? tintBannerColor(previewPrimary, 0.92) : "#f1f5f9");
 
@@ -318,6 +322,8 @@ export default function EmailManagementPage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           ...campaignPayload,
+          primaryColor: campaignForm.primaryColor ?? email.primaryColor,
+          accentColor: campaignForm.accentColor ?? email.accentColor,
           serviceIds: services.map((service) => service.serviceId),
           serviceCountries: services.map(({ serviceId, country }) => ({ serviceId, country: country ?? "" })),
           recipientUserIds: selectedRecipients.map((recipient) => recipient._id),
@@ -336,6 +342,8 @@ export default function EmailManagementPage() {
         subject: "",
         greeting: "Hello {{name}},",
         body: "",
+        primaryColor: undefined,
+        accentColor: undefined,
         banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
         services: [],
         selectedRecipients: [],
@@ -469,6 +477,8 @@ export default function EmailManagementPage() {
       subject: campaign.subject,
       greeting: campaign.greeting || "Hello {{name}},",
       body: campaign.body,
+      primaryColor: campaign.primaryColor,
+      accentColor: campaign.accentColor,
       banner: {
         presetId: campaign.banner?.presetId ?? null,
         imageUrl: campaign.banner?.imageUrl ?? "",
@@ -606,6 +616,17 @@ export default function EmailManagementPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <Field label="Internal campaign name" value={campaignForm.title} onChange={(value) => setCampaignForm({ ...campaignForm, title: value })} />
                 <label className="text-sm font-semibold text-neutral-800">Campaign type<select className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" value={campaignForm.kind} onChange={(event) => setCampaignForm({ ...campaignForm, kind: event.target.value as Campaign["kind"] })}><option value="announcement">Announcement</option><option value="advertisement">Advertisement</option></select></label>
+              </div>
+              <div className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-2">
+                <label className="text-sm font-semibold text-neutral-800">
+                  Campaign primary color
+                  <input aria-label="Campaign primary color" type="color" className="mt-1 block h-10 w-full rounded-lg" value={previewPrimary} onChange={(event) => setCampaignForm({ ...campaignForm, primaryColor: event.target.value })} />
+                </label>
+                <label className="text-sm font-semibold text-neutral-800">
+                  Campaign accent color
+                  <input aria-label="Campaign accent color" type="color" className="mt-1 block h-10 w-full rounded-lg" value={previewAccent} onChange={(event) => setCampaignForm({ ...campaignForm, accentColor: event.target.value })} />
+                </label>
+                <p className="text-xs text-neutral-500 sm:col-span-2">These colors apply to the campaign header and branded email elements. Duplicate a past campaign to reuse and edit its colors.</p>
               </div>
               <Field label="Email subject" value={campaignForm.subject} onChange={(value) => setCampaignForm({ ...campaignForm, subject: value })} />
               <Field label="Personalized greeting" value={campaignForm.greeting} onChange={(value) => setCampaignForm({ ...campaignForm, greeting: value })} />

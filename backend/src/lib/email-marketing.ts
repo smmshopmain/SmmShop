@@ -112,8 +112,8 @@ export function buildCampaignEmail(input: {
   const bannerPreset = input.banner?.presetId && Object.hasOwn(CAMPAIGN_BANNER_PRESETS, input.banner.presetId)
     ? CAMPAIGN_BANNER_PRESETS[input.banner.presetId as keyof typeof CAMPAIGN_BANNER_PRESETS]
     : null;
-  const themePrimary = bannerPreset?.colors[0] ?? primaryColor;
-  const themeAccent = bannerPreset?.colors[1] ?? accentColor;
+  const themePrimary = primaryColor;
+  const themeAccent = accentColor;
   const themeBackground = /^#[\da-fA-F]{6}$/.test(input.banner?.backgroundColor ?? "")
     ? input.banner!.backgroundColor!
     : bannerPreset ? tintColor(bannerPreset.colors[0], 0.92) : "#f1f5f9";

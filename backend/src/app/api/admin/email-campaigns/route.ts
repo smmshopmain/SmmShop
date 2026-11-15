@@ -4,7 +4,7 @@ import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { CAMPAIGN_BANNER_PRESETS, type CampaignBannerPresetId } from "@/lib/campaign-banners";
 import { SERVICE_PLATFORMS } from "@/lib/service-platforms";
-import { EmailCampaign, Service, User } from "@/models";
+import { EmailCampaign, getSettings, Service, User } from "@/models";
 
 const bannerPresetIds = Object.keys(CAMPAIGN_BANNER_PRESETS) as [CampaignBannerPresetId, ...CampaignBannerPresetId[]];
 const schema = z.object({
@@ -13,6 +13,8 @@ const schema = z.object({
   subject: z.string().trim().min(1).max(200),
   greeting: z.string().trim().max(200).default("Hello {{name}},"),
   body: z.string().trim().min(1).max(10000),
+  primaryColor: z.string().regex(/^#[\da-f]{6}$/i).optional(),
+  accentColor: z.string().regex(/^#[\da-f]{6}$/i).optional(),
   banner: z.object({
     presetId: z.enum(bannerPresetIds).nullable(),
     imageUrl: z.string().trim().max(500),
@@ -45,7 +47,7 @@ export async function GET() {
     const campaigns = await EmailCampaign.find()
       .sort({ createdAt: -1 })
       .limit(50)
-      .select("title kind subject greeting body banner services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError bannerCleanupError createdAt")
+      .select("title kind subject greeting body primaryColor accentColor banner services includeUnsubscribed audienceMode recipientUserIds scheduledAt status recipientCount sentCount failedCount lastError bannerCleanupError createdAt")
       .populate({ path: "recipientUserIds", select: "name email" })
       .lean();
     return ok({ campaigns });
@@ -59,7 +61,17 @@ export async function POST(request: NextRequest) {
     const { dbUser } = await requireAdmin();
     await dbConnect();
     const input = await parseBody(request, schema);
-    const { sendNow, serviceIds, serviceCountries, recipientUserIds, audienceMode, ...campaignInput } = input;
+    const {
+      sendNow,
+      serviceIds,
+      serviceCountries,
+      recipientUserIds,
+      audienceMode,
+      primaryColor,
+      accentColor,
+      ...campaignInput
+    } = input;
+    const settings = await getSettings();
     const scheduledAt = sendNow ? new Date() : new Date(input.scheduledAt);
     if (!Number.isFinite(scheduledAt.getTime())) return fail("Choose a valid sending date and time.");
     if (!sendNow && scheduledAt.getTime() <= Date.now()) {
@@ -113,6 +125,8 @@ export async function POST(request: NextRequest) {
     });
     const campaign = await EmailCampaign.create({
       ...campaignInput,
+      primaryColor: primaryColor ?? settings.email.primaryColor,
+      accentColor: accentColor ?? settings.email.accentColor,
       services,
       audienceMode,
       recipientUserIds: audienceMode === "selected" ? recipientUserIds : [],

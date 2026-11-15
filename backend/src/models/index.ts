@@ -282,6 +282,8 @@ const EmailCampaignSchema = new Schema(
     subject: { type: String, required: true, trim: true, maxlength: 200 },
     greeting: { type: String, trim: true, maxlength: 200, default: "Hello {{name}}," },
     body: { type: String, required: true, maxlength: 10000 },
+    primaryColor: { type: String, match: /^#[\da-f]{6}$/i },
+    accentColor: { type: String, match: /^#[\da-f]{6}$/i },
     banner: {
       presetId: { type: String, maxlength: 40, default: null },
       imageUrl: { type: String, trim: true, maxlength: 500, default: "" },
