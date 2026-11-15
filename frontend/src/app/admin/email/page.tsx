@@ -960,11 +960,12 @@ export default function EmailManagementPage() {
                   <div className="mx-auto max-w-2xl overflow-hidden border border-neutral-200/80 bg-white shadow-sm">
                     <div
                       className="px-5 py-5 text-white sm:px-7"
-                      style={{ backgroundColor: previewPrimary, backgroundImage: `linear-gradient(125deg, ${previewPrimary}, ${previewAccent})` }}
+                      style={{ backgroundColor: previewPrimary }}
                     >
                       <p className="text-xs font-bold uppercase tracking-[0.16em]">{email.brandName}</p>
                       <h3 className="mt-2 text-xl font-bold">{campaignForm.subject || "Email subject preview"}</h3>
                     </div>
+                    <div aria-hidden="true" className="h-1.5" style={{ backgroundColor: previewAccent }} />
                     {previewBannerPreset && (
                       <div
                         className="px-5 py-7 text-center text-white sm:py-9"

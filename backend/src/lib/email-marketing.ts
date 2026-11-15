@@ -165,10 +165,11 @@ export function buildCampaignEmail(input: {
         <tbody><tr><td align="center" style="padding:28px 12px">
           <table role="presentation" cellpadding="0" cellspacing="0" width="640" bgcolor="${cardBackground}" style="width:100%;max-width:640px;border:1px solid ${tintColor(themePrimary, 0.82)};border-collapse:collapse;background-color:${cardBackground};color:#243b53">
             <tbody>
-              <tr><td bgcolor="${themePrimary}" style="padding:26px 30px;background-color:${themePrimary};background-image:linear-gradient(125deg,${themePrimary} 0%,${themeAccent} 100%);color:#ffffff;font-family:Arial,Helvetica,sans-serif">
+              <tr><td bgcolor="${themePrimary}" style="padding:26px 30px;background-color:${themePrimary};color:#ffffff;font-family:Arial,Helvetica,sans-serif">
                 <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${safeBrand}</div>
                 <h1 style="margin:14px 0 0;font-size:25px;line-height:1.3">${safeSubject}</h1>
               </td></tr>
+              <tr><td height="6" bgcolor="${themeAccent}" style="height:6px;padding:0;background-color:${themeAccent};font-size:0;line-height:0">&nbsp;</td></tr>
               ${bannerHtml}
               <tr><td bgcolor="${cardBackground}" style="padding:26px 30px;background-color:${cardBackground};font-size:15px;line-height:1.8;color:#334155;font-family:Arial,Helvetica,sans-serif">
                 ${safeGreeting ? `<p style="margin:0 0 16px;font-weight:700;color:${themePrimary}">${safeGreeting}</p>` : ""}
