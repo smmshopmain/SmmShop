@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Check, ImagePlus, LoaderCircle, Send, Sparkles } from "lucide-react";
+import { Bot, Check, Clock3, ImagePlus, LoaderCircle, Send, Sparkles } from "lucide-react";
 import { apiFetch, apiJson } from "@/lib/client-api";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -43,8 +43,8 @@ function getSectionContext(pathname: string, admin: boolean) {
         ["/admin/tickets", "Support", "Review open customer support tickets."],
         ["/admin/notifications", "Notifications", "Review recent workspace notifications."],
         ["/admin/analytics", "Analytics", "Summarize key business metrics."],
-        ["/admin/email", "Email management", "Review campaign status or draft an announcement."],
-        ["/admin/popups", "Popup campaigns", "Review popup schedules or draft a campaign."],
+        ["/admin/email", "Email management", "Create an email campaign, match a festival or offer banner, or review campaign status."],
+        ["/admin/popups", "Popup campaigns", "Create or manage popup campaigns, set their schedule, and request artwork when needed."],
         ["/admin/settings", "Settings", "Review supported website and workspace settings."],
         ["/admin/errors", "Diagnostics", "Summarize current system issues."],
         ["/admin/audit-logs", "Audit logs", "Review recent administrative activity."],
@@ -79,6 +79,7 @@ export function AIAssistantWorkspace({
   const pathname = usePathname();
   const fileInput = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [text, setText] = useState("");
   const [enabled, setEnabled] = useState(false);
@@ -90,6 +91,12 @@ export function AIAssistantWorkspace({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
   const sectionContext = getSectionContext(pathname, admin);
+  const uploadDestination = sectionContext.name === "Email management"
+    ? "email"
+    : sectionContext.name === "Popup campaigns"
+      ? "popup"
+      : uploadType;
+  const activeAttachment = attachment?.type === uploadDestination ? attachment : null;
 
   useEffect(() => {
     if (!active) return;
@@ -153,8 +160,8 @@ export function AIAssistantWorkspace({
     event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || sending) return;
-    const content = attachment
-      ? `${trimmed}\n\nUploaded ${attachment.type === "email" ? "email campaign banner" : "website popup image"} URL: ${attachment.url}`
+    const content = activeAttachment
+      ? `${trimmed}\n\nUploaded ${activeAttachment.type === "email" ? "email campaign banner" : "website popup image"} URL: ${activeAttachment.url}`
       : trimmed;
     const nextMessages = [...messages, { role: "user" as const, content }];
     setMessages(nextMessages);
@@ -234,13 +241,13 @@ export function AIAssistantWorkspace({
     try {
       const form = new FormData();
       form.set("file", file);
-      const endpoint = uploadType === "email" ? "/api/admin/campaign-banner" : "/api/admin/site-popup-image";
+      const endpoint = uploadDestination === "email" ? "/api/admin/campaign-banner" : "/api/admin/site-popup-image";
       const response = await apiFetch(endpoint, { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok || !result?.ok || !result?.data?.url) {
         throw new Error(result?.message || "Unable to upload this image.");
       }
-      setAttachment({ url: result.data.url, type: uploadType });
+      setAttachment({ url: result.data.url, type: uploadDestination });
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload this image.");
     } finally {
@@ -258,12 +265,25 @@ export function AIAssistantWorkspace({
       : <div className="grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin text-teal-700" /></div>;
   }
 
+  const renderedMessages = messages.map((message, index) => (
+    <div
+      key={`${index}-${message.role}`}
+      className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
+        message.role === "user"
+          ? "ml-auto bg-teal-800 text-white"
+          : "mr-auto border border-neutral-200 bg-white text-neutral-800 shadow-sm"
+      }`}
+    >
+      {message.content}
+    </div>
+  ));
+
   return (
     <section className={`mx-auto flex w-full flex-col overflow-hidden border border-neutral-200 bg-white shadow-sm ${compact ? "h-full rounded-2xl" : "max-w-4xl rounded-3xl"}`}>
       <header className={`shrink-0 border-b border-neutral-200 bg-gradient-to-br from-teal-950 to-slate-900 text-white ${compact ? "px-4 py-4" : "px-5 py-5 sm:px-7"}`}>
         <div className="flex items-center gap-3">
           <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10"><Sparkles className="size-5 text-teal-200" /></span>
-          <div>
+          <div className="min-w-0">
             <h2 className="text-lg font-bold">{admin ? "Admin AI assistant" : "Your AI assistant"}</h2>
             <p className="mt-1 text-xs text-teal-100/80">
               {sectionContext.name} · {admin
@@ -271,10 +291,32 @@ export function AIAssistantWorkspace({
                 : "Help tailored to the section you are viewing."}
             </p>
           </div>
+          <button
+            type="button"
+            aria-label={historyOpen ? "Return to chat" : "View conversation history"}
+            aria-expanded={historyOpen}
+            onClick={() => setHistoryOpen((current) => !current)}
+            className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/20 px-2.5 py-2 text-xs font-semibold text-white transition hover:bg-white/10 ${compact ? "mr-12" : ""}`}
+          >
+            <Clock3 className="size-3.5" />
+            <span className={compact ? "hidden sm:inline" : ""}>{historyOpen ? "Chat" : "History"}</span>
+          </button>
         </div>
       </header>
 
       <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto bg-neutral-50/70 px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
+        {historyOpen ? (
+          <>
+            <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3">
+              <p className="text-sm font-bold text-teal-950">Your conversation history</p>
+              <p className="mt-1 text-xs text-teal-900">Only this account&apos;s saved assistant chat is shown here.</p>
+            </div>
+            {messages.length ? renderedMessages : (
+              <p className="rounded-xl bg-white p-4 text-sm text-neutral-600">No saved conversation yet.</p>
+            )}
+          </>
+        ) : (
+          <>
         {messages.length === 0 && (
           <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-5 text-sm leading-6 text-neutral-600">
             <p className="flex items-center gap-2 font-semibold text-neutral-900"><Bot className="size-4 text-teal-700" />How can I help?</p>
@@ -290,18 +332,7 @@ export function AIAssistantWorkspace({
             </button>
           </div>
         )}
-        {messages.map((message, index) => (
-          <div
-            key={`${index}-${message.role}`}
-            className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
-              message.role === "user"
-                ? "ml-auto bg-teal-800 text-white"
-                : "mr-auto border border-neutral-200 bg-white text-neutral-800 shadow-sm"
-            }`}
-          >
-            {message.content}
-          </div>
-        ))}
+        {renderedMessages}
         {sending && (
           <p role="status" className="flex items-center gap-2 text-xs font-medium text-neutral-500">
             <LoaderCircle className="size-4 animate-spin" /> Working on your request...
@@ -332,18 +363,30 @@ export function AIAssistantWorkspace({
             <p className="mt-2 text-xs text-amber-900">This approval expires after 10 minutes and can only be used once.</p>
           </div>
         ))}
+          </>
+        )}
         {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
       </div>
 
-      <form onSubmit={sendMessage} className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
+      {historyOpen ? (
+        <div className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(false)}
+            className="w-full rounded-xl bg-teal-800 px-4 py-3 text-sm font-bold text-white hover:bg-teal-900"
+          >
+            Back to chat
+          </button>
+        </div>
+      ) : <form onSubmit={sendMessage} className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
         {!modelAvailable && (
           <p role="alert" className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
             Velona is not configured on the backend. Ask an administrator to set VELONA_API_KEY.
           </p>
         )}
-        {attachment && (
+        {activeAttachment && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-xl bg-teal-50 px-3 py-2 text-xs text-teal-900">
-            <span className="truncate">Image ready for {attachment.type === "email" ? "email campaign" : "popup"}: {attachment.url}</span>
+            <span className="truncate">Image ready for {activeAttachment.type === "email" ? "email campaign" : "popup"}: {activeAttachment.url}</span>
             <button type="button" onClick={() => setAttachment(null)} className="shrink-0 font-bold underline">Remove</button>
           </div>
         )}
@@ -360,13 +403,13 @@ export function AIAssistantWorkspace({
           {admin && (
             <div className="flex shrink-0 items-center gap-2">
               <select
-                value={uploadType}
+                value={uploadDestination}
                 onChange={(event) => setUploadType(event.target.value as "email" | "popup")}
                 aria-label="Image destination"
                 className="h-10 max-w-24 rounded-xl border border-neutral-300 bg-white px-1 text-[11px] sm:max-w-none sm:px-2 sm:text-xs"
               >
-                <option value="email">Email banner</option>
-                <option value="popup">Popup image</option>
+                {sectionContext.name !== "Popup campaigns" && <option value="email">Email banner</option>}
+                {sectionContext.name !== "Email management" && <option value="popup">Popup image</option>}
               </select>
               <button
                 type="button"
@@ -398,11 +441,15 @@ export function AIAssistantWorkspace({
           </button>
         </div>
         <p className="mt-2 text-[11px] leading-5 text-neutral-500">
-          {admin
-            ? "This conversation is saved to your admin account. Email delivery and popup publishing follow the configured approval policy. Messages are sent to Velona; do not include passwords, API keys, OTPs, or payment credentials."
-            : "This conversation is saved to your account, and recent messages help your assistant remember context. Messages and relevant order details are sent to Velona. Your assistant only accesses your own orders and the public service catalog; never share passwords, OTPs, or payment credentials. Orders must still be placed through the order form."}
+          {admin && sectionContext.name === "Email management"
+            ? "Tip: Share the email topic and schedule. I can draft the copy, match a festival or offer banner, and generate artwork if requested."
+            : admin && sectionContext.name === "Popup campaigns"
+              ? "Tip: Share the popup topic and display times. Request custom AI artwork whenever you need it."
+              : admin
+                ? "Tip: Describe an admin task or ask about the section you are viewing."
+                : "Tip: Ask me to find a service, check a recent order, or get support."}
         </p>
-      </form>
+      </form>}
     </section>
   );
 }

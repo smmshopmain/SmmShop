@@ -1,4 +1,5 @@
 export const CAMPAIGN_BANNER_PRESETS = [
+  { id: "special-offer", name: "Special Offer", emoji: "🎁", colors: ["#0f766e", "#1d4ed8"], title: "Special Offer" },
   { id: "diwali", name: "Diwali", emoji: "🪔", colors: ["#7c2d12", "#f59e0b"], title: "Happy Diwali" },
   { id: "holi", name: "Holi", emoji: "🎨", colors: ["#be185d", "#7c3aed"], title: "Happy Holi" },
   { id: "eid-al-fitr", name: "Eid al-Fitr", emoji: "🌙", colors: ["#065f46", "#0f766e"], title: "Eid Mubarak" },
