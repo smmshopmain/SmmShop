@@ -4,6 +4,7 @@ import { dbConnect } from "@/lib/db";
 import { requireCronOrAdmin } from "@/lib/cron";
 import { buildCampaignEmail, createUnsubscribeToken } from "@/lib/email-marketing";
 import { sendMail } from "@/lib/email";
+import { processNextMarketingCalendarScheduleRun } from "@/lib/marketing-calendar-scheduler";
 import { EmailCampaign, getSettings, UploadedFile, User } from "@/models";
 
 const CAMPAIGN_BATCH_SIZE = 25;
@@ -72,7 +73,11 @@ export async function POST(request: NextRequest) {
       { $set: { status: "sending", lockUntil: new Date(now.getTime() + LOCK_DURATION_MS) } },
       { sort: { scheduledAt: 1 }, new: true },
     );
-    if (!campaign) return ok({ processed: false, message: "No due email campaigns." });
+    if (!campaign) {
+      const schedulingRun = await processNextMarketingCalendarScheduleRun();
+      if (schedulingRun.processed) return ok(schedulingRun);
+      return ok({ processed: false, message: "No due email campaigns or calendar scheduling jobs." });
+    }
 
     const settings = await getSettings();
     const query: Record<string, unknown> = {

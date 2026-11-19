@@ -367,6 +367,41 @@ const MarketingCalendarEventSchema = new Schema(
 );
 MarketingCalendarEventSchema.index({ date: 1, createdAt: -1 });
 
+const MarketingCalendarScheduleItemSchema = new Schema({
+  calendarEventKey: { type: String, required: true, maxlength: 280 },
+  eventId: { type: String, required: true, maxlength: 240 },
+  source: { type: String, enum: ["admin", "google"], required: true },
+  title: { type: String, required: true, maxlength: 120 },
+  description: { type: String, maxlength: 1000, default: "" },
+  date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+  category: { type: String, enum: ["festival", "promotion", "announcement", "other"], required: true },
+  status: {
+    type: String,
+    enum: ["queued", "draft_ready", "banner_ready", "campaign_ready", "scheduled", "skipped", "failed"],
+    default: "queued",
+  },
+  draft: { type: Schema.Types.Mixed },
+  bannerImageUrl: { type: String, trim: true, maxlength: 500, default: "" },
+  error: { type: String, maxlength: 1000, default: "" },
+  campaignId: { type: Schema.Types.ObjectId, ref: "EmailCampaign" },
+});
+
+const MarketingCalendarScheduleRunSchema = new Schema(
+  {
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    startDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    endDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    instructions: { type: String, trim: true, maxlength: 2000, default: "" },
+    brandName: { type: String, trim: true, maxlength: 60, required: true },
+    generateBanner: { type: Boolean, default: true },
+    status: { type: String, enum: ["queued", "processing", "completed", "partial", "failed"], default: "queued", index: true },
+    lockUntil: Date,
+    items: { type: [MarketingCalendarScheduleItemSchema], default: [] },
+  },
+  { timestamps: true },
+);
+MarketingCalendarScheduleRunSchema.index({ status: 1, lockUntil: 1, createdAt: 1 });
+
 const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners", "popup-images"] as const;
 const UploadedFileSchema = new Schema(
   {
@@ -510,6 +545,8 @@ export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", Emai
 export const SitePopup = models.SitePopup || model("SitePopup", SitePopupSchema);
 export const MarketingCalendarEvent =
   models.MarketingCalendarEvent || model("MarketingCalendarEvent", MarketingCalendarEventSchema);
+export const MarketingCalendarScheduleRun =
+  models.MarketingCalendarScheduleRun || model("MarketingCalendarScheduleRun", MarketingCalendarScheduleRunSchema);
 const existingUploadedFile = models.UploadedFile;
 if (existingUploadedFile) {
   const folderPath = existingUploadedFile.schema.path("folder") as Schema.Types.String & {

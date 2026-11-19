@@ -132,7 +132,7 @@ export function buildCampaignEmail(input: {
     ? `<tr><td align="center" bgcolor="${bannerPreset.colors[0]}" style="padding:30px 20px;background-color:${bannerPreset.colors[0]};background-image:linear-gradient(120deg,${bannerPreset.colors[0]},${bannerPreset.colors[1]});color:#ffffff;font-family:Arial,Helvetica,sans-serif"><div style="font-size:36px;line-height:1.2">${bannerPreset.emoji}</div><div style="margin-top:8px;font-size:22px;font-weight:700">${escapeHtml(bannerPreset.title)}</div></td></tr>`
     : "";
   const customBannerHtml = bannerImageUrl
-    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:campaign-banner" alt="Campaign banner" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr>`
+    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:campaign-banner" alt="Campaign advertisement for ${safeBrand}" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr><tr><td align="right" bgcolor="${themePrimary}" style="padding:8px 18px;background-color:${themePrimary};color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700">${safeBrand}</td></tr>`
     : "";
   const bannerHtml = `${festivalBannerHtml}${customBannerHtml}`;
   const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? "\n\nA campaign banner image is attached." : ""}`;

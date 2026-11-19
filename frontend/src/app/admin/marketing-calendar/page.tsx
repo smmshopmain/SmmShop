@@ -43,7 +43,26 @@ type ScheduledCampaign = {
   expiresAt?: string;
   calendarEventKey?: string;
 };
-type CampaignService = { serviceId: string };
+type ScheduleRunEvent = {
+  calendarEventKey: string;
+  title: string;
+  date: string;
+  status: "queued" | "draft_ready" | "banner_ready" | "campaign_ready" | "scheduled" | "skipped" | "failed";
+  error: string;
+};
+type ScheduleRun = {
+  id: string;
+  startDate: string;
+  endDate: string;
+  instructions: string;
+  generateBanner: boolean;
+  status: "queued" | "processing" | "completed" | "partial" | "failed";
+  total: number;
+  scheduled: number;
+  skipped: number;
+  failed: number;
+  events: ScheduleRunEvent[];
+};
 type EventForm = {
   title: string;
   description: string;
@@ -96,6 +115,10 @@ function eventColor(event: CalendarEvent) {
   return "border-teal-200 bg-teal-50 text-teal-900";
 }
 
+function calendarEventKey(event: CalendarEvent) {
+  return event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
+}
+
 function composerUrl(section: "email" | "popups", event: CalendarEvent, draft?: CampaignDraft) {
   const query = new URLSearchParams({
     calendarDate: event.date,
@@ -145,12 +168,14 @@ export default function MarketingCalendarPage() {
     return dateKey(new Date(date.getFullYear(), date.getMonth() + 2, 0));
   });
   const [rangeEvents, setRangeEvents] = useState<CalendarEvent[]>([]);
+  const [selectedEventKeys, setSelectedEventKeys] = useState<Set<string>>(new Set());
   const [rangeLoaded, setRangeLoaded] = useState(false);
   const [scheduledKeys, setScheduledKeys] = useState<Set<string>>(new Set());
   const [rangeLoading, setRangeLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
-  const [scheduleProgress, setScheduleProgress] = useState("");
-  const [scheduleResults, setScheduleResults] = useState<string[]>([]);
+  const [scheduleInstructions, setScheduleInstructions] = useState("");
+  const [generateBanner, setGenerateBanner] = useState(true);
+  const [activeScheduleRun, setActiveScheduleRun] = useState<ScheduleRun | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -183,6 +208,46 @@ export default function MarketingCalendarPage() {
     };
   }, [month]);
 
+  useEffect(() => {
+    let active = true;
+    apiJson("/api/admin/marketing-calendar/schedule-runs")
+      .then((result) => {
+        if (!result?.ok) throw new Error(result?.message ?? "Unable to load scheduling progress.");
+        if (active) setActiveScheduleRun(result.run ?? null);
+      })
+      .catch((cause: unknown) => {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to load scheduling progress.");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeScheduleRun || !["queued", "processing"].includes(activeScheduleRun.status)) return;
+    const runId = activeScheduleRun.id;
+    let active = true;
+    const refreshProgress = async () => {
+      try {
+        const result = await apiJson(`/api/admin/marketing-calendar/schedule-runs?runId=${encodeURIComponent(runId)}`);
+        if (!result?.ok) throw new Error(result?.message ?? "Unable to refresh scheduling progress.");
+        if (active) {
+          setActiveScheduleRun(result.run ?? null);
+          if (result.run && !["queued", "processing"].includes(result.run.status)) {
+            setMonth((current) => new Date(current));
+          }
+        }
+      } catch (cause) {
+        if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh scheduling progress.");
+      }
+    };
+    const timer = window.setInterval(() => void refreshProgress(), 30_000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [activeScheduleRun?.id, activeScheduleRun?.status]);
+
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, CalendarEvent[]>();
     for (const event of [...events, ...holidays]) {
@@ -210,6 +275,19 @@ export default function MarketingCalendarPage() {
   }, [month]);
   const selectedEvents = eventsByDate.get(selectedDate) ?? [];
   const selectedCampaigns = campaignsByDate.get(selectedDate) ?? [];
+  const hasActiveScheduleRun = Boolean(
+    activeScheduleRun && ["queued", "processing"].includes(activeScheduleRun.status),
+  );
+  const selectableRangeEvents = rangeEvents.filter((event) => {
+    const key = calendarEventKey(event);
+    const runItem = activeScheduleRun?.events.find((item) => item.calendarEventKey === key);
+    return !scheduledKeys.has(key)
+      && runItem?.status !== "scheduled"
+      && runItem?.status !== "skipped"
+      && !["queued", "draft_ready", "banner_ready", "campaign_ready"].includes(runItem?.status ?? "");
+  });
+  const selectedEventCount = selectableRangeEvents
+    .filter((event) => selectedEventKeys.has(calendarEventKey(event))).length;
 
   function changeMonth(amount: number) {
     const nextMonth = new Date(month.getFullYear(), month.getMonth() + amount, 1);
@@ -343,6 +421,7 @@ export default function MarketingCalendarPage() {
     setRangeLoading(true);
     setRangeLoaded(false);
     setRangeEvents([]);
+    setSelectedEventKeys(new Set());
     setScheduledKeys(new Set());
     setError("");
     setMessage("");
@@ -361,9 +440,9 @@ export default function MarketingCalendarPage() {
         .filter((event) => event.date >= today)
         .sort((left, right) => left.date.localeCompare(right.date) || left.title.localeCompare(right.title));
       setRangeEvents(occasions);
+      setSelectedEventKeys(new Set(occasions.map(calendarEventKey)));
       setScheduledKeys(keys);
       setRangeLoaded(true);
-      setScheduleResults([]);
       setMessage(`Loaded ${occasions.length} upcoming occasions. Already-scheduled campaigns will be skipped.`);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to load occasions for this date range.");
@@ -373,94 +452,50 @@ export default function MarketingCalendarPage() {
   }
 
   async function startRangeScheduling() {
-    const pendingEvents = rangeEvents.filter((event) =>
-      !scheduledKeys.has(event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`),
-    );
+    if (activeScheduleRun && ["queued", "processing"].includes(activeScheduleRun.status)) {
+      setError("A calendar scheduling run is already active. Its background worker will continue processing it.");
+      return;
+    }
+    const pendingEvents = selectableRangeEvents.filter((event) => selectedEventKeys.has(calendarEventKey(event)));
     if (!pendingEvents.length) {
-      setMessage("Every upcoming occasion in this date range already has an email campaign scheduled.");
+      setError("Select at least one occasion to schedule.");
       return;
     }
     if (pendingEvents.length > 25) {
-      setError("This date range contains more than 25 unscheduled occasions. Choose a shorter range to keep AI and image-generation usage bounded.");
+      setError("Select no more than 25 occasions per run to keep AI and image-generation usage bounded.");
       return;
     }
     const confirmed = window.confirm(
-      `Schedule ${pendingEvents.length} email campaign(s)? This will use AI and generate one custom banner per occasion (Velona image-generation credits apply). Each campaign will be scheduled for 10:00 AM India time on its occasion date and sent to eligible subscribed users. Existing campaigns are skipped.`,
+      `Queue ${pendingEvents.length} email campaign(s) for background scheduling? AI will generate copy${generateBanner ? ` and one shop-branded banner per occasion (Velona image-generation credits apply)` : "; banner generation is disabled and campaigns will have no banner"}. Campaigns are scheduled for 10:00 AM India time and sent to eligible subscribed users. You can leave this page; the backend worker continues processing.`,
     );
     if (!confirmed) return;
 
     setScheduling(true);
     setError("");
     setMessage("");
-    setScheduleResults([]);
-    let completed = 0;
-    const outcomes: string[] = [];
-    for (const event of pendingEvents) {
-      const key = event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
-      setScheduleProgress(`Preparing ${completed + 1} of ${pendingEvents.length}: ${event.title}`);
-      try {
-        const servicesResult = await apiJson("/api/admin/email-campaign-services?limit=5");
-        const services = (servicesResult.services ?? []) as CampaignService[];
-        if (services.length !== 5) throw new Error(`Only ${services.length} active services were available; exactly five are required.`);
-        const draftResult = await apiJson("/api/admin/marketing-calendar/ai-draft", {
-          method: "POST",
-          body: JSON.stringify({
-            title: event.title,
-            date: event.date,
-            category: event.category,
-            description: event.description,
-            calendarEventKey: key,
-          }),
-        });
-        if (!draftResult?.ok) throw new Error(draftResult?.message ?? "AI draft or banner generation failed.");
-        if (draftResult.alreadyScheduled) {
-          setScheduledKeys((current) => new Set(current).add(key));
-          outcomes.push(`${event.date} · ${event.title}: skipped (already scheduled)`);
-          completed += 1;
-          setScheduleResults([...outcomes]);
-          continue;
-        }
-
-        const [year, monthNumber, day] = event.date.split("-").map(Number);
-        const scheduledAt = new Date(Date.UTC(year, monthNumber - 1, day, 4, 30));
-        if (scheduledAt.getTime() <= Date.now()) scheduledAt.setTime(Date.now() + 60 * 60 * 1000);
-        const campaign = draftResult.email;
-        const response = await apiJson("/api/admin/email-campaigns", {
-          method: "POST",
-          body: JSON.stringify({
-            ...campaign,
-            kind: "advertisement",
-            serviceIds: services.map((service) => service.serviceId),
-            serviceCountries: [],
-            audienceMode: "all",
-            recipientUserIds: [],
-            includeUnsubscribed: false,
-            sendNow: false,
-            scheduledAt: scheduledAt.toISOString(),
-          }),
-        });
-        if (!response?.ok) {
-          if (response?.message?.includes("already scheduled")) {
-            setScheduledKeys((current) => new Set(current).add(key));
-            outcomes.push(`${event.date} · ${event.title}: skipped (already scheduled)`);
-            completed += 1;
-            setScheduleResults([...outcomes]);
-            continue;
-          }
-          throw new Error(response?.message ?? "Campaign scheduling failed.");
-        }
-        setScheduledKeys((current) => new Set(current).add(key));
-        outcomes.push(`${event.date} · ${event.title}: scheduled`);
-      } catch (cause) {
-        outcomes.push(`${event.date} · ${event.title}: failed — ${cause instanceof Error ? cause.message : "Unknown error"}`);
-      }
-      completed += 1;
-      setScheduleResults([...outcomes]);
+    try {
+      const result = await apiJson("/api/admin/marketing-calendar/schedule-runs", {
+        method: "POST",
+        body: JSON.stringify({
+          startDate: rangeStart,
+          endDate: rangeEnd,
+          instructions: scheduleInstructions,
+          eventKeys: pendingEvents.map(calendarEventKey),
+          generateBanner,
+        }),
+      });
+      if (!result?.ok) throw new Error(result?.message ?? "Unable to start background scheduling.");
+      setActiveScheduleRun(result.run);
+      setMessage(
+        result.run?.status === "completed" && result.run.scheduled === 0
+          ? "No new campaigns were needed; every occasion already has a scheduled campaign."
+          : "Scheduling has been queued. You can leave this page; the backend worker will continue automatically.",
+      );
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to start background scheduling.");
+    } finally {
+      setScheduling(false);
     }
-    setScheduleProgress("");
-    setScheduling(false);
-    setMessage(`Finished scheduling: ${outcomes.filter((result) => result.endsWith(": scheduled")).length} scheduled, ${outcomes.filter((result) => result.includes(": failed")).length} failed, ${outcomes.filter((result) => result.includes(": skipped")).length} skipped.`);
-    setMonth((current) => new Date(current));
   }
 
   return (
@@ -486,18 +521,18 @@ export default function MarketingCalendarPage() {
 
       <AdminSection
         title="Auto-schedule occasion emails"
-        description="Preview holidays and admin events across a date range, then prepare and schedule a complete email for each occasion."
+        description="Queue occasion campaigns as a persistent background job. You can leave this page while the backend worker prepares and schedules them."
         icon={Sparkles}
       >
         <div className="grid gap-4 p-4 sm:p-5">
           <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <label className="text-sm font-semibold text-neutral-800">
               Start date
-              <input type="date" disabled={scheduling || rangeLoading} value={rangeStart} max={rangeEnd} onChange={(event) => { setRangeStart(event.target.value); setRangeLoaded(false); setRangeEvents([]); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
+              <input type="date" disabled={scheduling || rangeLoading} value={rangeStart} max={rangeEnd} onChange={(event) => { setRangeStart(event.target.value); setRangeLoaded(false); setRangeEvents([]); setSelectedEventKeys(new Set()); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
             </label>
             <label className="text-sm font-semibold text-neutral-800">
               End date
-              <input type="date" disabled={scheduling || rangeLoading} value={rangeEnd} min={rangeStart} onChange={(event) => { setRangeEnd(event.target.value); setRangeLoaded(false); setRangeEvents([]); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
+              <input type="date" disabled={scheduling || rangeLoading} value={rangeEnd} min={rangeStart} onChange={(event) => { setRangeEnd(event.target.value); setRangeLoaded(false); setRangeEvents([]); setSelectedEventKeys(new Set()); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
             </label>
             <button type="button" disabled={rangeLoading || scheduling} onClick={() => void loadRangeEvents()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-bold text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">
               {rangeLoading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
@@ -505,22 +540,77 @@ export default function MarketingCalendarPage() {
             </button>
           </div>
           <p className="text-xs leading-5 text-neutral-600">
-            Each occasion gets an AI-written email, a custom generated banner, five refreshed active services, and a 10:00 AM send time. Campaigns go only to users eligible for marketing email (unsubscribed users are excluded). One image-generation call per occasion uses Velona credits. Review the list before starting.
+            Each selected occasion gets an AI-written email, five refreshed active services, and a 10:00 AM India time send. Only eligible subscribed users receive campaigns. {generateBanner ? "Custom shop-branded images use Velona credits." : "Banner generation is off; campaigns will be scheduled without an image or banner."}
           </p>
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-neutral-200 bg-white p-3">
+            <div>
+              <p className="text-sm font-semibold text-neutral-800">Generate custom advertisement images</p>
+              <p className="mt-1 text-xs text-neutral-500">
+                {generateBanner ? "On · one branded image is generated for each selected occasion." : "Off · no image or banner will be generated."}
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={generateBanner}
+              aria-label="Generate custom advertisement images"
+              disabled={scheduling || hasActiveScheduleRun}
+              onClick={() => setGenerateBanner((value) => !value)}
+              className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition disabled:opacity-50 ${generateBanner ? "bg-violet-700" : "bg-neutral-300"}`}
+            >
+              <span className={`inline-block size-5 rounded-full bg-white transition ${generateBanner ? "translate-x-6" : "translate-x-1"}`} />
+            </button>
+          </div>
+          <label className="block text-sm font-semibold text-neutral-800">
+            Instructions for the AI <span className="font-normal text-neutral-500">(optional, up to 2,000 characters)</span>
+            <textarea
+              maxLength={2000}
+              rows={3}
+              disabled={scheduling || hasActiveScheduleRun}
+              value={scheduleInstructions}
+              onChange={(event) => setScheduleInstructions(event.target.value)}
+              placeholder="Example: Keep the tone warm and concise. Mention our social media growth services, avoid discounts, and use the festival theme respectfully."
+              className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100"
+            />
+          </label>
           {rangeEvents.length > 0 && (
             <div className="rounded-xl border border-neutral-200">
+              <div className="flex items-center justify-between gap-3 border-b border-neutral-100 px-3 py-2">
+                <p className="text-xs font-semibold text-neutral-700">{selectedEventCount} selected of {selectableRangeEvents.length} available</p>
+                <div className="flex gap-3">
+                  <button type="button" disabled={scheduling || hasActiveScheduleRun} onClick={() => setSelectedEventKeys(new Set(selectableRangeEvents.map(calendarEventKey)))} className="text-xs font-semibold text-teal-800 underline disabled:opacity-50">Select all</button>
+                  <button type="button" disabled={scheduling || hasActiveScheduleRun} onClick={() => setSelectedEventKeys(new Set())} className="text-xs font-semibold text-neutral-600 underline disabled:opacity-50">Clear</button>
+                </div>
+              </div>
               <ul className="max-h-64 divide-y divide-neutral-100 overflow-auto">
                 {rangeEvents.map((event) => {
-                  const key = event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
-                  const alreadyScheduled = scheduledKeys.has(key);
+                  const key = calendarEventKey(event);
+                  const runItem = activeScheduleRun?.events.find((item) => item.calendarEventKey === key);
+                  const alreadyScheduled = scheduledKeys.has(key) || runItem?.status === "scheduled" || runItem?.status === "skipped";
+                  const inBackground = runItem && ["queued", "draft_ready", "banner_ready", "campaign_ready"].includes(runItem.status);
+                  const selectable = !alreadyScheduled && !inBackground;
                   return (
                     <li key={key} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
-                      <span className="min-w-0">
-                        <span className="block truncate font-semibold text-neutral-900">{event.title}</span>
-                        <span className="block text-xs text-neutral-500">{event.date} · {event.source === "google" ? "Google holiday" : "Admin event"}</span>
-                      </span>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${alreadyScheduled ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
-                        {alreadyScheduled ? "Already scheduled" : "Ready"}
+                      <label className={`flex min-w-0 flex-1 items-center gap-3 ${selectable ? "cursor-pointer" : "cursor-not-allowed opacity-70"}`}>
+                        <input
+                          type="checkbox"
+                          checked={selectedEventKeys.has(key)}
+                          disabled={!selectable || scheduling || hasActiveScheduleRun}
+                          onChange={(change) => setSelectedEventKeys((current) => {
+                            const next = new Set(current);
+                            if (change.target.checked) next.add(key);
+                            else next.delete(key);
+                            return next;
+                          })}
+                          className="size-4 shrink-0 accent-violet-700"
+                        />
+                        <span className="min-w-0">
+                          <span className="block truncate font-semibold text-neutral-900">{event.title}</span>
+                          <span className="block text-xs text-neutral-500">{event.date} · {event.source === "google" ? "Google holiday" : "Admin event"}</span>
+                        </span>
+                      </label>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${alreadyScheduled || inBackground ? "bg-emerald-50 text-emerald-800" : runItem?.status === "failed" ? "bg-rose-50 text-rose-800" : "bg-amber-50 text-amber-800"}`}>
+                        {alreadyScheduled ? "Already scheduled" : inBackground ? "Queued in background" : runItem?.status === "failed" ? "Previous run failed" : "Ready"}
                       </span>
                     </li>
                   );
@@ -529,20 +619,37 @@ export default function MarketingCalendarPage() {
             </div>
           )}
           {rangeLoaded && rangeEvents.length === 0 && <p className="text-sm text-neutral-500">No upcoming holidays or admin events fall in this date range.</p>}
-          {scheduleProgress && <p role="status" className="text-sm font-semibold text-violet-800">{scheduleProgress}</p>}
-          {scheduleResults.length > 0 && (
-            <ul className="max-h-48 divide-y divide-neutral-100 overflow-auto rounded-xl border border-neutral-200 text-xs">
-              {scheduleResults.map((result, index) => <li key={`${index}-${result}`} className="px-3 py-2">{result}</li>)}
-            </ul>
+          {activeScheduleRun && (
+            <section className="rounded-xl border border-violet-200 bg-violet-50/50 p-3" aria-label="Background scheduling progress">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-bold text-violet-950">Background run · {activeScheduleRun.status}</p>
+                <p className="text-xs text-violet-900">
+                  {activeScheduleRun.scheduled} scheduled · {activeScheduleRun.failed} failed · {activeScheduleRun.skipped} skipped of {activeScheduleRun.total}
+                </p>
+              </div>
+              <p className="mt-2 text-xs text-neutral-600">
+                Banner generation: {activeScheduleRun.generateBanner ? "On" : "Off (campaigns are created without banners)"}.
+              </p>
+              {activeScheduleRun.instructions && <p className="mt-2 text-xs text-neutral-600">AI instructions: {activeScheduleRun.instructions}</p>}
+              <ul className="mt-2 max-h-48 divide-y divide-violet-100 overflow-auto text-xs">
+                {activeScheduleRun.events.map((event, index) => (
+                  <li key={`${event.calendarEventKey}-${index}`} className="py-2">
+                    <span className="font-semibold">{event.date} · {event.title}</span>
+                    <span className="ml-2 capitalize text-neutral-600">{event.status.replace(/_/g, " ")}</span>
+                    {event.error && <span className="mt-1 block text-rose-800">{event.error}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
           <button
             type="button"
-            disabled={scheduling || rangeLoading || !rangeEvents.some((event) => !scheduledKeys.has(event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`)) || !aiEnabled || !aiKeyConfigured}
+            disabled={scheduling || rangeLoading || hasActiveScheduleRun || selectedEventCount === 0 || !aiEnabled || !aiKeyConfigured}
             onClick={() => void startRangeScheduling()}
             className="inline-flex w-fit items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {scheduling ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-            {scheduling ? "Scheduling campaigns…" : "Start scheduling"}
+            {scheduling ? "Queueing background job…" : `Start scheduling${selectedEventCount ? ` (${selectedEventCount})` : ""}`}
           </button>
           {(!aiEnabled || !aiKeyConfigured) && <p className="text-xs text-amber-800">Enable AI and configure the backend AI key in Admin settings to generate campaigns.</p>}
         </div>
