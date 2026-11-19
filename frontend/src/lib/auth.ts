@@ -1,11 +1,18 @@
 import { isAdminRole } from "@/lib/roles";
 
+import { cookies } from "next/headers";
+
 export async function requireUser() {
   const base = process.env.NEXT_PUBLIC_API_URL;
   if (!base) {
     throw new Error("NEXT_PUBLIC_API_URL is not configured. Set it in your environment.");
   }
-  const res = await fetch(`${base.replace(/\/+$/, "")}/api/auth/me`, { credentials: "include", cache: "no-store" });
+  const cookieStore = await cookies();
+  const token = cookieStore.get("smm_token")?.value;
+  const res = await fetch(`${base.replace(/\/+$/, "")}/api/auth/me`, {
+    headers: token ? { cookie: `smm_token=${token}` } : undefined,
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Unauthorized");
   return res.json();
 }
