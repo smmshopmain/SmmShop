@@ -1,15 +1,61 @@
 "use client";
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bot, Check, ImagePlus, LoaderCircle, Send, Sparkles } from "lucide-react";
 import { apiFetch, apiJson } from "@/lib/client-api";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type PendingAction = { id: string; name: string; summary: string };
 
-export function AIAssistantWorkspace({ admin }: { admin: boolean }) {
+function getSectionContext(pathname: string, admin: boolean) {
+  const sections = admin
+    ? [
+      ["/admin/assistant", "AI assistant", "Ask about an admin task or inspect the current workspace section."],
+        ["/admin/providers", "Providers", "Review provider health and enabled integrations."],
+        ["/admin/services", "Services", "Find services and review availability or pricing."],
+        ["/admin/pricing", "Pricing", "Review pricing and margin settings."],
+        ["/admin/orders", "Orders", "Inspect recent orders and their current status."],
+        ["/admin/users", "Users", "Find a customer and review their account status."],
+        ["/admin/deposits", "Deposits", "Review pending wallet deposits."],
+        ["/admin/promo-codes", "Promo codes", "Review active offers and promo codes."],
+        ["/admin/tickets", "Support", "Review open customer support tickets."],
+        ["/admin/notifications", "Notifications", "Review recent workspace notifications."],
+        ["/admin/analytics", "Analytics", "Summarize key business metrics."],
+        ["/admin/email", "Email management", "Review campaign status or draft an announcement."],
+        ["/admin/popups", "Popup campaigns", "Review popup schedules or draft a campaign."],
+        ["/admin/settings", "Settings", "Review supported website and workspace settings."],
+        ["/admin/errors", "Diagnostics", "Summarize current system issues."],
+        ["/admin/audit-logs", "Audit logs", "Review recent administrative activity."],
+        ["/admin", "Admin overview", "Summarize the current workspace overview."],
+      ]
+    : [
+      ["/dashboard/assistant", "AI assistant", "Ask a question about your account, services, orders, or support."],
+        ["/dashboard/services", "Services", "Find a service by platform or category."],
+        ["/dashboard/orders", "My orders", "Review your recent orders."],
+        ["/dashboard/refills", "Refills", "Explain refill eligibility and next steps."],
+        ["/dashboard/wallet", "Wallet", "Explain wallet and deposit steps."],
+        ["/dashboard/tickets", "Support", "Get help or prepare a support request."],
+        ["/dashboard/profile", "My account", "Get help with account settings."],
+        ["/dashboard", "My dashboard", "Help with your account and recent activity."],
+      ];
+  const section = sections.find(([path]) => pathname === path || pathname.startsWith(`${path}/`));
+  return section
+    ? { name: section[1], suggestion: section[2] }
+    : { name: admin ? "Admin workspace" : "Customer workspace", suggestion: "Ask a question about this section." };
+}
+
+export function AIAssistantWorkspace({
+  admin,
+  compact = false,
+  active = true,
+}: {
+  admin: boolean;
+  compact?: boolean;
+  active?: boolean;
+}) {
   const router = useRouter();
+  const pathname = usePathname();
   const fileInput = useRef<HTMLInputElement>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
@@ -22,34 +68,48 @@ export function AIAssistantWorkspace({ admin }: { admin: boolean }) {
   const [sending, setSending] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
+  const sectionContext = getSectionContext(pathname, admin);
 
   useEffect(() => {
-    let active = true;
+    if (!active) return;
+    let mounted = true;
     const refreshStatus = () => {
       void apiJson("/api/ai/assistant", { cache: "no-store" })
         .then((result) => {
-          if (!active) return;
+          if (!mounted) return;
           if (!result?.ok || !result.enabled) {
+            if (compact) {
+              setEnabled(false);
+              setError(result?.message || "AI assistant is unavailable. Check its settings or backend status.");
+              return;
+            }
             router.replace(admin ? "/admin/settings" : "/dashboard");
             return;
           }
           setEnabled(true);
           setModelAvailable(result.modelAvailable !== false);
+          setError("");
         })
         .catch(() => {
-          if (active) router.replace(admin ? "/admin/settings" : "/dashboard");
+          if (!mounted) return;
+          if (compact) {
+            setEnabled(false);
+            setError("AI assistant could not be reached. Check the backend connection and try again.");
+          } else {
+            router.replace(admin ? "/admin/settings" : "/dashboard");
+          }
         })
         .finally(() => {
-          if (active) setLoading(false);
+          if (mounted) setLoading(false);
         });
     };
     refreshStatus();
-    const interval = window.setInterval(refreshStatus, 30_000);
+    const interval = compact ? undefined : window.setInterval(refreshStatus, 30_000);
     return () => {
-      active = false;
-      window.clearInterval(interval);
+      mounted = false;
+      if (interval !== undefined) window.clearInterval(interval);
     };
-  }, [admin, router]);
+  }, [active, admin, compact, router]);
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,7 +127,10 @@ export function AIAssistantWorkspace({ admin }: { admin: boolean }) {
     try {
       const result = await apiJson("/api/ai/assistant", {
         method: "POST",
-        body: JSON.stringify({ messages: nextMessages.slice(-12) }),
+        body: JSON.stringify({
+          messages: nextMessages.slice(-12),
+          pageContext: { path: pathname },
+        }),
       });
       if (!result?.ok) throw new Error(result?.message || "Unable to get an AI response.");
       setMessages((current) => [...current, { role: "assistant", content: result.message }]);
@@ -149,33 +212,45 @@ export function AIAssistantWorkspace({ admin }: { admin: boolean }) {
     }
   }
 
-  if (loading || !enabled) {
+  if (loading) {
     return <div className="grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin text-teal-700" /></div>;
+  }
+  if (!enabled) {
+    return compact
+      ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{error || "AI assistant is unavailable."}</p>
+      : <div className="grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin text-teal-700" /></div>;
   }
 
   return (
-    <section className="mx-auto max-w-4xl overflow-hidden rounded-3xl border border-neutral-200 bg-white shadow-sm">
-      <header className="border-b border-neutral-200 bg-gradient-to-br from-teal-950 to-slate-900 px-5 py-5 text-white sm:px-7">
+    <section className={`mx-auto flex w-full flex-col overflow-hidden border border-neutral-200 bg-white shadow-sm ${compact ? "h-full rounded-2xl" : "max-w-4xl rounded-3xl"}`}>
+      <header className={`shrink-0 border-b border-neutral-200 bg-gradient-to-br from-teal-950 to-slate-900 text-white ${compact ? "px-4 py-4" : "px-5 py-5 sm:px-7"}`}>
         <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-2xl bg-white/10"><Sparkles className="size-5 text-teal-200" /></span>
+          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10"><Sparkles className="size-5 text-teal-200" /></span>
           <div>
             <h2 className="text-lg font-bold">{admin ? "Admin AI assistant" : "Your AI assistant"}</h2>
             <p className="mt-1 text-xs text-teal-100/80">
-              {admin
-                ? "Campaign drafts, scheduled popups, website appearance, and workspace overview."
-                : "Search services, check your recent orders, or get help from support."}
+              {sectionContext.name} · {admin
+                ? "Section-aware workspace help and controlled operations."
+                : "Help tailored to the section you are viewing."}
             </p>
           </div>
         </div>
       </header>
 
-      <div className="min-h-72 space-y-4 bg-neutral-50/70 px-4 py-5 sm:px-7">
+      <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto bg-neutral-50/70 px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
         {messages.length === 0 && (
           <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-5 text-sm leading-6 text-neutral-600">
             <p className="flex items-center gap-2 font-semibold text-neutral-900"><Bot className="size-4 text-teal-700" />How can I help?</p>
             <p className="mt-2">{admin
-              ? "Try “Show me the admin overview”, “Create an announcement email for tomorrow at 10 AM”, or “Set the website design to Pulse”."
-              : "Try “Find Instagram services”, “Show my latest orders”, or “Help me create a support ticket about a payment”."}</p>
+              ? `You are in ${sectionContext.name}. ${sectionContext.suggestion} You can also ask for a workspace overview, campaign draft, or supported settings change.`
+              : `You are in ${sectionContext.name}. ${sectionContext.suggestion} You can also search services, review your recent orders, or get support.`}</p>
+            <button
+              type="button"
+              onClick={() => setText(sectionContext.suggestion)}
+              className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-left text-xs font-semibold text-teal-900 hover:bg-teal-100"
+            >
+              Try: {sectionContext.suggestion}
+            </button>
           </div>
         )}
         {messages.map((message, index) => (
@@ -223,7 +298,7 @@ export function AIAssistantWorkspace({ admin }: { admin: boolean }) {
         {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">{error}</p>}
       </div>
 
-      <form onSubmit={sendMessage} className="border-t border-neutral-200 bg-white p-4 sm:p-5">
+      <form onSubmit={sendMessage} className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
         {!modelAvailable && (
           <p role="alert" className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
             OpenAI is not configured on the backend. Ask an administrator to set OPENAI_API_KEY.

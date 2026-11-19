@@ -35,6 +35,7 @@ import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
 import { isAdminRole } from "@/lib/roles";
 import { ContentLoading } from "@/components/content-loading";
 import { RequiredGooglePhoneModal } from "@/components/required-google-phone-modal";
+import { FloatingAIAssistant } from "@/components/floating-ai-assistant";
 
 type NavItem = {
   href: Route;
@@ -516,6 +517,9 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
             </nav>
           </div>
         </div>
+      )}
+      {aiEnabled && pathname !== "/admin/assistant" && pathname !== "/dashboard/assistant" && (
+        <FloatingAIAssistant admin={isAdmin} />
       )}
     </div>
   );
