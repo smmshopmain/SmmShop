@@ -456,6 +456,23 @@ const AIAssistantConversationSchema = new Schema(
 );
 AIAssistantConversationSchema.index({ owner: 1, scope: 1 }, { unique: true });
 
+const AIAssistantChatSchema = new Schema(
+  {
+    owner: { type: String, required: true },
+    scope: { type: String, enum: ["user", "admin"], required: true },
+    title: { type: String, required: true, maxlength: 80, default: "New chat" },
+    creationRequestId: { type: String, maxlength: 36 },
+    messageCount: { type: Number, required: true, min: 0, default: 0 },
+    messages: { type: [AIAssistantConversationMessageSchema], default: [] },
+  },
+  { timestamps: true },
+);
+AIAssistantChatSchema.index({ owner: 1, scope: 1, updatedAt: -1 });
+AIAssistantChatSchema.index(
+  { owner: 1, scope: 1, creationRequestId: 1 },
+  { unique: true, partialFilterExpression: { creationRequestId: { $type: "string" } } },
+);
+
 export const User = models.User || model("User", UserSchema);
 export const PendingRegistration =
   models.PendingRegistration || model("PendingRegistration", PendingRegistrationSchema);
@@ -495,6 +512,7 @@ export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema)
 export const AIAssistantAction = models.AIAssistantAction || model("AIAssistantAction", AIAssistantActionSchema);
 export const AIAssistantConversation =
   models.AIAssistantConversation || model("AIAssistantConversation", AIAssistantConversationSchema);
+export const AIAssistantChat = models.AIAssistantChat || model("AIAssistantChat", AIAssistantChatSchema);
 
 export type PlatformSettings = {
   appearance: {

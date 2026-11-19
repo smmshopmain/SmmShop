@@ -2,11 +2,36 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Bot, Check, Clock3, ImagePlus, LoaderCircle, Send, Sparkles } from "lucide-react";
+import { Bot, Check, ImagePlus, LoaderCircle, Menu, Plus, Search, Send, Sparkles } from "lucide-react";
 import { apiFetch, apiJson } from "@/lib/client-api";
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
+type ChatConversation = {
+  id: string;
+  title: string;
+  messageCount: number;
+  createdAt: string;
+  updatedAt: string;
+};
 type PendingAction = { id: string; name: string; summary: string };
+type ConversationPage = { conversations: ChatConversation[]; nextOffset: number | null; total: number };
+
+function isChatConversation(value: unknown): value is ChatConversation {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "id" in value &&
+      typeof value.id === "string" &&
+      "title" in value &&
+      typeof value.title === "string" &&
+      "messageCount" in value &&
+      typeof value.messageCount === "number" &&
+      "createdAt" in value &&
+      typeof value.createdAt === "string" &&
+      "updatedAt" in value &&
+      typeof value.updatedAt === "string",
+  );
+}
 
 function isChatMessage(value: unknown): value is ChatMessage {
   return Boolean(
@@ -27,6 +52,63 @@ function parseChatHistory(value: unknown) {
     history.push(message);
   }
   return history;
+}
+
+function parseConversationPage(value: unknown): ConversationPage {
+  if (!value || typeof value !== "object" || !("conversations" in value) || !Array.isArray(value.conversations)) {
+    throw new Error("Unable to load your conversation list.");
+  }
+  const conversations: ChatConversation[] = [];
+  for (const conversation of value.conversations) {
+    if (!isChatConversation(conversation)) throw new Error("Conversation list contains invalid data.");
+    conversations.push(conversation);
+  }
+  return {
+    conversations,
+    nextOffset: "nextOffset" in value && typeof value.nextOffset === "number" ? value.nextOffset : null,
+    total: "total" in value && typeof value.total === "number" ? value.total : conversations.length,
+  };
+}
+
+function parseAssistantConversation(value: unknown): { conversationId: string; title: string; messages: ChatMessage[] } {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    !("conversationId" in value) ||
+    typeof value.conversationId !== "string" ||
+    !("title" in value) ||
+    typeof value.title !== "string" ||
+    !("messages" in value)
+  ) {
+    throw new Error("Unable to load this conversation.");
+  }
+  return {
+    conversationId: value.conversationId,
+    title: value.title,
+    messages: parseChatHistory(value.messages),
+  };
+}
+
+function formatConversationDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Date unavailable"
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+async function fetchConversationPage(offset = 0) {
+  const result = await apiJson(`/api/ai/assistant/history?list=1&offset=${offset}&limit=50`, { cache: "no-store" });
+  if (!result?.ok) throw new Error(result?.message || "Unable to load your conversation list.");
+  return parseConversationPage(result);
+}
+
+async function createAssistantConversation(requestId: string) {
+  const result = await apiJson("/api/ai/assistant/history", {
+    method: "POST",
+    body: JSON.stringify({ requestId }),
+  });
+  if (!result?.ok) throw new Error(result?.message || "Unable to start a new chat.");
+  return parseAssistantConversation(result);
 }
 
 function getSectionContext(pathname: string, admin: boolean) {
@@ -56,7 +138,9 @@ function getSectionContext(pathname: string, admin: boolean) {
         ["/dashboard/orders", "My orders", "Review your recent orders."],
         ["/dashboard/refills", "Refills", "Explain refill eligibility and next steps."],
         ["/dashboard/wallet", "Wallet", "Explain wallet and deposit steps."],
+          ["/dashboard/referrals", "Invite & earn", "Review your referral code and rewards."],
         ["/dashboard/tickets", "Support", "Get help or prepare a support request."],
+          ["/dashboard/notifications", "Notifications", "Review your recent updates."],
         ["/dashboard/profile", "My account", "Get help with account settings."],
         ["/dashboard", "My dashboard", "Help with your account and recent activity."],
       ];
@@ -78,7 +162,17 @@ export function AIAssistantWorkspace({
   const router = useRouter();
   const pathname = usePathname();
   const fileInput = useRef<HTMLInputElement>(null);
+  const messagesContainer = useRef<HTMLDivElement>(null);
+  const openingRequestId = useRef<string | null>(null);
+  const [conversationId, setConversationId] = useState("");
+  const [conversationTitle, setConversationTitle] = useState("New chat");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [conversationTotal, setConversationTotal] = useState(0);
+  const [historyNextOffset, setHistoryNextOffset] = useState<number | null>(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [switchingConversation, setSwitchingConversation] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [pendingActions, setPendingActions] = useState<PendingAction[]>([]);
   const [text, setText] = useState("");
@@ -99,7 +193,12 @@ export function AIAssistantWorkspace({
   const activeAttachment = attachment?.type === uploadDestination ? attachment : null;
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      openingRequestId.current = null;
+      return;
+    }
+    const requestId = openingRequestId.current ?? crypto.randomUUID();
+    openingRequestId.current = requestId;
     let mounted = true;
     const refreshStatus = async () => {
       try {
@@ -137,9 +236,20 @@ export function AIAssistantWorkspace({
         return;
       }
       try {
-        const result = await apiJson("/api/ai/assistant/history", { cache: "no-store" });
-        if (!result?.ok) throw new Error(result?.message || "Unable to load your conversation history.");
-        if (mounted) setMessages(parseChatHistory(result.messages));
+        const conversation = await createAssistantConversation(requestId);
+        if (mounted) {
+          setConversationId(conversation.conversationId);
+          setConversationTitle(conversation.title);
+          setMessages(conversation.messages);
+          setPendingActions([]);
+          setHistoryOpen(false);
+        }
+        const page = await fetchConversationPage();
+        if (mounted) {
+          setConversations(page.conversations);
+          setConversationTotal(page.total);
+          setHistoryNextOffset(page.nextOffset);
+        }
       } catch (historyError) {
         if (mounted) {
           setError(historyError instanceof Error ? historyError.message : "Unable to load your conversation history.");
@@ -156,10 +266,94 @@ export function AIAssistantWorkspace({
     };
   }, [active, admin, compact, router]);
 
+  useEffect(() => {
+    const container = messagesContainer.current;
+    if (!container) return;
+    container.scrollTop = historyOpen ? 0 : container.scrollHeight;
+  }, [conversationId, historyOpen, messages, sending]);
+
+  async function refreshConversationList() {
+    setHistoryLoading(true);
+    try {
+      const page = await fetchConversationPage();
+      setConversations(page.conversations);
+      setConversationTotal(page.total);
+      setHistoryNextOffset(page.nextOffset);
+      const currentConversation = page.conversations.find((chat) => chat.id === conversationId);
+      if (currentConversation) setConversationTitle(currentConversation.title);
+    } catch (historyError) {
+      setError(historyError instanceof Error ? historyError.message : "Unable to refresh your conversation list.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function loadOlderConversations() {
+    if (historyNextOffset === null || historyLoading) return;
+    setHistoryLoading(true);
+    try {
+      const page = await fetchConversationPage(historyNextOffset);
+      setConversations((current) => [...current, ...page.conversations.filter((chat) => !current.some((item) => item.id === chat.id))]);
+      setConversationTotal(page.total);
+      setHistoryNextOffset(page.nextOffset);
+    } catch (historyError) {
+      setError(historyError instanceof Error ? historyError.message : "Unable to load older conversations.");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
+  async function startNewChat() {
+    if (switchingConversation || sending) return;
+    setSwitchingConversation(true);
+    setError("");
+    try {
+      const conversation = await createAssistantConversation(crypto.randomUUID());
+      setConversationId(conversation.conversationId);
+      setConversationTitle(conversation.title);
+      setMessages(conversation.messages);
+      setPendingActions([]);
+      setAttachment(null);
+      setText("");
+      setHistoryOpen(false);
+      await refreshConversationList();
+    } catch (conversationError) {
+      setError(conversationError instanceof Error ? conversationError.message : "Unable to start a new chat.");
+    } finally {
+      setSwitchingConversation(false);
+    }
+  }
+
+  async function openConversation(id: string) {
+    if (switchingConversation || sending) return;
+    setSwitchingConversation(true);
+    setError("");
+    try {
+      const result = await apiJson(`/api/ai/assistant/history?conversationId=${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!result?.ok) throw new Error(result?.message || "Unable to open this conversation.");
+      const conversation = parseAssistantConversation(result);
+      setConversationId(conversation.conversationId);
+      setConversationTitle(conversation.title);
+      setMessages(conversation.messages);
+      setPendingActions([]);
+      setAttachment(null);
+      setText("");
+      setHistoryOpen(false);
+    } catch (conversationError) {
+      setError(conversationError instanceof Error ? conversationError.message : "Unable to open this conversation.");
+    } finally {
+      setSwitchingConversation(false);
+    }
+  }
+
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || sending) return;
+    if (!conversationId) {
+      setError("Start a new chat before sending a message.");
+      return;
+    }
     const content = activeAttachment
       ? `${trimmed}\n\nUploaded ${activeAttachment.type === "email" ? "email campaign banner" : "website popup image"} URL: ${activeAttachment.url}`
       : trimmed;
@@ -174,6 +368,7 @@ export function AIAssistantWorkspace({
         method: "POST",
         body: JSON.stringify({
           message: content,
+          conversationId,
           pageContext: { path: pathname },
         }),
       });
@@ -183,6 +378,7 @@ export function AIAssistantWorkspace({
         ...current,
         ...(Array.isArray(result.pendingActions) ? result.pendingActions : []),
       ]);
+      void refreshConversationList();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to get an AI response.");
     } finally {
@@ -198,11 +394,13 @@ export function AIAssistantWorkspace({
         method: "POST",
         body: JSON.stringify({
           approveActionId: action.id,
+          conversationId,
         }),
       });
       if (!result?.ok) throw new Error(result?.message || "Unable to approve this action.");
       setPendingActions((current) => current.filter((item) => item.id !== action.id));
       setMessages((current) => [...current, { role: "assistant", content: result.message }]);
+      void refreshConversationList();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to approve this action.");
     } finally {
@@ -218,11 +416,13 @@ export function AIAssistantWorkspace({
         method: "POST",
         body: JSON.stringify({
           rejectActionId: action.id,
+          conversationId,
         }),
       });
       if (!result?.ok) throw new Error(result?.message || "Unable to cancel this action.");
       setPendingActions((current) => current.filter((item) => item.id !== action.id));
       setMessages((current) => [...current, { role: "assistant", content: result.message }]);
+      void refreshConversationList();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to cancel this action.");
     } finally {
@@ -277,6 +477,9 @@ export function AIAssistantWorkspace({
       {message.content}
     </div>
   ));
+  const visibleConversations = conversations.filter((conversation) =>
+    conversation.title.toLowerCase().includes(historyQuery.trim().toLowerCase()),
+  );
 
   return (
     <section className={`mx-auto flex w-full flex-col overflow-hidden border border-neutral-200 bg-white shadow-sm ${compact ? "h-full rounded-2xl" : "max-w-4xl rounded-3xl"}`}>
@@ -291,32 +494,108 @@ export function AIAssistantWorkspace({
                 : "Help tailored to the section you are viewing."}
             </p>
           </div>
-          <button
-            type="button"
-            aria-label={historyOpen ? "Return to chat" : "View conversation history"}
-            aria-expanded={historyOpen}
-            onClick={() => setHistoryOpen((current) => !current)}
-            className={`ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/20 px-2.5 py-2 text-xs font-semibold text-white transition hover:bg-white/10 ${compact ? "mr-12" : ""}`}
-          >
-            <Clock3 className="size-3.5" />
-            <span className={compact ? "hidden sm:inline" : ""}>{historyOpen ? "Chat" : "History"}</span>
-          </button>
+          <div className={`ml-auto flex shrink-0 items-center gap-1.5 ${compact ? "mr-12" : ""}`}>
+            <button
+              type="button"
+              aria-label={historyOpen ? "Close chat history" : "Open chat history"}
+              aria-expanded={historyOpen}
+              onClick={() => {
+                const nextOpen = !historyOpen;
+                setHistoryOpen(nextOpen);
+                if (nextOpen) void refreshConversationList();
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-white/20 px-2.5 py-2 text-xs font-semibold text-white transition hover:bg-white/10"
+            >
+              <Menu className="size-4" />
+              <span className={compact ? "hidden sm:inline" : ""}>History</span>
+            </button>
+            <button
+              type="button"
+              disabled={sending || switchingConversation}
+              onClick={() => void startNewChat()}
+              aria-label="Start a new chat"
+              title="Start a new chat"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-2 text-xs font-bold text-teal-950 transition hover:bg-teal-50 disabled:opacity-60"
+            >
+              <Plus className="size-4" />
+              <span className={compact ? "hidden sm:inline" : ""}>New chat</span>
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className={`min-h-0 flex-1 space-y-4 overflow-y-auto bg-neutral-50/70 px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
+      <div ref={messagesContainer} className={`min-h-0 flex-1 space-y-4 overflow-y-auto bg-neutral-50/70 px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
         {historyOpen ? (
           <>
-            <div className="rounded-xl border border-teal-100 bg-teal-50 px-4 py-3">
-              <p className="text-sm font-bold text-teal-950">Your conversation history</p>
-              <p className="mt-1 text-xs text-teal-900">Only this account&apos;s saved assistant chat is shown here.</p>
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-neutral-950">Your chats</p>
+                <p className="mt-1 text-xs text-neutral-500">Private to this account · select a topic to continue</p>
+              </div>
+              <span className="rounded-full bg-teal-50 px-2.5 py-1 text-xs font-semibold text-teal-900">
+                {conversationTotal}
+              </span>
             </div>
-            {messages.length ? renderedMessages : (
-              <p className="rounded-xl bg-white p-4 text-sm text-neutral-600">No saved conversation yet.</p>
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3 top-3 size-4 text-neutral-400" />
+              <input
+                type="search"
+                value={historyQuery}
+                onChange={(event) => setHistoryQuery(event.target.value)}
+                placeholder="Search chat topics"
+                aria-label="Search chat history"
+                className="h-10 w-full rounded-xl border border-neutral-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-teal-700 focus:ring-2 focus:ring-teal-700/10"
+              />
+            </label>
+            {historyLoading && conversations.length === 0 && (
+              <p className="flex items-center gap-2 rounded-xl bg-white p-4 text-sm text-neutral-500">
+                <LoaderCircle className="size-4 animate-spin" /> Loading your chats...
+              </p>
+            )}
+            {!historyLoading && visibleConversations.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-6 text-center">
+                <p className="text-sm font-semibold text-neutral-800">
+                  {historyQuery ? "No chats match that search." : "No previous chats yet."}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-neutral-500">Start a new chat and its topic will appear here.</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              {visibleConversations.map((conversation) => (
+                <button
+                  type="button"
+                  key={conversation.id}
+                  disabled={switchingConversation || sending}
+                  onClick={() => void openConversation(conversation.id)}
+                  aria-current={conversation.id === conversationId ? true : undefined}
+                  className={`w-full rounded-xl border p-3 text-left transition disabled:opacity-60 ${
+                    conversation.id === conversationId
+                      ? "border-teal-300 bg-teal-50"
+                      : "border-neutral-200 bg-white hover:border-teal-200 hover:bg-teal-50/50"
+                  }`}
+                >
+                  <span className="block truncate text-sm font-semibold text-neutral-900">{conversation.title}</span>
+                  <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-neutral-500">
+                    <span>{formatConversationDate(conversation.updatedAt)}</span>
+                    <span>{conversation.messageCount} {conversation.messageCount === 1 ? "message" : "messages"}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+            {historyNextOffset !== null && (
+              <button
+                type="button"
+                disabled={historyLoading}
+                onClick={() => void loadOlderConversations()}
+                className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-2.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60"
+              >
+                {historyLoading ? "Loading..." : "Load older chats"}
+              </button>
             )}
           </>
         ) : (
           <>
+        <p className="truncate text-[11px] font-semibold text-neutral-500">{conversationTitle}</p>
         {messages.length === 0 && (
           <div className="rounded-2xl border border-dashed border-neutral-300 bg-white p-5 text-sm leading-6 text-neutral-600">
             <p className="flex items-center gap-2 font-semibold text-neutral-900"><Bot className="size-4 text-teal-700" />How can I help?</p>
@@ -369,11 +648,19 @@ export function AIAssistantWorkspace({
       </div>
 
       {historyOpen ? (
-        <div className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
+        <div className="flex shrink-0 gap-2 border-t border-neutral-200 bg-white p-4 sm:p-5">
+          <button
+            type="button"
+            disabled={switchingConversation || sending}
+            onClick={() => void startNewChat()}
+            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-bold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
+          >
+            <Plus className="size-4" /> New chat
+          </button>
           <button
             type="button"
             onClick={() => setHistoryOpen(false)}
-            className="w-full rounded-xl bg-teal-800 px-4 py-3 text-sm font-bold text-white hover:bg-teal-900"
+            className="flex-1 rounded-xl bg-teal-800 px-4 py-3 text-sm font-bold text-white hover:bg-teal-900"
           >
             Back to chat
           </button>
