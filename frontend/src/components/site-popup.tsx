@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiJson } from "@/lib/client-api";
 import { PopupMedia } from "@/components/popup-media";
+import { popupMediaForDevices } from "@/lib/popup-media";
 
 type SitePopupItem = {
   _id: string;
@@ -13,6 +14,8 @@ type SitePopupItem = {
   message: string;
   emoji: string;
   imageUrl?: string;
+  mobileImageUrl?: string;
+  desktopImageUrl?: string;
   linkType?: "none" | "internal" | "external";
   linkHref: string;
   linkLabel: string;
@@ -181,33 +184,56 @@ export function SitePopup() {
 
   if (!currentPopup || pathname?.startsWith("/admin")) return null;
 
-  const hasImage = Boolean(currentPopup.imageUrl);
+  const popupMedia = popupMediaForDevices(currentPopup);
+  const hasImage = Boolean(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl);
   const hasTitle = Boolean(currentPopup.title?.trim());
   const hasMessage = Boolean(currentPopup.message?.trim());
   const imageOnly = hasImage && !hasTitle && !hasMessage;
   const PopupContent = (
     <>
-      {currentPopup.imageUrl && (
+      {(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl) && (
         imageOnly ? (
-          <div className="relative h-dvh w-screen">
-            <PopupMedia
-              url={currentPopup.imageUrl}
-              alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
-              fill
-              sizes="100vw"
-              className="h-full w-full object-contain"
-            />
-          </div>
+          <>
+            <div className="relative h-dvh w-screen md:hidden">
+              <PopupMedia
+                url={popupMedia.mobileImageUrl}
+                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                fill
+                sizes="100vw"
+                className="h-full w-full object-contain"
+              />
+            </div>
+            <div className="relative hidden h-dvh w-screen md:block">
+              <PopupMedia
+                url={popupMedia.desktopImageUrl}
+                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                fill
+                sizes="100vw"
+                className="h-full w-full object-contain"
+              />
+            </div>
+          </>
         ) : (
-          <div className="relative mb-5 h-[min(60dvh,520px)] w-full">
-            <PopupMedia
-              url={currentPopup.imageUrl}
-              alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
-              fill
-              sizes="(max-width: 768px) 100vw, 768px"
-              className="h-full w-full rounded-xl object-contain"
-            />
-          </div>
+          <>
+            <div className="relative mb-5 h-[min(60dvh,520px)] w-full md:hidden">
+              <PopupMedia
+                url={popupMedia.mobileImageUrl}
+                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                fill
+                sizes="100vw"
+                className="h-full w-full rounded-xl object-contain"
+              />
+            </div>
+            <div className="relative mb-5 hidden h-[min(60dvh,520px)] w-full md:block">
+              <PopupMedia
+                url={popupMedia.desktopImageUrl}
+                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                fill
+                sizes="(max-width: 768px) 100vw, 768px"
+                className="h-full w-full rounded-xl object-contain"
+              />
+            </div>
+          </>
         )
       )}
       {(hasTitle || hasMessage) && (

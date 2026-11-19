@@ -6,6 +6,17 @@ export type PopupMediaSource =
   | { type: "video"; src: string }
   | { type: "embed"; src: string };
 
+export function popupMediaForDevices(popup: {
+  imageUrl?: string;
+  mobileImageUrl?: string;
+  desktopImageUrl?: string;
+}) {
+  const legacyImageUrl = popup.imageUrl ?? "";
+  const mobileImageUrl = popup.mobileImageUrl || legacyImageUrl || popup.desktopImageUrl || "";
+  const desktopImageUrl = popup.desktopImageUrl || legacyImageUrl || popup.mobileImageUrl || "";
+  return { mobileImageUrl, desktopImageUrl };
+}
+
 export function resolvePopupMedia(value?: string): PopupMediaSource | null {
   if (!value) return null;
   const src = backendAssetUrl(value);

@@ -7,7 +7,7 @@ import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { PopupMedia } from "@/components/popup-media";
 import { apiJson, apiUrl } from "@/lib/client-api";
-import { resolvePopupMedia } from "@/lib/popup-media";
+import { popupMediaForDevices, resolvePopupMedia } from "@/lib/popup-media";
 
 type PopupKind = "announcement" | "advertisement";
 type PopupLinkType = "none" | "internal" | "external";
@@ -17,6 +17,8 @@ type PopupForm = {
   message: string;
   emoji: string;
   imageUrl: string;
+  mobileImageUrl: string;
+  desktopImageUrl: string;
   linkType: PopupLinkType;
   linkHref: string;
   linkLabel: string;
@@ -47,6 +49,8 @@ function emptyPopupForm(): PopupForm {
     message: "",
     emoji: "✨",
     imageUrl: "",
+    mobileImageUrl: "",
+    desktopImageUrl: "",
     linkType: "none",
     linkHref: "",
     linkLabel: "",
@@ -129,6 +133,8 @@ export default function PopupManagementPage() {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const hasPopupMedia = Boolean(form.imageUrl || form.mobileImageUrl || form.desktopImageUrl);
+  const previewMedia = popupMediaForDevices(form);
 
   async function loadData() {
     try {
@@ -201,7 +207,9 @@ export default function PopupManagementPage() {
       kind: popup.kind,
       message: popup.message,
       emoji: popup.emoji || "✨",
-      imageUrl: popup.imageUrl || "",
+      imageUrl: "",
+      mobileImageUrl: popup.mobileImageUrl || popup.imageUrl || popup.desktopImageUrl || "",
+      desktopImageUrl: popup.desktopImageUrl || popup.imageUrl || popup.mobileImageUrl || "",
       linkType: popup.linkType ?? (popup.linkHref ? "internal" : "none"),
       linkHref: popup.linkHref || "",
       linkLabel: popup.linkLabel || "",
@@ -219,16 +227,18 @@ export default function PopupManagementPage() {
   }
 
   function resetForm() {
-    if (form.imageUrl) void removeUnusedPopupImage(form.imageUrl).catch((cause) => {
-      console.error("Unable to clean up an unused popup image.", cause);
-    });
+    for (const imageUrl of new Set([form.imageUrl, form.mobileImageUrl, form.desktopImageUrl].filter(Boolean))) {
+      void removeUnusedPopupImage(imageUrl).catch((cause) => {
+        console.error("Unable to clean up an unused popup image.", cause);
+      });
+    }
     setEditingId("");
     setForm(emptyPopupForm());
     setError("");
     setMessage("");
   }
 
-  async function handlePopupImage(file: File | undefined) {
+  async function handlePopupImage(file: File | undefined, device: "mobile" | "desktop") {
     if (!file) return;
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setError("Choose a JPG, PNG, or WEBP popup image.");
@@ -239,15 +249,18 @@ export default function PopupManagementPage() {
       return;
     }
 
-    const previousImageUrl = form.imageUrl;
+    const field = device === "mobile" ? "mobileImageUrl" : "desktopImageUrl";
+    const otherField = device === "mobile" ? "desktopImageUrl" : "mobileImageUrl";
+    const previousImageUrl = form[field];
+    const otherImageUrl = form[otherField];
     setUploadingImage(true);
     setUploadProgress(0);
     setError("");
     setMessage("");
     try {
       const imageUrl = await uploadPopupImage(file, setUploadProgress);
-      setForm((current) => ({ ...current, imageUrl }));
-      if (previousImageUrl && previousImageUrl !== imageUrl) {
+      setForm((current) => ({ ...current, imageUrl: "", [field]: imageUrl }));
+      if (previousImageUrl && previousImageUrl !== imageUrl && previousImageUrl !== otherImageUrl) {
         await removeUnusedPopupImage(previousImageUrl);
       }
       setMessage("Popup image uploaded. Review the preview and save your campaign.");
@@ -259,17 +272,23 @@ export default function PopupManagementPage() {
     }
   }
 
-  async function removePopupImage() {
-    const imageUrl = form.imageUrl;
-    setForm((current) => ({ ...current, imageUrl: "" }));
-    setError("");
-    if (!imageUrl) return;
-    try {
-      await removeUnusedPopupImage(imageUrl);
-      setMessage("Popup image removed. Save the campaign to publish this change.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Unable to remove popup image.");
+  function updatePopupMediaUrl(device: "mobile" | "desktop", imageUrl: string) {
+    const field = device === "mobile" ? "mobileImageUrl" : "desktopImageUrl";
+    const otherField = device === "mobile" ? "desktopImageUrl" : "mobileImageUrl";
+    const previousImageUrl = form[field];
+    const otherImageUrl = form[otherField];
+    setForm((current) => ({ ...current, imageUrl: "", [field]: imageUrl }));
+    if (previousImageUrl && previousImageUrl !== imageUrl && previousImageUrl !== otherImageUrl) {
+      void removeUnusedPopupImage(previousImageUrl).catch((cause) => {
+        console.error("Unable to clean up a replaced popup image.", cause);
+      });
     }
+  }
+
+  function removePopupImage(device: "mobile" | "desktop") {
+    updatePopupMediaUrl(device, "");
+    setError("");
+    setMessage("Popup media removed. Save the campaign to publish this change.");
   }
 
   async function savePopup(event: React.FormEvent<HTMLFormElement>) {
@@ -424,10 +443,10 @@ export default function PopupManagementPage() {
               </label>
             </div>
             <label className="block text-sm font-semibold text-neutral-800">
-              Heading {form.imageUrl && <span className="font-normal text-neutral-500">(optional with image)</span>}
+              Heading {hasPopupMedia && <span className="font-normal text-neutral-500">(optional with media)</span>}
               <input
-                required={!form.imageUrl}
-                minLength={form.imageUrl ? undefined : 2}
+                required={!hasPopupMedia}
+                minLength={hasPopupMedia ? undefined : 2}
                 maxLength={120}
                 value={form.title}
                 onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -436,10 +455,10 @@ export default function PopupManagementPage() {
               />
             </label>
             <label className="block text-sm font-semibold text-neutral-800">
-              Message {form.imageUrl && <span className="font-normal text-neutral-500">(optional with image)</span>}
+              Message {hasPopupMedia && <span className="font-normal text-neutral-500">(optional with media)</span>}
               <textarea
-                required={!form.imageUrl}
-                minLength={form.imageUrl ? undefined : 2}
+                required={!hasPopupMedia}
+                minLength={hasPopupMedia ? undefined : 2}
                 maxLength={2000}
                 rows={4}
                 value={form.message}
@@ -450,66 +469,68 @@ export default function PopupManagementPage() {
               <span className="mt-1 block text-right text-xs font-normal text-neutral-500">{form.message.length}/2000</span>
             </label>
 
-            <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4" aria-labelledby="popup-image-heading">
+            <section className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4" aria-labelledby="popup-media-heading">
               <div>
-                <h3 id="popup-image-heading" className="text-sm font-bold text-neutral-900">Popup image or video <span className="font-normal text-neutral-500">(optional · uploads up to 10MB)</span></h3>
-                <p className="mt-1 text-xs text-neutral-500">Paste a direct image/video URL, or use a YouTube or Vimeo link. With media, heading and message are optional.</p>
+                <h3 id="popup-media-heading" className="text-sm font-bold text-neutral-900">Device-specific popup media <span className="font-normal text-neutral-500">(optional · uploads up to 10MB)</span></h3>
+                <p className="mt-1 text-xs text-neutral-500">Add separate mobile and desktop images/videos. If you fill only one, that media is used on both devices. Direct image/video links and YouTube/Vimeo links are supported.</p>
               </div>
-              <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
-                <ImagePlus className="size-4" />
-                {uploadingImage ? "Uploading image…" : form.imageUrl ? "Replace image" : "Upload image"}
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp"
-                  className="sr-only"
-                  disabled={uploadingImage}
-                  onChange={(event) => {
-                    void handlePopupImage(event.target.files?.[0]);
-                    event.currentTarget.value = "";
-                  }}
-                />
-              </label>
-              <div className="mt-3 grid max-w-2xl gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <input
-                  type="url"
-                  maxLength={2048}
-                  aria-label="Popup image URL"
-                  value={isUploadedPopupImage(form.imageUrl) ? "" : form.imageUrl}
-                  disabled={uploadingImage}
-                  onChange={(event) => {
-                    const imageUrl = event.target.value;
-                    const previousImageUrl = form.imageUrl;
-                    setForm((current) => ({ ...current, imageUrl }));
-                    if (isUploadedPopupImage(previousImageUrl)) {
-                      void removeUnusedPopupImage(previousImageUrl).catch((cause) => {
-                        console.error("Unable to clean up the replaced popup image.", cause);
-                      });
-                    }
-                  }}
-                  placeholder="Paste an image/video URL, YouTube, or Vimeo link"
-                  className="min-w-0 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
-                />
-              </div>
-              <p className="mt-1 text-xs text-neutral-500">The link is used directly as popup media. Fill in only this field to create a media-only popup.</p>
-              {uploadProgress !== null && (
-                <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50/70 p-3" role="status" aria-live="polite">
-                  <div className="flex items-center justify-between gap-3 text-xs">
-                    <span className="font-medium text-neutral-700">Uploading popup image</span>
-                    <span className="font-bold text-teal-800">{uploadProgress}%</span>
+              {([
+                { device: "mobile", label: "Mobile / phone", value: form.mobileImageUrl },
+                { device: "desktop", label: "Desktop / PC", value: form.desktopImageUrl },
+              ] as const).map(({ device, label, value }) => (
+                <div key={device} className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-3 sm:p-4">
+                  <h4 className="text-sm font-bold text-neutral-800">{label} popup media</h4>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
+                      <ImagePlus className="size-4" />
+                      {uploadingImage ? "Uploading image…" : value ? "Replace uploaded image" : "Upload image"}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="sr-only"
+                        disabled={uploadingImage}
+                        onChange={(event) => {
+                          void handlePopupImage(event.target.files?.[0], device);
+                          event.currentTarget.value = "";
+                        }}
+                      />
+                    </label>
+                    {value && (
+                      <button type="button" disabled={uploadingImage} onClick={() => removePopupImage(device)} className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
+                        <X className="size-3.5" /> Remove
+                      </button>
+                    )}
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100" role="progressbar" aria-label="Popup image upload progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress}>
-                    <div className="h-full rounded-full bg-teal-700 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} />
-                  </div>
+                  <label className="block text-xs font-semibold text-neutral-700">
+                    Or paste a public image/video URL
+                    <input
+                      type="url"
+                      maxLength={2048}
+                      value={isUploadedPopupImage(value) ? "" : value}
+                      disabled={uploadingImage}
+                      onChange={(event) => updatePopupMediaUrl(device, event.target.value)}
+                      placeholder="https://example.com/popup-image.jpg or video link"
+                      className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm font-normal"
+                    />
+                  </label>
+                  {uploadProgress !== null && uploadingImage && (
+                    <div className="rounded-xl border border-teal-100 bg-teal-50/70 p-3" role="status" aria-live="polite">
+                      <div className="flex items-center justify-between gap-3 text-xs">
+                        <span className="font-medium text-neutral-700">Uploading {label.toLowerCase()} image</span>
+                        <span className="font-bold text-teal-800">{uploadProgress}%</span>
+                      </div>
+                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-teal-100" role="progressbar" aria-label={`${label} image upload progress`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={uploadProgress}>
+                        <div className="h-full rounded-full bg-teal-700 transition-[width] duration-150" style={{ width: `${uploadProgress}%` }} />
+                      </div>
+                    </div>
+                  )}
+                  {value && (
+                    <div className="flex min-h-32 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-neutral-950 sm:min-h-48">
+                      <PopupMedia url={value} alt={`${label} popup media preview`} width={640} height={360} className="max-h-64 max-w-full object-contain" />
+                    </div>
+                  )}
                 </div>
-              )}
-              {form.imageUrl && (
-                <div className="mt-4 flex flex-wrap items-start gap-3">
-                  <PopupMedia url={form.imageUrl} alt="Popup campaign media preview" width={640} height={360} className="max-h-56 max-w-full rounded-xl border border-neutral-200 object-contain" />
-                  <button type="button" disabled={uploadingImage} onClick={() => void removePopupImage()} className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
-                    <X className="size-3.5" /> Remove image
-                  </button>
-                </div>
-              )}
+              ))}
             </section>
 
             <div className="grid gap-4 rounded-2xl border border-neutral-200 bg-neutral-50 p-4">
@@ -682,12 +703,21 @@ export default function PopupManagementPage() {
           <AdminSection title="Live preview" description="Popup colors automatically follow the selected website theme.">
             <div className="p-4 sm:p-5">
               <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-neutral-200 border-t-4 bg-white shadow-xl" style={{ borderTopColor: "var(--motion-accent)" }}>
-                {form.imageUrl && <PopupMedia url={form.imageUrl} alt="Popup campaign preview" width={640} height={360} className="max-h-[min(60dvh,520px)] w-full object-contain" />}
-                <div className={form.imageUrl && !form.title && !form.message && !form.linkHref ? "" : "p-6"}>
-                  {!form.imageUrl && <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>}
-                  {(form.title || form.message || !form.imageUrl) && <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>}
-                  {(form.title || !form.imageUrl) && <h3 className="mt-2 text-xl font-bold text-neutral-950">{form.title || "Your announcement heading"}</h3>}
-                  {(form.message || !form.imageUrl) && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">{form.message || "Your announcement or offer details will appear here."}</p>}
+                {previewMedia.mobileImageUrl && (
+                  <div className="relative mx-auto aspect-[9/16] max-h-[55dvh] w-full max-w-[280px] overflow-hidden bg-neutral-950 md:hidden">
+                    <PopupMedia url={previewMedia.mobileImageUrl} alt="Mobile popup media preview" fill sizes="280px" className="h-full w-full object-contain" />
+                  </div>
+                )}
+                {previewMedia.desktopImageUrl && (
+                  <div className="relative hidden aspect-video max-h-[55dvh] w-full overflow-hidden bg-neutral-950 md:block">
+                    <PopupMedia url={previewMedia.desktopImageUrl} alt="Desktop popup media preview" fill sizes="(max-width: 768px) 100vw, 640px" className="h-full w-full object-contain" />
+                  </div>
+                )}
+                <div className={hasPopupMedia && !form.title && !form.message && !form.linkHref ? "" : "p-6"}>
+                  {!hasPopupMedia && <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>}
+                  {(form.title || form.message || !hasPopupMedia) && <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>}
+                  {(form.title || !hasPopupMedia) && <h3 className="mt-2 text-xl font-bold text-neutral-950">{form.title || "Your announcement heading"}</h3>}
+                  {(form.message || !hasPopupMedia) && <p className="mt-2 whitespace-pre-line text-sm leading-6 text-neutral-600">{form.message || "Your announcement or offer details will appear here."}</p>}
                   {form.linkHref && <span className="mt-5 inline-flex rounded-xl bg-[var(--motion-accent)] px-4 py-2 text-xs font-bold text-white">{form.linkLabel || "Explore now"} →</span>}
                 </div>
               </div>
@@ -701,7 +731,8 @@ export default function PopupManagementPage() {
               <ul className="divide-y divide-neutral-100">
                 {popups.map((popup) => {
                   const status = popupStatus(popup);
-                  const media = resolvePopupMedia(popup.imageUrl);
+                  const popupMedia = popupMediaForDevices(popup);
+                  const media = resolvePopupMedia(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl);
                   return (
                     <li key={popup._id} className="p-4">
                       <div className="flex items-start gap-3">

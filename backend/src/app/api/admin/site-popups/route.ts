@@ -12,6 +12,8 @@ const popupFieldsSchema = z.object({
   message: z.string().trim().max(2000).default(""),
   emoji: z.string().trim().max(16).default("✨"),
   imageUrl: z.string().trim().max(2048).default(""),
+  mobileImageUrl: z.string().trim().max(2048).default(""),
+  desktopImageUrl: z.string().trim().max(2048).default(""),
   linkType: z.enum(["none", "internal", "external"]).default("none"),
   linkHref: z.string().trim().max(2048).default(""),
   linkLabel: z.string().trim().max(60).default(""),
@@ -29,7 +31,8 @@ const popupFieldsSchema = z.object({
 });
 
 const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
-  if (!popup.imageUrl) {
+  const hasMedia = Boolean(popup.imageUrl || popup.mobileImageUrl || popup.desktopImageUrl);
+  if (!hasMedia) {
     if (popup.title.length < 2) {
       context.addIssue({ code: "custom", path: ["title"], message: "Add a heading or upload a popup image." });
     }
@@ -40,12 +43,15 @@ const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
   if (new Date(popup.expiresAt).getTime() <= new Date(popup.startsAt).getTime()) {
     context.addIssue({ code: "custom", path: ["expiresAt"], message: "Expiry must be after the start time." });
   }
-  if (
-    popup.imageUrl &&
-    !/^\/api\/uploads\/file\/popup-images\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(popup.imageUrl) &&
-    !isHttpUrl(popup.imageUrl)
-  ) {
-    context.addIssue({ code: "custom", path: ["imageUrl"], message: "Choose a valid uploaded image or HTTP(S) image URL." });
+  for (const field of ["imageUrl", "mobileImageUrl", "desktopImageUrl"] as const) {
+    const url = popup[field];
+    if (
+      url &&
+      !/^\/api\/uploads\/file\/popup-images\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(url) &&
+      !isHttpUrl(url)
+    ) {
+      context.addIssue({ code: "custom", path: [field], message: "Choose a valid uploaded image or HTTP(S) media URL." });
+    }
   }
   if (popup.linkType === "none" && popup.linkHref) {
     context.addIssue({ code: "custom", path: ["linkHref"], message: "Choose an internal or external destination for this link." });
@@ -104,16 +110,22 @@ const popupSlideshowSchema = z.object({
 
 async function removeUnusedImage(imageUrl: string) {
   const fileName = /^\/api\/uploads\/file\/popup-images\/([a-f\d-]+\.(?:jpg|png|webp))$/i.exec(imageUrl)?.[1];
-  if (!fileName || await SitePopup.exists({ imageUrl })) return;
+  if (
+    !fileName ||
+    await SitePopup.exists({
+      $or: [{ imageUrl }, { mobileImageUrl: imageUrl }, { desktopImageUrl: imageUrl }],
+    })
+  ) return;
   await UploadedFile.deleteOne({ folder: "popup-images", fileName });
 }
 
-async function validatePopupImage(imageUrl: string) {
-  if (!imageUrl) return;
-  if (isHttpUrl(imageUrl)) return;
-  const fileName = imageUrl.split("/").at(-1);
-  if (!fileName || !await UploadedFile.exists({ folder: "popup-images", fileName })) {
-    throw new Error("Popup image upload was not found. Upload the image again.");
+async function validatePopupMedia(popup: { imageUrl: string; mobileImageUrl: string; desktopImageUrl: string }) {
+  for (const imageUrl of new Set([popup.imageUrl, popup.mobileImageUrl, popup.desktopImageUrl])) {
+    if (!imageUrl || isHttpUrl(imageUrl)) continue;
+    const fileName = imageUrl.split("/").at(-1);
+    if (!fileName || !await UploadedFile.exists({ folder: "popup-images", fileName })) {
+      throw new Error("Popup media upload was not found. Upload the image again.");
+    }
   }
 }
 
@@ -152,7 +164,7 @@ export async function POST(request: NextRequest) {
     const { auth } = await requireAdmin();
     await dbConnect();
     const input = popupSchema.parse(await request.json());
-    await validatePopupImage(input.imageUrl);
+    await validatePopupMedia(input);
     const slideshowGroupId = await resolveSlideshowGroupId(input.slideshowGroupId);
     const popup = await SitePopup.create({
       ...input,
@@ -230,7 +242,7 @@ export async function PATCH(request: NextRequest) {
       startsAt: input.startsAt ?? new Date(before.startsAt).toISOString(),
       expiresAt: input.expiresAt ?? new Date(before.expiresAt).toISOString(),
     });
-    await validatePopupImage(updated.imageUrl);
+    await validatePopupMedia(updated);
     const popup = await SitePopup.findByIdAndUpdate(
       id,
       { ...updated, startsAt: new Date(updated.startsAt), expiresAt: new Date(updated.expiresAt) },
@@ -244,7 +256,11 @@ export async function PATCH(request: NextRequest) {
       before,
       after: popup,
     });
-    if (before.imageUrl && before.imageUrl !== popup?.imageUrl) await removeUnusedImage(before.imageUrl);
+    const oldImages = new Set([before.imageUrl, before.mobileImageUrl, before.desktopImageUrl].filter(Boolean));
+    const currentImages = new Set([popup?.imageUrl, popup?.mobileImageUrl, popup?.desktopImageUrl].filter(Boolean));
+    for (const imageUrl of oldImages) {
+      if (!currentImages.has(imageUrl)) await removeUnusedImage(imageUrl);
+    }
     return ok({ popup });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to update popup");
@@ -263,7 +279,9 @@ export async function DELETE(request: NextRequest) {
     if (!before.slideshowGroupId) {
       await SitePopup.updateMany({ slideshowGroupId: id }, { slideshowGroupId: "" });
     }
-    if (before.imageUrl) await removeUnusedImage(before.imageUrl);
+    for (const imageUrl of new Set([before.imageUrl, before.mobileImageUrl, before.desktopImageUrl].filter(Boolean))) {
+      await removeUnusedImage(imageUrl);
+    }
     await AuditLog.create({
       actor: auth.id,
       action: "site_popup.delete",

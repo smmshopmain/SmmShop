@@ -47,7 +47,9 @@ export async function DELETE(request: NextRequest) {
     const { imageUrl } = z.object({ imageUrl: imageUrlSchema }).parse(await request.json());
     const fileName = imageUrl.split("/").at(-1);
     if (!fileName) return fail("Invalid popup image path.");
-    const inUse = await SitePopup.exists({ imageUrl });
+    const inUse = await SitePopup.exists({
+      $or: [{ imageUrl }, { mobileImageUrl: imageUrl }, { desktopImageUrl: imageUrl }],
+    });
     if (inUse) return ok({ deleted: false, inUse: true });
 
     const result = await UploadedFile.deleteOne({ folder: "popup-images", fileName });

@@ -340,6 +340,8 @@ const SitePopupSchema = new Schema(
     message: { type: String, trim: true, maxlength: 2000, default: "" },
     emoji: { type: String, trim: true, maxlength: 16, default: "✨" },
     imageUrl: { type: String, trim: true, maxlength: 2048, default: "" },
+    mobileImageUrl: { type: String, trim: true, maxlength: 2048, default: "" },
+    desktopImageUrl: { type: String, trim: true, maxlength: 2048, default: "" },
     linkType: { type: String, enum: ["none", "internal", "external"], default: "none" },
     linkHref: { type: String, trim: true, maxlength: 2048, default: "" },
     linkLabel: { type: String, trim: true, maxlength: 60, default: "" },
