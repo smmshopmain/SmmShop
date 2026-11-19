@@ -247,8 +247,8 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
 
   if (key === "ai") {
     const aiSettings = aiSettingsSchema.parse(value);
-    if (aiSettings.enabled && !process.env.OPENAI_API_KEY?.trim()) {
-      throw new Error("Set OPENAI_API_KEY in the backend environment before enabling the AI assistant.");
+    if (aiSettings.enabled && !process.env.VELONA_API_KEY?.trim()) {
+      throw new Error("Set VELONA_API_KEY in the backend environment before enabling the AI assistant.");
     }
     return aiSettings;
   }
@@ -311,7 +311,7 @@ export async function GET() {
       ...settings,
       ai: {
         ...settings.ai,
-        keyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+        keyConfigured: Boolean(process.env.VELONA_API_KEY?.trim()),
       },
       auth: {
         ...settings.auth,

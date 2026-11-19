@@ -54,7 +54,7 @@ SMTP_PASS=
 FROM_EMAIL=
 EMAIL_WORKER_URL=https://your-frontend.vercel.app/api/internal/send-email
 EMAIL_WORKER_SECRET=replace-with-a-long-random-secret
-OPENAI_API_KEY=
+VELONA_API_KEY=
 ```
 
 3. Start both development servers in separate terminals:
@@ -112,7 +112,7 @@ In **Admin > Popup Campaigns**, administrators can create multiple scheduled ann
 
 ### AI Assistant
 
-Set `OPENAI_API_KEY` only in the backend environment (Render); it is never sent to the browser. Enable the AI assistant and choose its action policy from **Admin > Settings**. A movable AI launcher is available throughout signed-in admin and customer workspaces; it sends the current section as context. Admins can inspect sanitized summaries across workspace sections and, subject to approval policy, manage user access/wallet freezes, cancel orders, update service availability/margins and provider availability/priority, review deposits, manage promo codes and support tickets, create/schedule opted-in email campaigns, create scheduled popups, and change supported website appearance settings. Deposit decisions and order cancellations always require approval. Provider credentials, payment proofs, UTRs, account deletion, role changes, and other financial secrets are intentionally excluded from AI operations. User assistants can search active services, view only their own recent orders, and create support tickets. Uploaded campaign and popup images can be attached in the admin assistant.
+Set `VELONA_API_KEY` only in the backend environment (Render); it is never sent to the browser. The assistant uses Velona's documented OpenAI-compatible `https://velona.in/v1/chat/completions` endpoint with the `openai/gpt-4o-mini` model and tool calling ([official docs](https://velona.in/docs)). Create the key in Velona and keep sufficient Velona wallet credits available. Enable the AI assistant and choose its action policy from **Admin > Settings**. A movable AI launcher is available throughout signed-in admin and customer workspaces; it sends the current section as context. Admins can inspect sanitized summaries across workspace sections and, subject to approval policy, manage user access/wallet freezes, cancel orders, update service availability/margins and provider availability/priority, review deposits, manage promo codes and support tickets, create/schedule opted-in email campaigns, create scheduled popups, and change supported website appearance settings. Deposit decisions and order cancellations always require approval. Provider credentials, payment proofs, UTRs, account deletion, role changes, and other financial secrets are intentionally excluded from AI operations. User assistants can search active services, view only their own recent orders, and create support tickets. Uploaded campaign and popup images can be attached in the admin assistant.
 
 The default **Preview first** policy requires approval for actions. **Admin direct** applies admin actions immediately but asks users to approve their assistant actions. **Direct all** applies supported actions immediately. Disabling AI removes both assistant navigation entries and rejects assistant requests. Email campaigns created by the assistant are one-time scheduled campaigns; recurring yearly calendar campaigns and arbitrary admin/user operations are not currently automated.
 

@@ -73,11 +73,11 @@ export function AIAssistantSettings({
           </select>
         </label>
         <div className="rounded-xl bg-neutral-50 px-4 py-3 text-xs leading-5 text-neutral-600">
-          <p className="font-bold text-neutral-800">OpenAI API key</p>
+          <p className="font-bold text-neutral-800">Velona API key</p>
           <p className="mt-1">
             {keyConfigured
               ? "Configured on the backend. The secret is never returned to the browser."
-              : "Not configured. Add OPENAI_API_KEY to the backend environment before enabling AI."}
+              : "Not configured. Add VELONA_API_KEY to the backend environment before enabling AI."}
           </p>
           <p className="mt-2">With AI disabled, assistant navigation, chat access, and AI actions are unavailable.</p>
         </div>

@@ -31,6 +31,9 @@ import {
 } from "@/models";
 import { currentUser, requireAdmin, requireUser } from "@/lib/auth";
 
+const VELONA_CHAT_COMPLETIONS_URL = "https://velona.in/v1/chat/completions";
+const VELONA_MODEL = "openai/gpt-4o-mini";
+
 const requestSchema = z.object({
   messages: z.array(z.object({
     role: z.enum(["user", "assistant"]),
@@ -218,6 +221,15 @@ function maskEmail(value?: string) {
   if (!value) return "";
   const [name, domain] = value.split("@");
   return domain ? `${name.slice(0, 1)}***@${domain}` : "***";
+}
+
+function getVelonaErrorCode(payload: unknown) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload) || !("error" in payload)) return "";
+  const providerError = payload.error;
+  if (!providerError || typeof providerError !== "object" || Array.isArray(providerError) || !("code" in providerError)) {
+    return "";
+  }
+  return typeof providerError.code === "string" ? providerError.code.toUpperCase() : "";
 }
 
 async function inspectAdminSection(rawArguments: string) {
@@ -1238,7 +1250,7 @@ export async function GET() {
     await dbConnect();
     const settings = await getSettings();
     if (!settings.ai.enabled) return fail("AI assistant is disabled.", 404);
-    return ok({ enabled: true, modelAvailable: Boolean(process.env.OPENAI_API_KEY?.trim()) });
+    return ok({ enabled: true, modelAvailable: Boolean(process.env.VELONA_API_KEY?.trim()) });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load AI assistant", 401);
   }
@@ -1262,8 +1274,8 @@ export async function POST(request: NextRequest) {
       const result = await rejectPendingAction(input.rejectActionId, auth);
       return ok({ message: result, pendingActions: [] });
     }
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) return fail("AI is enabled, but OPENAI_API_KEY is not configured on the backend.", 503);
+    const apiKey = process.env.VELONA_API_KEY?.trim();
+    if (!apiKey) return fail("AI is enabled, but VELONA_API_KEY is not configured on the backend.", 503);
     if (input.messages.reduce((total, message) => total + message.content.length, 0) > 16000) {
       return fail("This conversation is too long. Start a new conversation and try again.", 413);
     }
@@ -1288,7 +1300,7 @@ export async function POST(request: NextRequest) {
     const pendingActions: Array<{ id: string; name: string; summary: string }> = [];
     const completedActions: string[] = [];
     for (let attempt = 0; attempt < 5; attempt += 1) {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch(VELONA_CHAT_COMPLETIONS_URL, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -1296,7 +1308,7 @@ export async function POST(request: NextRequest) {
         },
         signal: AbortSignal.timeout(45_000),
         body: JSON.stringify({
-          model: "gpt-4o-mini",
+          model: VELONA_MODEL,
           messages,
           tools,
           tool_choice: "auto",
@@ -1305,9 +1317,34 @@ export async function POST(request: NextRequest) {
         }),
       });
       if (!response.ok) {
-        const detail = await response.text();
-        console.error("OpenAI assistant request failed.", { status: response.status, detail: detail.slice(0, 500) });
-        return fail(`OpenAI request failed (${response.status}). Check the backend API key and account configuration.`, 502);
+        let errorPayload: unknown;
+        try {
+          errorPayload = await response.json();
+        } catch {
+          console.error("Velona AI returned a non-JSON error response.", { status: response.status });
+          return fail(`Velona AI request failed (${response.status}).`, 502);
+        }
+        const code = getVelonaErrorCode(errorPayload);
+        console.error("Velona AI assistant request failed.", { status: response.status, code: code || "UNKNOWN" });
+        if (response.status === 401 || code === "INVALID_KEY") {
+          return fail("Velona rejected the API key. Check VELONA_API_KEY in the backend environment.", 502);
+        }
+        if (response.status === 402 || code === "INSUFFICIENT_CREDITS") {
+          return fail("Velona API credits are insufficient. Add credits to the Velona account and try again.", 502);
+        }
+        if (response.status === 403 || code === "ACCOUNT_SUSPENDED") {
+          return fail("The Velona API account is suspended. Contact Velona support.", 502);
+        }
+        if (response.status === 429 || code === "RATE_LIMIT_EXCEEDED") {
+          return fail("Velona rate limit reached. Wait briefly before trying again.", 502);
+        }
+        if (response.status === 404 || response.status === 422 || code === "MODEL_NOT_AVAILABLE" || code === "MODEL_NOT_FOUND") {
+          return fail("The configured Velona model is unavailable. Check Velona's model list and try again later.", 502);
+        }
+        if (response.status === 503 || code === "UPSTREAM_ERROR" || code === "SERVICE_UNAVAILABLE") {
+          return fail("Velona's AI service is temporarily unavailable. Please try again shortly.", 502);
+        }
+        return fail(`Velona AI request failed (${response.status}).`, 502);
       }
       const result = await response.json() as {
         choices?: Array<{
@@ -1318,7 +1355,7 @@ export async function POST(request: NextRequest) {
         }>;
       };
       const assistantMessage = result.choices?.[0]?.message;
-      if (!assistantMessage) return fail("OpenAI returned an empty assistant response.", 502);
+      if (!assistantMessage) return fail("Velona returned an empty assistant response.", 502);
       if (!assistantMessage.tool_calls?.length) {
         return ok({ message: assistantMessage.content?.trim() || "I couldn't generate a response. Please try again.", pendingActions });
       }

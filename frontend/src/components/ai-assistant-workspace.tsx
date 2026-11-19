@@ -301,7 +301,7 @@ export function AIAssistantWorkspace({
       <form onSubmit={sendMessage} className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
         {!modelAvailable && (
           <p role="alert" className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-            OpenAI is not configured on the backend. Ask an administrator to set OPENAI_API_KEY.
+            Velona is not configured on the backend. Ask an administrator to set VELONA_API_KEY.
           </p>
         )}
         {attachment && (
@@ -362,8 +362,8 @@ export function AIAssistantWorkspace({
         </div>
         <p className="mt-2 text-[11px] leading-5 text-neutral-500">
           {admin
-            ? "Email delivery and popup publishing follow the configured approval policy. Messages are sent to OpenAI; do not include passwords, API keys, OTPs, or payment credentials."
-            : "Messages and relevant order details are sent to OpenAI. Your assistant only accesses your own orders and the public service catalog; never share passwords, OTPs, or payment credentials. Orders must still be placed through the order form."}
+            ? "Email delivery and popup publishing follow the configured approval policy. Messages are sent to Velona; do not include passwords, API keys, OTPs, or payment credentials."
+            : "Messages and relevant order details are sent to Velona. Your assistant only accesses your own orders and the public service catalog; never share passwords, OTPs, or payment credentials. Orders must still be placed through the order form."}
         </p>
       </form>
     </section>
