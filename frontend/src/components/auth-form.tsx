@@ -62,6 +62,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const referralParam = mode === "register" ? (searchParams.get("ref") ?? "") : "";
 
   useEffect(() => {
+    if (mode !== "login") return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has("email") && !url.searchParams.has("password")) return;
+
+    url.searchParams.delete("email");
+    url.searchParams.delete("password");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [mode]);
+
+  useEffect(() => {
     if (mode !== "register") return;
     let mounted = true;
     void apiJson("/api/settings")
@@ -286,7 +296,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   return (
     <>
-    <form onSubmit={pendingRegistration ? verifyRegistration : submit} className="grid gap-4">
+    <form method="post" onSubmit={pendingRegistration ? verifyRegistration : submit} className="grid gap-4">
       {pendingRegistration ? (
         <>
           <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">

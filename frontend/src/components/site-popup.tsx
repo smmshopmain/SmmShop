@@ -23,6 +23,9 @@ type SitePopupItem = {
   showOnEveryRefresh?: boolean;
 };
 
+const POPUP_REFRESH_INTERVAL_MS = 60_000;
+const MAX_POPUP_RETRY_INTERVAL_MS = 5 * 60_000;
+
 function todayKey() {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -66,6 +69,9 @@ export function SitePopup() {
   useEffect(() => {
     if (pathname?.startsWith("/admin")) return;
     let active = true;
+    let timer: number | undefined;
+    let retryInterval = POPUP_REFRESH_INTERVAL_MS;
+
     async function loadPopups() {
       try {
         const result = await apiJson("/api/site-popups", { cache: "no-store" });
@@ -74,16 +80,18 @@ export function SitePopup() {
           throw new Error(result?.message ?? "Unable to load current announcements.");
         }
         setPopups(result.popups as SitePopupItem[]);
+        retryInterval = POPUP_REFRESH_INTERVAL_MS;
       } catch (error) {
+        retryInterval = Math.min(retryInterval * 2, MAX_POPUP_RETRY_INTERVAL_MS);
         console.error("Unable to load website announcements.", error);
       }
+      if (active) timer = window.setTimeout(() => void loadPopups(), retryInterval);
     }
 
     void loadPopups();
-    const interval = window.setInterval(() => void loadPopups(), 60_000);
     return () => {
       active = false;
-      window.clearInterval(interval);
+      if (timer !== undefined) window.clearTimeout(timer);
     };
   }, [pathname]);
 
