@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { loadGoogleHolidays, type GoogleHolidayResult } from "@/lib/google-holidays";
+import { processNextMarketingCalendarScheduleRun } from "@/lib/marketing-calendar-scheduler";
 import { AuditLog, EmailCampaign, MarketingCalendarEvent, MarketingCalendarScheduleRun, getSettings } from "@/models";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
@@ -185,7 +186,17 @@ export async function POST(request: NextRequest) {
           items: {
             $elemMatch: {
               calendarEventKey: { $in: pending.map((event) => event.calendarEventKey) },
-              status: { $in: ["queued", "draft_ready", "banner_ready", "campaign_ready"] },
+              status: {
+                $in: [
+                  "queued",
+                  "drafting",
+                  "draft_ready",
+                  "generating_banner",
+                  "banner_ready",
+                  "campaign_ready",
+                  "scheduling",
+                ],
+              },
             },
           },
         })
@@ -203,7 +214,7 @@ export async function POST(request: NextRequest) {
       instructions: input.instructions,
       brandName: settings.email.brandName,
       generateBanner: input.generateBanner,
-      status: pending.length ? "queued" : "completed",
+      status: pending.length ? "processing" : "completed",
       items: events.map((event) => ({
         ...event,
         status: alreadyScheduled.has(event.calendarEventKey) ? "skipped" : "queued",
@@ -225,6 +236,20 @@ export async function POST(request: NextRequest) {
         instructions: input.instructions,
       },
     });
+    if (pending.length) {
+      setImmediate(() => {
+        void (async () => {
+          try {
+            for (let batch = 0; batch < 80; batch += 1) {
+              const result = await processNextMarketingCalendarScheduleRun();
+              if (!result.processed) break;
+            }
+          } catch (error) {
+            console.error("Immediate calendar scheduling worker failed; the cron worker will retry the saved run.", error);
+          }
+        })();
+      });
+    }
     return ok({ run: serializeRun(run) }, { status: 202 });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to start calendar scheduling.");

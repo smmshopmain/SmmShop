@@ -6,7 +6,15 @@ import { EmailCampaign, MarketingCalendarScheduleRun, Service, UploadedFile, Use
 import { SERVICE_PLATFORMS } from "@/lib/service-platforms";
 
 const ACTIVE_RUN_STATUSES: readonly string[] = ["queued", "processing"];
-const ACTIVE_ITEM_STATUSES: readonly string[] = ["queued", "draft_ready", "banner_ready", "campaign_ready"];
+const ACTIVE_ITEM_STATUSES: readonly string[] = [
+  "queued",
+  "drafting",
+  "draft_ready",
+  "generating_banner",
+  "banner_ready",
+  "campaign_ready",
+  "scheduling",
+];
 const RUN_LOCK_MS = 4 * 60 * 1000;
 
 type MarketingCalendarScheduleItem = {
@@ -168,7 +176,7 @@ async function updateRunStatus(runId: unknown) {
     item.status === "failed",
   ).length;
   const status = pending
-    ? "queued"
+    ? "processing"
     : failed === run.items.length
       ? "failed"
       : failed
@@ -208,7 +216,8 @@ export async function processNextMarketingCalendarScheduleRun() {
   }
 
   try {
-    if (item.status === "queued") {
+    if (item.status === "queued" || item.status === "drafting") {
+      await updateItem(run._id, item._id, { status: "drafting" });
       if (await EmailCampaign.exists({ calendarEventKey: item.calendarEventKey })) {
         await updateItem(run._id, item._id, {
           status: "skipped",
@@ -240,7 +249,8 @@ export async function processNextMarketingCalendarScheduleRun() {
           error: "",
         });
       }
-    } else if (item.status === "draft_ready") {
+    } else if (item.status === "draft_ready" || item.status === "generating_banner") {
+      await updateItem(run._id, item._id, { status: "generating_banner" });
       if (!item.draft?.bannerPrompt) throw new Error("The generated advertisement image prompt is missing.");
       const imageUrl = await generateVelonaCampaignImage({
         prompt: buildBrandedCampaignImagePrompt({
@@ -259,6 +269,7 @@ export async function processNextMarketingCalendarScheduleRun() {
         error: "",
       });
     } else {
+      await updateItem(run._id, item._id, { status: "scheduling" });
       await createScheduledCampaign(run, item);
     }
   } catch (error) {

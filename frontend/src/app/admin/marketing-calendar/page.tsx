@@ -47,7 +47,7 @@ type ScheduleRunEvent = {
   calendarEventKey: string;
   title: string;
   date: string;
-  status: "queued" | "draft_ready" | "banner_ready" | "campaign_ready" | "scheduled" | "skipped" | "failed";
+  status: "queued" | "drafting" | "draft_ready" | "generating_banner" | "banner_ready" | "campaign_ready" | "scheduling" | "scheduled" | "skipped" | "failed";
   error: string;
 };
 type ScheduleRun = {
@@ -241,7 +241,7 @@ export default function MarketingCalendarPage() {
         if (active) setError(cause instanceof Error ? cause.message : "Unable to refresh scheduling progress.");
       }
     };
-    const timer = window.setInterval(() => void refreshProgress(), 30_000);
+    const timer = window.setInterval(() => void refreshProgress(), 5_000);
     return () => {
       active = false;
       window.clearInterval(timer);
@@ -284,7 +284,7 @@ export default function MarketingCalendarPage() {
     return !scheduledKeys.has(key)
       && runItem?.status !== "scheduled"
       && runItem?.status !== "skipped"
-      && !["queued", "draft_ready", "banner_ready", "campaign_ready"].includes(runItem?.status ?? "");
+      && !["queued", "drafting", "draft_ready", "generating_banner", "banner_ready", "campaign_ready", "scheduling"].includes(runItem?.status ?? "");
   });
   const selectedEventCount = selectableRangeEvents
     .filter((event) => selectedEventKeys.has(calendarEventKey(event))).length;
@@ -466,7 +466,7 @@ export default function MarketingCalendarPage() {
       return;
     }
     const confirmed = window.confirm(
-      `Queue ${pendingEvents.length} email campaign(s) for background scheduling? AI will generate copy${generateBanner ? ` and one shop-branded banner per occasion (Velona image-generation credits apply)` : "; banner generation is disabled and campaigns will have no banner"}. Campaigns are scheduled for 10:00 AM India time and sent to eligible subscribed users. You can leave this page; the backend worker continues processing.`,
+      `Start ${pendingEvents.length} email campaign(s) in the background? AI will generate copy${generateBanner ? ` and one shop-branded banner per occasion (Velona image-generation credits apply)` : "; banner generation is disabled and campaigns will have no banner"}. Campaigns are scheduled for 10:00 AM India time and sent to eligible subscribed users. You can leave this page; the backend worker continues processing.`,
     );
     if (!confirmed) return;
 
@@ -489,7 +489,7 @@ export default function MarketingCalendarPage() {
       setMessage(
         result.run?.status === "completed" && result.run.scheduled === 0
           ? "No new campaigns were needed; every occasion already has a scheduled campaign."
-          : "Scheduling has been queued. You can leave this page; the backend worker will continue automatically.",
+          : "Background scheduling has started. You can leave this page; the backend worker will continue automatically.",
       );
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to start background scheduling.");
@@ -587,7 +587,7 @@ export default function MarketingCalendarPage() {
                   const key = calendarEventKey(event);
                   const runItem = activeScheduleRun?.events.find((item) => item.calendarEventKey === key);
                   const alreadyScheduled = scheduledKeys.has(key) || runItem?.status === "scheduled" || runItem?.status === "skipped";
-                  const inBackground = runItem && ["queued", "draft_ready", "banner_ready", "campaign_ready"].includes(runItem.status);
+                  const inBackground = runItem && ["queued", "drafting", "draft_ready", "generating_banner", "banner_ready", "campaign_ready", "scheduling"].includes(runItem.status);
                   const selectable = !alreadyScheduled && !inBackground;
                   return (
                     <li key={key} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
@@ -649,7 +649,7 @@ export default function MarketingCalendarPage() {
             className="inline-flex w-fit items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {scheduling ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-            {scheduling ? "Queueing background job…" : `Start scheduling${selectedEventCount ? ` (${selectedEventCount})` : ""}`}
+            {scheduling ? "Starting background job…" : `Start scheduling${selectedEventCount ? ` (${selectedEventCount})` : ""}`}
           </button>
           {(!aiEnabled || !aiKeyConfigured) && <p className="text-xs text-amber-800">Enable AI and configure the backend AI key in Admin settings to generate campaigns.</p>}
         </div>
