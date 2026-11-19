@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
 import { ArrowRight, Megaphone, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { apiJson, backendAssetUrl } from "@/lib/client-api";
+import { apiJson } from "@/lib/client-api";
+import { PopupMedia } from "@/components/popup-media";
 
 type SitePopupItem = {
   _id: string;
@@ -190,24 +190,22 @@ export function SitePopup() {
       {currentPopup.imageUrl && (
         imageOnly ? (
           <div className="relative h-dvh w-screen">
-            <Image
-              src={backendAssetUrl(currentPopup.imageUrl)}
+            <PopupMedia
+              url={currentPopup.imageUrl}
               alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
               fill
               sizes="100vw"
-              unoptimized
-              className="object-contain"
+              className="h-full w-full object-contain"
             />
           </div>
         ) : (
           <div className="relative mb-5 h-[min(60dvh,520px)] w-full">
-            <Image
-              src={backendAssetUrl(currentPopup.imageUrl)}
+            <PopupMedia
+              url={currentPopup.imageUrl}
               alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
               fill
               sizes="(max-width: 768px) 100vw, 768px"
-              unoptimized
-              className="rounded-xl object-contain"
+              className="h-full w-full rounded-xl object-contain"
             />
           </div>
         )

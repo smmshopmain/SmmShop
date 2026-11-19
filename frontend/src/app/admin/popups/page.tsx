@@ -5,7 +5,9 @@ import { ImagePlus, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
-import { apiJson, apiUrl, backendAssetUrl } from "@/lib/client-api";
+import { PopupMedia } from "@/components/popup-media";
+import { apiJson, apiUrl } from "@/lib/client-api";
+import { resolvePopupMedia } from "@/lib/popup-media";
 
 type PopupKind = "announcement" | "advertisement";
 type PopupLinkType = "none" | "internal" | "external";
@@ -118,7 +120,6 @@ export default function PopupManagementPage() {
   const [serviceSearch, setServiceSearch] = useState("");
   const [searchingServices, setSearchingServices] = useState(false);
   const [form, setForm] = useState<PopupForm>(emptyPopupForm);
-  const [imageUrlInput, setImageUrlInput] = useState("");
   const [slideshowDurationSeconds, setSlideshowDurationSeconds] = useState(10);
   const [editingId, setEditingId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -212,7 +213,6 @@ export default function PopupManagementPage() {
       showOnEveryRefresh: popup.showOnEveryRefresh ?? false,
       active: popup.active,
     });
-    setImageUrlInput(/^https?:\/\//i.test(popup.imageUrl || "") ? popup.imageUrl : "");
     setMessage(`Editing “${popup.title || "image-only popup"}”. Save changes when you're ready.`);
     setError("");
     document.getElementById("popup-composer")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -224,7 +224,6 @@ export default function PopupManagementPage() {
     });
     setEditingId("");
     setForm(emptyPopupForm());
-    setImageUrlInput("");
     setError("");
     setMessage("");
   }
@@ -248,7 +247,6 @@ export default function PopupManagementPage() {
     try {
       const imageUrl = await uploadPopupImage(file, setUploadProgress);
       setForm((current) => ({ ...current, imageUrl }));
-      setImageUrlInput("");
       if (previousImageUrl && previousImageUrl !== imageUrl) {
         await removeUnusedPopupImage(previousImageUrl);
       }
@@ -264,7 +262,6 @@ export default function PopupManagementPage() {
   async function removePopupImage() {
     const imageUrl = form.imageUrl;
     setForm((current) => ({ ...current, imageUrl: "" }));
-    setImageUrlInput("");
     setError("");
     if (!imageUrl) return;
     try {
@@ -272,33 +269,6 @@ export default function PopupManagementPage() {
       setMessage("Popup image removed. Save the campaign to publish this change.");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to remove popup image.");
-    }
-  }
-
-  async function applyPopupImageUrl() {
-    const imageUrl = imageUrlInput.trim();
-    if (imageUrl) {
-      try {
-        const url = new URL(imageUrl);
-        if (!["http:", "https:"].includes(url.protocol) || url.username || url.password) {
-          throw new Error("Use a valid public HTTP(S) image URL without embedded credentials.");
-        }
-      } catch {
-        setError("Enter a valid public HTTP(S) image URL.");
-        return;
-      }
-    }
-
-    const previousImageUrl = form.imageUrl;
-    setForm((current) => ({ ...current, imageUrl }));
-    setError("");
-    setMessage(imageUrl ? "Image URL added. Review the preview and save your campaign." : "Image URL cleared.");
-    if (previousImageUrl && previousImageUrl !== imageUrl) {
-      try {
-        await removeUnusedPopupImage(previousImageUrl);
-      } catch (cause) {
-        setError(cause instanceof Error ? cause.message : "Unable to remove the replaced popup image.");
-      }
     }
   }
 
@@ -482,8 +452,8 @@ export default function PopupManagementPage() {
 
             <section className="rounded-2xl border border-neutral-200 bg-neutral-50 p-4" aria-labelledby="popup-image-heading">
               <div>
-                <h3 id="popup-image-heading" className="text-sm font-bold text-neutral-900">Popup image <span className="font-normal text-neutral-500">(optional · up to 10MB)</span></h3>
-                <p className="mt-1 text-xs text-neutral-500">Add a festival banner or offer artwork. With an image, heading and message are optional.</p>
+                <h3 id="popup-image-heading" className="text-sm font-bold text-neutral-900">Popup image or video <span className="font-normal text-neutral-500">(optional · uploads up to 10MB)</span></h3>
+                <p className="mt-1 text-xs text-neutral-500">Paste a direct image/video URL, or use a YouTube or Vimeo link. With media, heading and message are optional.</p>
               </div>
               <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 transition hover:bg-neutral-50">
                 <ImagePlus className="size-4" />
@@ -504,22 +474,23 @@ export default function PopupManagementPage() {
                   type="url"
                   maxLength={2048}
                   aria-label="Popup image URL"
-                  value={imageUrlInput}
-                  onChange={(event) => setImageUrlInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      void applyPopupImageUrl();
+                  value={isUploadedPopupImage(form.imageUrl) ? "" : form.imageUrl}
+                  disabled={uploadingImage}
+                  onChange={(event) => {
+                    const imageUrl = event.target.value;
+                    const previousImageUrl = form.imageUrl;
+                    setForm((current) => ({ ...current, imageUrl }));
+                    if (isUploadedPopupImage(previousImageUrl)) {
+                      void removeUnusedPopupImage(previousImageUrl).catch((cause) => {
+                        console.error("Unable to clean up the replaced popup image.", cause);
+                      });
                     }
                   }}
-                  placeholder="Or paste a public image URL, e.g. https://example.com/popup.jpg"
+                  placeholder="Paste an image/video URL, YouTube, or Vimeo link"
                   className="min-w-0 rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
                 />
-                <button type="button" disabled={uploadingImage} onClick={() => void applyPopupImageUrl()} className="rounded-xl border border-neutral-300 bg-white px-4 py-2.5 text-sm font-semibold text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">
-                  Use image URL
-                </button>
               </div>
-              <p className="mt-1 text-xs text-neutral-500">The URL must point to a publicly accessible HTTP(S) image.</p>
+              <p className="mt-1 text-xs text-neutral-500">The link is used directly as popup media. Fill in only this field to create a media-only popup.</p>
               {uploadProgress !== null && (
                 <div className="mt-3 rounded-xl border border-teal-100 bg-teal-50/70 p-3" role="status" aria-live="polite">
                   <div className="flex items-center justify-between gap-3 text-xs">
@@ -533,7 +504,7 @@ export default function PopupManagementPage() {
               )}
               {form.imageUrl && (
                 <div className="mt-4 flex flex-wrap items-start gap-3">
-                  <Image src={backendAssetUrl(form.imageUrl)} alt="Popup campaign image preview" width={640} height={360} unoptimized className="max-h-56 max-w-full rounded-xl border border-neutral-200 object-contain" />
+                  <PopupMedia url={form.imageUrl} alt="Popup campaign media preview" width={640} height={360} className="max-h-56 max-w-full rounded-xl border border-neutral-200 object-contain" />
                   <button type="button" disabled={uploadingImage} onClick={() => void removePopupImage()} className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50">
                     <X className="size-3.5" /> Remove image
                   </button>
@@ -711,7 +682,7 @@ export default function PopupManagementPage() {
           <AdminSection title="Live preview" description="Popup colors automatically follow the selected website theme.">
             <div className="p-4 sm:p-5">
               <div className="mx-auto max-w-md overflow-hidden rounded-3xl border border-neutral-200 border-t-4 bg-white shadow-xl" style={{ borderTopColor: "var(--motion-accent)" }}>
-                {form.imageUrl && <Image src={backendAssetUrl(form.imageUrl)} alt="Popup campaign preview" width={640} height={360} unoptimized className="max-h-[min(60dvh,520px)] w-full object-contain" />}
+                {form.imageUrl && <PopupMedia url={form.imageUrl} alt="Popup campaign preview" width={640} height={360} className="max-h-[min(60dvh,520px)] w-full object-contain" />}
                 <div className={form.imageUrl && !form.title && !form.message && !form.linkHref ? "" : "p-6"}>
                   {!form.imageUrl && <span className="grid size-12 place-items-center rounded-2xl bg-[color-mix(in_srgb,var(--motion-accent)_14%,white)] text-2xl">{form.emoji}</span>}
                   {(form.title || form.message || !form.imageUrl) && <p className="mt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-[var(--motion-accent)]">{form.kind === "advertisement" ? "A special offer" : "A message for you"}</p>}
@@ -730,11 +701,14 @@ export default function PopupManagementPage() {
               <ul className="divide-y divide-neutral-100">
                 {popups.map((popup) => {
                   const status = popupStatus(popup);
+                  const media = resolvePopupMedia(popup.imageUrl);
                   return (
                     <li key={popup._id} className="p-4">
                       <div className="flex items-start gap-3">
-                        {popup.imageUrl
-                          ? <Image src={backendAssetUrl(popup.imageUrl)} alt={`${popup.title || "Popup"} campaign image`} width={48} height={48} unoptimized className="size-10 shrink-0 rounded-xl object-cover" />
+                        {media?.type === "image"
+                          ? <Image src={media.src} alt={`${popup.title || "Popup"} campaign image`} width={48} height={48} unoptimized className="size-10 shrink-0 rounded-xl object-cover" />
+                          : media
+                            ? <span aria-label="Video popup" className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-lg text-neutral-700">▶</span>
                           : <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-neutral-100 text-xl">{popup.emoji}</span>}
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">

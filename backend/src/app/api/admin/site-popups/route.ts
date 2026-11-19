@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
-import { isHttpImageUrl } from "@/lib/image-url";
+import { isHttpUrl } from "@/lib/image-url";
 import { AuditLog, Setting, SitePopup, UploadedFile } from "@/models";
 
 const DEFAULT_SLIDESHOW_DURATION_SECONDS = 10;
@@ -43,7 +43,7 @@ const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
   if (
     popup.imageUrl &&
     !/^\/api\/uploads\/file\/popup-images\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(popup.imageUrl) &&
-    !isHttpImageUrl(popup.imageUrl)
+    !isHttpUrl(popup.imageUrl)
   ) {
     context.addIssue({ code: "custom", path: ["imageUrl"], message: "Choose a valid uploaded image or HTTP(S) image URL." });
   }
@@ -110,7 +110,7 @@ async function removeUnusedImage(imageUrl: string) {
 
 async function validatePopupImage(imageUrl: string) {
   if (!imageUrl) return;
-  if (isHttpImageUrl(imageUrl)) return;
+  if (isHttpUrl(imageUrl)) return;
   const fileName = imageUrl.split("/").at(-1);
   if (!fileName || !await UploadedFile.exists({ folder: "popup-images", fileName })) {
     throw new Error("Popup image upload was not found. Upload the image again.");

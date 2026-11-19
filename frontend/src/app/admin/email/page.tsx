@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { GoogleAuthSettings } from "@/components/google-auth-settings";
 import { apiFetch, apiJson, apiUrl, backendAssetUrl } from "@/lib/client-api";
+import { normalizePublicImageUrl } from "@/lib/image-url";
 import { CAMPAIGN_BANNER_PRESETS, type CampaignBanner } from "@/lib/campaign-banners";
 import { ImagePlus, Search, Sparkles, X } from "lucide-react";
 
@@ -743,7 +744,7 @@ export default function EmailManagementPage() {
                 {campaignForm.banner.imageUrl && (
                   <div className="mt-4 flex flex-wrap items-start gap-3">
                     <Image
-                      src={backendAssetUrl(campaignForm.banner.imageUrl)}
+                      src={normalizePublicImageUrl(backendAssetUrl(campaignForm.banner.imageUrl))}
                       alt="Custom campaign banner preview"
                       width={592}
                       height={320}
@@ -822,7 +823,7 @@ export default function EmailManagementPage() {
                     {campaignForm.banner.backgroundImageUrl && (
                       <div className="flex items-start gap-3 sm:col-span-2">
                         <Image
-                          src={backendAssetUrl(campaignForm.banner.backgroundImageUrl)}
+                          src={normalizePublicImageUrl(backendAssetUrl(campaignForm.banner.backgroundImageUrl))}
                           alt="Email background preview"
                           width={320}
                           height={120}
@@ -1015,7 +1016,7 @@ export default function EmailManagementPage() {
                   style={{
                     backgroundColor: previewBackgroundColor,
                     backgroundImage: campaignForm.banner.backgroundImageUrl
-                      ? `url("${backendAssetUrl(campaignForm.banner.backgroundImageUrl)}")`
+                      ? `url("${normalizePublicImageUrl(backendAssetUrl(campaignForm.banner.backgroundImageUrl))}")`
                       : undefined,
                     backgroundPosition: "center",
                     backgroundRepeat: "no-repeat",
@@ -1042,7 +1043,7 @@ export default function EmailManagementPage() {
                     )}
                     {campaignForm.banner.imageUrl && (
                       <Image
-                        src={backendAssetUrl(campaignForm.banner.imageUrl)}
+                        src={normalizePublicImageUrl(backendAssetUrl(campaignForm.banner.imageUrl))}
                         alt="Custom campaign banner preview"
                         width={640}
                         height={320}

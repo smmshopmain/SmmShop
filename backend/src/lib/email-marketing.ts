@@ -1,5 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { CAMPAIGN_BANNER_PRESETS } from "@/lib/campaign-banners";
+import { normalizePublicImageUrl } from "@/lib/image-url";
 import { User } from "@/models";
 
 function unsubscribeSignature(payload: string) {
@@ -119,10 +120,10 @@ export function buildCampaignEmail(input: {
     : bannerPreset ? tintColor(bannerPreset.colors[0], 0.92) : "#f1f5f9";
   const cardBackground = bannerPreset ? tintColor(bannerPreset.colors[0], 0.97) : "#ffffff";
   const bannerImageUrl = input.banner?.imageUrl
-    ? safeHttpUrl(new URL(input.banner.imageUrl, input.backendUrl).toString())
+    ? safeHttpUrl(normalizePublicImageUrl(new URL(input.banner.imageUrl, input.backendUrl).toString()))
     : "";
   const emailBackgroundImageUrl = input.banner?.backgroundImageUrl
-    ? safeHttpUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString())
+    ? safeHttpUrl(normalizePublicImageUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString()))
     : "";
   const uploadedImagePath = /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i;
   const bannerImageIsUploaded = Boolean(input.banner?.imageUrl && uploadedImagePath.test(input.banner.imageUrl));
