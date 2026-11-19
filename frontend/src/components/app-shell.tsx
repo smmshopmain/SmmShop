@@ -6,6 +6,7 @@ import {
   BadgeIndianRupee,
   ClipboardList,
   CircleHelp,
+  CalendarDays,
   Gauge,
   History,
   Layers3,
@@ -88,6 +89,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Palette },
   { href: "/admin/email" as Route, label: "Email Management", icon: Mail },
   { href: "/admin/popups" as Route, label: "Popup Campaigns", icon: Megaphone },
+  { href: "/admin/marketing-calendar" as Route, label: "Marketing Calendar", icon: CalendarDays },
   { href: "/admin/assistant" as Route, label: "AI Assistant", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

@@ -350,6 +350,18 @@ const SitePopupSchema = new Schema(
 );
 SitePopupSchema.index({ active: 1, startsAt: 1, expiresAt: 1 });
 
+const MarketingCalendarEventSchema = new Schema(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 120 },
+    description: { type: String, trim: true, maxlength: 1000, default: "" },
+    date: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
+    category: { type: String, enum: ["festival", "promotion", "announcement", "other"], default: "other" },
+    createdBy: { type: Schema.Types.ObjectId, ref: "User", index: true },
+  },
+  { timestamps: true },
+);
+MarketingCalendarEventSchema.index({ date: 1, createdAt: -1 });
+
 const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners", "popup-images"] as const;
 const UploadedFileSchema = new Schema(
   {
@@ -491,6 +503,8 @@ export const Referral = models.Referral || model("Referral", ReferralSchema);
 export const Setting = models.Setting || model("Setting", SettingsSchema);
 export const EmailCampaign = models.EmailCampaign || model("EmailCampaign", EmailCampaignSchema);
 export const SitePopup = models.SitePopup || model("SitePopup", SitePopupSchema);
+export const MarketingCalendarEvent =
+  models.MarketingCalendarEvent || model("MarketingCalendarEvent", MarketingCalendarEventSchema);
 const existingUploadedFile = models.UploadedFile;
 if (existingUploadedFile) {
   const folderPath = existingUploadedFile.schema.path("folder") as Schema.Types.String & {

@@ -240,6 +240,29 @@ export default function EmailManagementPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const calendarDate = query.get("calendarDate");
+    const calendarTitle = query.get("calendarTitle");
+    if (!calendarDate || !calendarTitle || !/^\d{4}-\d{2}-\d{2}$/.test(calendarDate)) return;
+    const [year, month, day] = calendarDate.split("-").map(Number);
+    const parsedDate = new Date(year, month - 1, day);
+    if (parsedDate.getFullYear() !== year || parsedDate.getMonth() !== month - 1 || parsedDate.getDate() !== day) return;
+    const scheduledDate = new Date(year, month - 1, day, 10);
+    if (scheduledDate.getTime() <= Date.now()) scheduledDate.setTime(Date.now() + 60 * 60 * 1000);
+    setCampaignForm((current) => ({
+      ...current,
+      title: (query.get("campaignTitle") || `${calendarTitle} campaign`).slice(0, 120),
+      kind: "advertisement",
+      subject: query.get("subject") ?? calendarTitle,
+      body: query.get("body") ?? "",
+      sendMode: "scheduled",
+      scheduledAt: localDateTimeValue(scheduledDate),
+    }));
+    setMessage(`Calendar campaign draft for ${calendarTitle} loaded. Review the content and schedule before confirming.`);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   function updateTemplate<K extends keyof EmailSettings["templates"]>(
     key: K,
     field: keyof EmailSettings["templates"][K],

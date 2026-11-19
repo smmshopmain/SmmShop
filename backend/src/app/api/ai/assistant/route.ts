@@ -21,6 +21,7 @@ import {
   AuditLog,
   Deposit,
   EmailCampaign,
+  MarketingCalendarEvent,
   Notification,
   Order,
   PromoCode,
@@ -108,7 +109,7 @@ const supportTicketInputSchema = z.object({
 const adminSectionSchema = z.object({
   section: z.enum([
     "dashboard", "users", "orders", "deposits", "services", "providers", "pricing",
-    "promo-codes", "support", "notifications", "analytics", "email", "popups",
+    "promo-codes", "support", "notifications", "analytics", "email", "popups", "marketing-calendar",
     "settings", "errors", "audit-logs",
   ]),
   query: z.string().trim().max(100).optional(),
@@ -130,6 +131,7 @@ function getAssistantSection(path: string | undefined, admin: boolean) {
         ["/admin/analytics", "Analytics"],
         ["/admin/email", "Email management"],
         ["/admin/popups", "Popup campaigns"],
+        ["/admin/marketing-calendar", "Marketing calendar"],
         ["/admin/settings", "Settings"],
         ["/admin/errors", "Diagnostics"],
         ["/admin/audit-logs", "Audit logs"],
@@ -405,6 +407,25 @@ async function inspectAdminSection(rawArguments: string) {
       Order.aggregate([{ $group: { _id: null, revenue: { $sum: "$sellingPrice" }, profit: { $sum: "$profit" } } }]),
     ]);
     return { users, orders, revenue: revenue[0]?.revenue ?? 0, profit: revenue[0]?.profit ?? 0 };
+  }
+  if (input.section === "marketing-calendar") {
+    const dateParts = new Map(new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Kolkata",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date()).map(({ type, value }) => [type, value] as const));
+    const today = `${dateParts.get("year")}-${dateParts.get("month")}-${dateParts.get("day")}`;
+    const [year, month, day] = today.split("-").map(Number);
+    const throughDate = new Date(Date.UTC(year, month - 1, day + 90)).toISOString().slice(0, 10);
+    const filter: Record<string, unknown> = { date: { $gte: today, $lte: throughDate } };
+    if (pattern) filter.$or = [{ title: pattern }, { description: pattern }, { category: pattern }];
+    const events = await MarketingCalendarEvent.find(filter)
+      .select("title description date category")
+      .sort({ date: 1 })
+      .limit(20)
+      .lean();
+    return events.map((event) => ({ id: String(event._id), ...event }));
   }
   if (input.section === "email") {
     const campaigns = await EmailCampaign.find()
@@ -929,7 +950,7 @@ const adminTools = [
             type: "string",
             enum: [
               "dashboard", "users", "orders", "deposits", "services", "providers", "pricing",
-              "promo-codes", "support", "notifications", "analytics", "email", "popups",
+              "promo-codes", "support", "notifications", "analytics", "email", "popups", "marketing-calendar",
               "settings", "errors", "audit-logs",
             ],
           },
@@ -1409,6 +1430,8 @@ export async function POST(request: NextRequest) {
       ? "This page is email-only: manage or create email campaigns and do not inspect or change other admin sections. Turn the admin's topic into polished announcement or advertisement copy. Select a matching festival banner preset, or the special-offer preset for offers. Generate custom artwork only when explicitly requested; then set generateImage=true and provide visual direction. Velona credits are used and approval is required. Ask for any missing subject, audience intent, or schedule before creating."
       : currentSection === "Popup campaigns"
         ? "This page is popup-campaign-only: list, enable/disable, or create website popups and do not inspect or change other admin sections. Turn the admin's topic into concise popup copy. Generate custom artwork only when explicitly requested; then set generateImage=true and provide visual direction. Velona credits are used and approval is required. Ask for missing start/expiry times or link details before creating."
+      : currentSection === "Marketing calendar"
+        ? "This page is the marketing calendar: use the marketing-calendar section to review upcoming admin events and help prepare campaign copy for the selected date. Calendar AI output is a draft only; never claim it has been published or scheduled. Direct the admin to review and confirm the email or popup in its campaign composer."
         : "";
     const websiteKnowledge = buildAssistantWebsiteKnowledge(settings, admin);
     const instructions = admin

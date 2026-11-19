@@ -145,6 +145,31 @@ export default function PopupManagementPage() {
     void Promise.resolve().then(loadData);
   }, []);
 
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    const calendarDate = query.get("calendarDate");
+    const calendarTitle = query.get("calendarTitle");
+    if (!calendarDate || !calendarTitle || !/^\d{4}-\d{2}-\d{2}$/.test(calendarDate)) return;
+    const [year, month, day] = calendarDate.split("-").map(Number);
+    const parsedDate = new Date(year, month - 1, day);
+    if (parsedDate.getFullYear() !== year || parsedDate.getMonth() !== month - 1 || parsedDate.getDate() !== day) return;
+    const startsAt = new Date(year, month - 1, day, 10);
+    if (startsAt.getTime() <= Date.now()) startsAt.setTime(Date.now() + 60 * 60 * 1000);
+    const expiresAt = new Date(year, month - 1, day + 1, 23, 59);
+    setEditingId("");
+    setForm((current) => ({
+      ...current,
+      title: (query.get("popupTitle") || calendarTitle).slice(0, 120),
+      kind: "advertisement",
+      message: query.get("message") ?? "",
+      startsAt: localDateTimeValue(startsAt),
+      expiresAt: localDateTimeValue(expiresAt),
+      active: true,
+    }));
+    setMessage(`Calendar popup draft for ${calendarTitle} loaded. Review it before publishing.`);
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
   async function searchServices() {
     setSearchingServices(true);
     setError("");
