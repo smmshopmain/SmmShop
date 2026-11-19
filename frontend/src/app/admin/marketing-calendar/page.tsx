@@ -120,6 +120,14 @@ function calendarEventKey(event: CalendarEvent) {
   return event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
 }
 
+function popupCampaignsForEvent(event: CalendarEvent, campaigns: ScheduledCampaign[]) {
+  const key = calendarEventKey(event);
+  return campaigns.filter((campaign) =>
+    campaign.channel === "popup"
+    && (campaign.calendarEventKey === key || (!campaign.calendarEventKey && campaign.date === event.date)),
+  );
+}
+
 function composerUrl(section: "email" | "popups", event: CalendarEvent, draft?: CampaignDraft) {
   const query = new URLSearchParams({
     calendarDate: event.date,
@@ -176,7 +184,7 @@ export default function MarketingCalendarPage() {
   const [scheduling, setScheduling] = useState(false);
   const [resumingScheduleRun, setResumingScheduleRun] = useState(false);
   const [scheduleInstructions, setScheduleInstructions] = useState("");
-  const [generateBanner, setGenerateBanner] = useState(true);
+  const [generateBanner, setGenerateBanner] = useState(false);
   const [activeScheduleRun, setActiveScheduleRun] = useState<ScheduleRun | null>(null);
 
   useEffect(() => {
@@ -645,7 +653,7 @@ export default function MarketingCalendarPage() {
             </div>
           )}
           {rangeLoaded && rangeEvents.length === 0 && <p className="text-sm text-neutral-500">No upcoming holidays or admin events fall in this date range.</p>}
-          {activeScheduleRun && (
+          {activeScheduleRun && activeScheduleRun.status !== "completed" && (
             <section className="rounded-xl border border-violet-200 bg-violet-50/50 p-3" aria-label="Background scheduling progress">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold text-violet-950">Background run · {activeScheduleRun.status}</p>
@@ -745,7 +753,7 @@ export default function MarketingCalendarPage() {
                         {dayItems.slice(0, 2).map(({ type, item }) => (
                           <span
                             key={`${type}-${item.id}`}
-                            className={`truncate rounded border px-1 py-0.5 text-[9px] leading-3 sm:text-[10px] ${
+                            className={`rounded border px-1 py-0.5 text-[9px] leading-3 sm:text-[10px] ${
                               type === "campaign"
                                 ? item.channel === "email"
                                   ? "border-blue-200 bg-blue-50 text-blue-900"
@@ -753,7 +761,16 @@ export default function MarketingCalendarPage() {
                                 : eventColor(item)
                             }`}
                           >
-                            {type === "campaign" ? `${item.channel === "email" ? "Email" : "Popup"}: ${item.title}` : item.title}
+                            {type === "campaign"
+                              ? `${item.channel === "email" ? "Email" : "Popup"}: ${item.title}`
+                              : (
+                                <>
+                                  <span className="block truncate">{item.title}</span>
+                                  <span className={`block truncate text-[8px] font-semibold sm:text-[9px] ${popupCampaignsForEvent(item, dayCampaigns).length ? "text-emerald-800" : "text-amber-800"}`}>
+                                    {popupCampaignsForEvent(item, dayCampaigns).length ? "Popup created" : "Popup not created"}
+                                  </span>
+                                </>
+                              )}
                           </span>
                         ))}
                         {dayItems.length > 2 && <span className="text-[9px] text-neutral-500">+{dayItems.length - 2} more</span>}
@@ -777,8 +794,28 @@ export default function MarketingCalendarPage() {
         <div className="grid content-start gap-6">
           <AdminSection title={new Date(`${selectedDate}T12:00:00`).toLocaleDateString(undefined, { dateStyle: "full" })} description={`${selectedEvents.length} calendar event${selectedEvents.length === 1 ? "" : "s"} · ${selectedCampaigns.length} campaign${selectedCampaigns.length === 1 ? "" : "s"}`}>
             <div className="divide-y divide-neutral-100">
-              {selectedEvents.length ? selectedEvents.map((event) => (
+              {selectedEvents.length ? selectedEvents.map((event) => {
+                const eventPopups = popupCampaignsForEvent(event, selectedCampaigns);
+                const canCreatePopup = event.date >= dateKey(new Date());
+                return (
                 <article key={`${event.source}-${event.id}`} className="p-4">
+                  <div className={`mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs ${eventPopups.length ? "bg-emerald-50 text-emerald-900" : "bg-amber-50 text-amber-900"}`}>
+                    <span className="font-semibold">
+                      {eventPopups.length
+                        ? `${eventPopups.length} popup campaign${eventPopups.length === 1 ? "" : "s"} linked to this occasion`
+                        : "No popup campaign created for this occasion"}
+                    </span>
+                    {!eventPopups.length && (
+                      canCreatePopup ? (
+                        <Link
+                          href={composerUrl("popups", event)}
+                          className="font-bold underline underline-offset-2"
+                        >
+                          Create popup (no AI)
+                        </Link>
+                      ) : <span>Past date</span>
+                    )}
+                  </div>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase ${eventColor(event)}`}>
@@ -812,7 +849,8 @@ export default function MarketingCalendarPage() {
                     </Link>
                   </div>
                 </article>
-              )) : <p className="p-5 text-sm text-neutral-500">No holiday or admin-created calendar events for this date.</p>}
+                );
+              }) : <p className="p-5 text-sm text-neutral-500">No holiday or admin-created calendar events for this date.</p>}
             </div>
             {draft && draftEvent && (
               <div className="border-t border-violet-100 bg-violet-50/60 p-4">

@@ -26,7 +26,7 @@ const requestSchema = z.object({
     .min(1)
     .max(MAX_SCHEDULED_EVENTS)
     .refine((keys) => new Set(keys).size === keys.length, "Selected occasions must be unique."),
-  generateBanner: z.boolean().default(true),
+  generateBanner: z.boolean().default(false),
 }).strict();
 
 const idSchema = z.string().regex(/^[a-f\d]{24}$/i);

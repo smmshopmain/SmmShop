@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
         .sort({ scheduledAt: 1 })
         .lean(),
       SitePopup.find({ startsAt: { $gte: rangeStart, $lt: rangeEnd } })
-        .select("title kind active startsAt expiresAt")
+        .select("title kind active startsAt expiresAt calendarEventKey")
         .sort({ startsAt: 1 })
         .lean(),
     ]);
@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           date: indiaDate(popup.startsAt),
           scheduledAt: popup.startsAt,
           expiresAt: popup.expiresAt,
+          calendarEventKey: popup.calendarEventKey ?? "",
         })),
       ],
       googleCalendarConfigured: holidayResult.configured,

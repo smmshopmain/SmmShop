@@ -20,6 +20,7 @@ type PopupForm = {
   linkLabel: string;
   startsAt: string;
   expiresAt: string;
+  calendarEventKey: string;
   autoCloseAfterSeconds: number;
   slideshowGroupId: string;
   showOnEveryRefresh: boolean;
@@ -49,6 +50,7 @@ function emptyPopupForm(): PopupForm {
     linkLabel: "",
     startsAt: localDateTimeValue(now),
     expiresAt: localDateTimeValue(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)),
+    calendarEventKey: "",
     autoCloseAfterSeconds: 0,
     slideshowGroupId: "",
     showOnEveryRefresh: false,
@@ -164,6 +166,7 @@ export default function PopupManagementPage() {
       message: query.get("message") ?? "",
       startsAt: localDateTimeValue(startsAt),
       expiresAt: localDateTimeValue(expiresAt),
+      calendarEventKey: query.get("calendarEventKey") ?? "",
       active: true,
     }));
     setMessage(`Calendar popup draft for ${calendarTitle} loaded. Review it before publishing.`);
@@ -198,6 +201,7 @@ export default function PopupManagementPage() {
       linkLabel: popup.linkLabel || "",
       startsAt: localDateTimeValue(new Date(popup.startsAt)),
       expiresAt: localDateTimeValue(new Date(popup.expiresAt)),
+      calendarEventKey: popup.calendarEventKey ?? "",
       autoCloseAfterSeconds: popup.autoCloseAfterSeconds ?? 0,
       slideshowGroupId: popup.slideshowGroupId || "",
       showOnEveryRefresh: popup.showOnEveryRefresh ?? false,

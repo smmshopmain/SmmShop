@@ -16,6 +16,9 @@ const popupFieldsSchema = z.object({
   linkLabel: z.string().trim().max(60).default(""),
   startsAt: z.string().datetime(),
   expiresAt: z.string().datetime(),
+  calendarEventKey: z.string().trim().max(280)
+    .regex(/^(?:(?:google|admin):[A-Za-z\d._-]{1,240}:\d{4}-\d{2}-\d{2})?$/)
+    .default(""),
   autoCloseAfterSeconds: z.number().int().min(0).max(3600)
     .refine((seconds) => seconds === 0 || seconds >= 3, "Custom display time must be 0 or between 3 and 3600 seconds.")
     .default(0),
