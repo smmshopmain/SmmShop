@@ -28,3 +28,32 @@ export const CAMPAIGN_BANNER_PRESETS = {
 } as const;
 
 export type CampaignBannerPresetId = keyof typeof CAMPAIGN_BANNER_PRESETS;
+
+export function suggestCampaignBannerPreset(
+  kind: "announcement" | "advertisement",
+  title: string,
+  subject: string,
+  body: string,
+): CampaignBannerPresetId | null {
+  const normalize = (value: string) => value.toLowerCase().replace(/[^\p{L}\d]+/gu, " ").trim();
+  const titleText = normalize(title);
+  const campaignText = normalize(`${title} ${subject} ${body}`);
+  for (const [presetId, preset] of Object.entries(CAMPAIGN_BANNER_PRESETS)) {
+    if (presetId === "special-offer") continue;
+    const presetName = normalize(presetId.replace(/-/g, " "));
+    if (titleText.includes(presetName)) {
+      return presetId as CampaignBannerPresetId;
+    }
+  }
+  for (const [presetId, preset] of Object.entries(CAMPAIGN_BANNER_PRESETS)) {
+    if (presetId === "special-offer") continue;
+    const presetTitle = normalize(preset.title.replace(/^(happy|merry)\s+/, ""));
+    const sameTitleCount = Object.values(CAMPAIGN_BANNER_PRESETS)
+      .filter((candidate) => normalize(candidate.title.replace(/^(happy|merry)\s+/, "")) === presetTitle)
+      .length;
+    if (sameTitleCount === 1 && campaignText.includes(presetTitle)) {
+      return presetId as CampaignBannerPresetId;
+    }
+  }
+  return kind === "advertisement" ? "special-offer" : null;
+}

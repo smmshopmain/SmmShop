@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { loadGoogleHolidays, type GoogleHolidayResult } from "@/lib/google-holidays";
 import { AuditLog, EmailCampaign, MarketingCalendarEvent, SitePopup } from "@/models";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
@@ -17,24 +18,6 @@ const eventSchema = z.object({
 }).strict();
 
 const idSchema = z.string().regex(/^[a-f\d]{24}$/i);
-const GOOGLE_CALENDAR_API = "https://www.googleapis.com/calendar/v3/calendars";
-
-type GoogleHolidayResult = {
-  configured: boolean;
-  events: Array<{
-    id: string;
-    title: string;
-    description: string;
-    date: string;
-    category: "festival";
-    source: "google";
-  }>;
-  error?: string;
-};
-
-function googleEventDate(event: { start?: { date?: string; dateTime?: string } }) {
-  return event.start?.date ?? event.start?.dateTime?.slice(0, 10) ?? "";
-}
 
 function indiaDate(value: Date) {
   const parts = new Map(new Intl.DateTimeFormat("en-CA", {
@@ -46,78 +29,62 @@ function indiaDate(value: Date) {
   return `${parts.get("year")}-${parts.get("month")}-${parts.get("day")}`;
 }
 
-async function loadGoogleHolidays(monthStart: Date, monthEnd: Date): Promise<GoogleHolidayResult> {
-  const apiKey = process.env.GOOGLE_CALENDAR_API_KEY?.trim();
-  if (!apiKey) return { configured: false as const, events: [] };
-
-  const calendarId = process.env.GOOGLE_HOLIDAY_CALENDAR_ID?.trim()
-    || "en.indian#holiday@group.v.calendar.google.com";
-  const url = new URL(`${GOOGLE_CALENDAR_API}/${encodeURIComponent(calendarId)}/events`);
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("timeMin", monthStart.toISOString());
-  url.searchParams.set("timeMax", monthEnd.toISOString());
-  url.searchParams.set("singleEvents", "true");
-  url.searchParams.set("orderBy", "startTime");
-  url.searchParams.set("maxResults", "250");
-  url.searchParams.set("timeZone", "Asia/Kolkata");
-
-  const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10_000) });
-  const result = await response.json() as {
-    items?: Array<{
-      id?: string;
-      summary?: string;
-      description?: string;
-      start?: { date?: string; dateTime?: string };
-      end?: { date?: string; dateTime?: string };
-    }>;
-    error?: { message?: string };
-  };
-  if (!response.ok) {
-    throw new Error(result.error?.message || `Google Calendar returned status ${response.status}.`);
-  }
-
-  return {
-    configured: true as const,
-    events: (result.items ?? []).flatMap((event) => {
-      const date = googleEventDate(event);
-      if (!event.id || !event.summary || !date) return [];
-      return [{
-        id: event.id,
-        title: event.summary.slice(0, 120),
-        description: (event.description ?? "").slice(0, 1000),
-        date,
-        category: "festival" as const,
-        source: "google" as const,
-      }];
-    }),
-  };
+function calendarEventKey(event: { source: "admin" | "google"; id: string; date: string }) {
+  return `${event.source}:${event.id}:${event.date}`;
 }
 
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
     await dbConnect();
-    const month = request.nextUrl.searchParams.get("month") ?? "";
-    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return fail("Choose a valid calendar month.");
+    const searchParams = request.nextUrl.searchParams;
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    let firstDate: string;
+    let lastDate: string;
+    let rangeStart: Date;
+    let rangeEnd: Date;
 
-    const [year, monthNumber] = month.split("-").map(Number);
-    const nextMonthStart = new Date(Date.UTC(year, monthNumber, 1)).toISOString().slice(0, 10);
-    const monthStart = new Date(Date.UTC(year, monthNumber - 1, 1) - 330 * 60 * 1000);
-    const monthEnd = new Date(Date.UTC(year, monthNumber, 1) - 330 * 60 * 1000);
+    if (startDate || endDate) {
+      const parsedStart = dateSchema.safeParse(startDate);
+      const parsedEnd = dateSchema.safeParse(endDate);
+      if (!parsedStart.success || !parsedEnd.success) return fail("Choose a valid start and end date.");
+      firstDate = parsedStart.data;
+      lastDate = parsedEnd.data;
+      const [startYear, startMonth, startDay] = firstDate.split("-").map(Number);
+      const [endYear, endMonth, endDay] = lastDate.split("-").map(Number);
+      const startUtc = Date.UTC(startYear, startMonth - 1, startDay);
+      const endUtc = Date.UTC(endYear, endMonth - 1, endDay);
+      if (endUtc < startUtc) return fail("The end date must be on or after the start date.");
+      if (endUtc - startUtc > 365 * 24 * 60 * 60 * 1000) {
+        return fail("Choose a date range of one year or less.");
+      }
+      rangeStart = new Date(startUtc - 330 * 60 * 1000);
+      rangeEnd = new Date(endUtc + 24 * 60 * 60 * 1000 - 330 * 60 * 1000);
+    } else {
+      const month = searchParams.get("month") ?? "";
+      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) return fail("Choose a valid calendar month.");
+      const [year, monthNumber] = month.split("-").map(Number);
+      firstDate = `${month}-01`;
+      lastDate = new Date(Date.UTC(year, monthNumber, 0)).toISOString().slice(0, 10);
+      rangeStart = new Date(Date.UTC(year, monthNumber - 1, 1) - 330 * 60 * 1000);
+      rangeEnd = new Date(Date.UTC(year, monthNumber, 1) - 330 * 60 * 1000);
+    }
+
     const [events, holidayResult, emailCampaigns, popups] = await Promise.all([
-      MarketingCalendarEvent.find({ date: { $gte: `${month}-01`, $lt: nextMonthStart } })
+      MarketingCalendarEvent.find({ date: { $gte: firstDate, $lte: lastDate } })
         .sort({ date: 1, createdAt: -1 })
         .lean(),
-      loadGoogleHolidays(monthStart, monthEnd).catch((error: unknown): GoogleHolidayResult => ({
+      loadGoogleHolidays(rangeStart, rangeEnd).catch((error: unknown): GoogleHolidayResult => ({
         configured: true,
         events: [],
         error: error instanceof Error ? error.message : "Unable to load Google Calendar holidays.",
       })),
-      EmailCampaign.find({ scheduledAt: { $gte: monthStart, $lt: monthEnd } })
-        .select("title kind status scheduledAt")
+      EmailCampaign.find({ scheduledAt: { $gte: rangeStart, $lt: rangeEnd } })
+        .select("title kind status scheduledAt calendarEventKey")
         .sort({ scheduledAt: 1 })
         .lean(),
-      SitePopup.find({ startsAt: { $gte: monthStart, $lt: monthEnd } })
+      SitePopup.find({ startsAt: { $gte: rangeStart, $lt: rangeEnd } })
         .select("title kind active startsAt expiresAt")
         .sort({ startsAt: 1 })
         .lean(),
@@ -125,8 +92,14 @@ export async function GET(request: NextRequest) {
     const now = new Date();
 
     return ok({
-      events: events.map((event) => ({ ...event, id: String(event._id), source: "admin" as const })),
-      holidays: holidayResult.events,
+      events: events.map((event) => {
+        const calendarEvent = { ...event, id: String(event._id), source: "admin" as const };
+        return { ...calendarEvent, calendarEventKey: calendarEventKey(calendarEvent) };
+      }),
+      holidays: holidayResult.events.map((event) => ({
+        ...event,
+        calendarEventKey: calendarEventKey(event),
+      })),
       scheduledCampaigns: [
         ...emailCampaigns.map((campaign) => ({
           id: String(campaign._id),
@@ -136,6 +109,7 @@ export async function GET(request: NextRequest) {
           status: campaign.status,
           date: indiaDate(campaign.scheduledAt),
           scheduledAt: campaign.scheduledAt,
+          calendarEventKey: campaign.calendarEventKey ?? "",
         })),
         ...popups.map((popup) => ({
           id: String(popup._id),

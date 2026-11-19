@@ -290,6 +290,7 @@ const EmailCampaignSchema = new Schema(
       backgroundImageUrl: { type: String, trim: true, maxlength: 500, default: "" },
       backgroundColor: { type: String, trim: true, maxlength: 7, default: "" },
     },
+    calendarEventKey: { type: String, trim: true, maxlength: 280 },
     services: {
       type: [{
         serviceId: { type: String, required: true },
@@ -327,6 +328,10 @@ const EmailCampaignSchema = new Schema(
   { timestamps: true },
 );
 EmailCampaignSchema.index({ status: 1, scheduledAt: 1, lockUntil: 1 });
+EmailCampaignSchema.index(
+  { calendarEventKey: 1 },
+  { unique: true, partialFilterExpression: { calendarEventKey: { $type: "string" } } },
+);
 
 const SitePopupSchema = new Schema(
   {

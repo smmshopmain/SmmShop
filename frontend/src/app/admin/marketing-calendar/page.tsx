@@ -14,6 +14,7 @@ import {
   Megaphone,
   Pencil,
   Plus,
+  RefreshCw,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -29,6 +30,7 @@ type CalendarEvent = {
   date: string;
   category: CalendarCategory;
   source: "admin" | "google";
+  calendarEventKey?: string;
 };
 type ScheduledCampaign = {
   id: string;
@@ -39,7 +41,9 @@ type ScheduledCampaign = {
   date: string;
   scheduledAt: string;
   expiresAt?: string;
+  calendarEventKey?: string;
 };
+type CampaignService = { serviceId: string };
 type EventForm = {
   title: string;
   description: string;
@@ -47,7 +51,16 @@ type EventForm = {
   category: CalendarCategory;
 };
 type CampaignDraft = {
-  email: { title: string; subject: string; body: string };
+  email: {
+    title: string;
+    subject: string;
+    greeting: string;
+    body: string;
+    primaryColor: string;
+    accentColor: string;
+    banner: { presetId: string; imageUrl: string; backgroundImageUrl: string; backgroundColor: string };
+    calendarEventKey: string;
+  };
   popup: { title: string; message: string };
 };
 type CalendarResponse = {
@@ -87,11 +100,18 @@ function composerUrl(section: "email" | "popups", event: CalendarEvent, draft?: 
   const query = new URLSearchParams({
     calendarDate: event.date,
     calendarTitle: event.title,
+    calendarEventKey: event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`,
   });
   if (draft && section === "email") {
     query.set("campaignTitle", draft.email.title);
     query.set("subject", draft.email.subject);
+    query.set("greeting", draft.email.greeting);
     query.set("body", draft.email.body);
+    query.set("primaryColor", draft.email.primaryColor);
+    query.set("accentColor", draft.email.accentColor);
+    query.set("bannerPresetId", draft.email.banner.presetId);
+    query.set("bannerImageUrl", draft.email.banner.imageUrl);
+    query.set("calendarEventKey", draft.email.calendarEventKey);
   }
   if (draft && section === "popups") {
     query.set("popupTitle", draft.popup.title);
@@ -119,6 +139,18 @@ export default function MarketingCalendarPage() {
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [rangeStart, setRangeStart] = useState(() => dateKey(new Date()));
+  const [rangeEnd, setRangeEnd] = useState(() => {
+    const date = new Date();
+    return dateKey(new Date(date.getFullYear(), date.getMonth() + 2, 0));
+  });
+  const [rangeEvents, setRangeEvents] = useState<CalendarEvent[]>([]);
+  const [rangeLoaded, setRangeLoaded] = useState(false);
+  const [scheduledKeys, setScheduledKeys] = useState<Set<string>>(new Set());
+  const [rangeLoading, setRangeLoading] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleProgress, setScheduleProgress] = useState("");
+  const [scheduleResults, setScheduleResults] = useState<string[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -265,6 +297,7 @@ export default function MarketingCalendarPage() {
       setError("Enable AI and configure VELONA_API_KEY in Admin > Settings to generate campaign drafts.");
       return;
     }
+    if (!window.confirm("Generate AI email and popup copy plus a custom festival banner? Banner generation uses Velona image credits.")) return;
     setGenerating(true);
     setError("");
     setMessage("");
@@ -278,16 +311,156 @@ export default function MarketingCalendarPage() {
           date: event.date,
           category: event.category,
           description: event.description,
+          calendarEventKey: event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`,
         }),
       });
       if (!result?.ok) throw new Error(result?.message ?? "Unable to generate campaign drafts.");
-      setDraft({ email: result.email, popup: result.popup });
+      if (result.alreadyScheduled) {
+        setMessage(`An email campaign is already scheduled for ${event.title}.`);
+        setDraftEvent(null);
+        return;
+      }
+      setDraft({
+        email: {
+          ...result.email,
+          banner: { ...result.email.banner, presetId: result.email.banner.presetId ?? "" },
+        },
+        popup: result.popup,
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to generate campaign drafts.");
       setDraftEvent(null);
     } finally {
       setGenerating(false);
     }
+  }
+
+  async function loadRangeEvents() {
+    if (!rangeStart || !rangeEnd) {
+      setError("Choose both a start date and an end date.");
+      return;
+    }
+    setRangeLoading(true);
+    setRangeLoaded(false);
+    setRangeEvents([]);
+    setScheduledKeys(new Set());
+    setError("");
+    setMessage("");
+    try {
+      const result = await apiJson(
+        `/api/admin/marketing-calendar?startDate=${encodeURIComponent(rangeStart)}&endDate=${encodeURIComponent(rangeEnd)}`,
+      ) as CalendarResponse;
+      if (!result.ok) throw new Error(result.message ?? "Unable to load occasions for this date range.");
+      const keys = new Set(
+        (result.scheduledCampaigns ?? [])
+          .map((campaign) => campaign.calendarEventKey)
+          .filter((key): key is string => Boolean(key)),
+      );
+      const today = dateKey(new Date());
+      const occasions = [...(result.events ?? []), ...(result.holidays ?? [])]
+        .filter((event) => event.date >= today)
+        .sort((left, right) => left.date.localeCompare(right.date) || left.title.localeCompare(right.title));
+      setRangeEvents(occasions);
+      setScheduledKeys(keys);
+      setRangeLoaded(true);
+      setScheduleResults([]);
+      setMessage(`Loaded ${occasions.length} upcoming occasions. Already-scheduled campaigns will be skipped.`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to load occasions for this date range.");
+    } finally {
+      setRangeLoading(false);
+    }
+  }
+
+  async function startRangeScheduling() {
+    const pendingEvents = rangeEvents.filter((event) =>
+      !scheduledKeys.has(event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`),
+    );
+    if (!pendingEvents.length) {
+      setMessage("Every upcoming occasion in this date range already has an email campaign scheduled.");
+      return;
+    }
+    if (pendingEvents.length > 25) {
+      setError("This date range contains more than 25 unscheduled occasions. Choose a shorter range to keep AI and image-generation usage bounded.");
+      return;
+    }
+    const confirmed = window.confirm(
+      `Schedule ${pendingEvents.length} email campaign(s)? This will use AI and generate one custom banner per occasion (Velona image-generation credits apply). Each campaign will be scheduled for 10:00 AM India time on its occasion date and sent to eligible subscribed users. Existing campaigns are skipped.`,
+    );
+    if (!confirmed) return;
+
+    setScheduling(true);
+    setError("");
+    setMessage("");
+    setScheduleResults([]);
+    let completed = 0;
+    const outcomes: string[] = [];
+    for (const event of pendingEvents) {
+      const key = event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
+      setScheduleProgress(`Preparing ${completed + 1} of ${pendingEvents.length}: ${event.title}`);
+      try {
+        const servicesResult = await apiJson("/api/admin/email-campaign-services?limit=5");
+        const services = (servicesResult.services ?? []) as CampaignService[];
+        if (services.length !== 5) throw new Error(`Only ${services.length} active services were available; exactly five are required.`);
+        const draftResult = await apiJson("/api/admin/marketing-calendar/ai-draft", {
+          method: "POST",
+          body: JSON.stringify({
+            title: event.title,
+            date: event.date,
+            category: event.category,
+            description: event.description,
+            calendarEventKey: key,
+          }),
+        });
+        if (!draftResult?.ok) throw new Error(draftResult?.message ?? "AI draft or banner generation failed.");
+        if (draftResult.alreadyScheduled) {
+          setScheduledKeys((current) => new Set(current).add(key));
+          outcomes.push(`${event.date} · ${event.title}: skipped (already scheduled)`);
+          completed += 1;
+          setScheduleResults([...outcomes]);
+          continue;
+        }
+
+        const [year, monthNumber, day] = event.date.split("-").map(Number);
+        const scheduledAt = new Date(Date.UTC(year, monthNumber - 1, day, 4, 30));
+        if (scheduledAt.getTime() <= Date.now()) scheduledAt.setTime(Date.now() + 60 * 60 * 1000);
+        const campaign = draftResult.email;
+        const response = await apiJson("/api/admin/email-campaigns", {
+          method: "POST",
+          body: JSON.stringify({
+            ...campaign,
+            kind: "advertisement",
+            serviceIds: services.map((service) => service.serviceId),
+            serviceCountries: [],
+            audienceMode: "all",
+            recipientUserIds: [],
+            includeUnsubscribed: false,
+            sendNow: false,
+            scheduledAt: scheduledAt.toISOString(),
+          }),
+        });
+        if (!response?.ok) {
+          if (response?.message?.includes("already scheduled")) {
+            setScheduledKeys((current) => new Set(current).add(key));
+            outcomes.push(`${event.date} · ${event.title}: skipped (already scheduled)`);
+            completed += 1;
+            setScheduleResults([...outcomes]);
+            continue;
+          }
+          throw new Error(response?.message ?? "Campaign scheduling failed.");
+        }
+        setScheduledKeys((current) => new Set(current).add(key));
+        outcomes.push(`${event.date} · ${event.title}: scheduled`);
+      } catch (cause) {
+        outcomes.push(`${event.date} · ${event.title}: failed — ${cause instanceof Error ? cause.message : "Unknown error"}`);
+      }
+      completed += 1;
+      setScheduleResults([...outcomes]);
+    }
+    setScheduleProgress("");
+    setScheduling(false);
+    setMessage(`Finished scheduling: ${outcomes.filter((result) => result.endsWith(": scheduled")).length} scheduled, ${outcomes.filter((result) => result.includes(": failed")).length} failed, ${outcomes.filter((result) => result.includes(": skipped")).length} skipped.`);
+    setMonth((current) => new Date(current));
   }
 
   return (
@@ -310,6 +483,70 @@ export default function MarketingCalendarPage() {
           Google Calendar could not load holidays: {googleError}
         </p>
       )}
+
+      <AdminSection
+        title="Auto-schedule occasion emails"
+        description="Preview holidays and admin events across a date range, then prepare and schedule a complete email for each occasion."
+        icon={Sparkles}
+      >
+        <div className="grid gap-4 p-4 sm:p-5">
+          <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <label className="text-sm font-semibold text-neutral-800">
+              Start date
+              <input type="date" disabled={scheduling || rangeLoading} value={rangeStart} max={rangeEnd} onChange={(event) => { setRangeStart(event.target.value); setRangeLoaded(false); setRangeEvents([]); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
+            </label>
+            <label className="text-sm font-semibold text-neutral-800">
+              End date
+              <input type="date" disabled={scheduling || rangeLoading} value={rangeEnd} min={rangeStart} onChange={(event) => { setRangeEnd(event.target.value); setRangeLoaded(false); setRangeEvents([]); }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm disabled:bg-neutral-100" />
+            </label>
+            <button type="button" disabled={rangeLoading || scheduling} onClick={() => void loadRangeEvents()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-neutral-300 px-4 py-2.5 text-sm font-bold text-neutral-800 hover:bg-neutral-50 disabled:opacity-50">
+              {rangeLoading ? <LoaderCircle className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
+              Preview occasions
+            </button>
+          </div>
+          <p className="text-xs leading-5 text-neutral-600">
+            Each occasion gets an AI-written email, a custom generated banner, five refreshed active services, and a 10:00 AM send time. Campaigns go only to users eligible for marketing email (unsubscribed users are excluded). One image-generation call per occasion uses Velona credits. Review the list before starting.
+          </p>
+          {rangeEvents.length > 0 && (
+            <div className="rounded-xl border border-neutral-200">
+              <ul className="max-h-64 divide-y divide-neutral-100 overflow-auto">
+                {rangeEvents.map((event) => {
+                  const key = event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`;
+                  const alreadyScheduled = scheduledKeys.has(key);
+                  return (
+                    <li key={key} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
+                      <span className="min-w-0">
+                        <span className="block truncate font-semibold text-neutral-900">{event.title}</span>
+                        <span className="block text-xs text-neutral-500">{event.date} · {event.source === "google" ? "Google holiday" : "Admin event"}</span>
+                      </span>
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${alreadyScheduled ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800"}`}>
+                        {alreadyScheduled ? "Already scheduled" : "Ready"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+          {rangeLoaded && rangeEvents.length === 0 && <p className="text-sm text-neutral-500">No upcoming holidays or admin events fall in this date range.</p>}
+          {scheduleProgress && <p role="status" className="text-sm font-semibold text-violet-800">{scheduleProgress}</p>}
+          {scheduleResults.length > 0 && (
+            <ul className="max-h-48 divide-y divide-neutral-100 overflow-auto rounded-xl border border-neutral-200 text-xs">
+              {scheduleResults.map((result, index) => <li key={`${index}-${result}`} className="px-3 py-2">{result}</li>)}
+            </ul>
+          )}
+          <button
+            type="button"
+            disabled={scheduling || rangeLoading || !rangeEvents.some((event) => !scheduledKeys.has(event.calendarEventKey ?? `${event.source}:${event.id}:${event.date}`)) || !aiEnabled || !aiKeyConfigured}
+            onClick={() => void startRangeScheduling()}
+            className="inline-flex w-fit items-center gap-2 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-800 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {scheduling ? <LoaderCircle className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+            {scheduling ? "Scheduling campaigns…" : "Start scheduling"}
+          </button>
+          {(!aiEnabled || !aiKeyConfigured) && <p className="text-xs text-amber-800">Enable AI and configure the backend AI key in Admin settings to generate campaigns.</p>}
+        </div>
+      </AdminSection>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.8fr)]">
         <AdminSection
@@ -434,7 +671,7 @@ export default function MarketingCalendarPage() {
             {draft && draftEvent && (
               <div className="border-t border-violet-100 bg-violet-50/60 p-4">
                 <div className="flex items-center gap-2 text-sm font-bold text-violet-950"><Check className="size-4" />AI drafts are ready to review</div>
-                <p className="mt-1 text-xs leading-5 text-violet-900">Generated copy is only a draft. Review it in the composer, select the audience and schedule, then confirm to create the campaign.</p>
+                <p className="mt-1 text-xs leading-5 text-violet-900">Generated copy is only a draft. One custom banner is also generated and uses Velona credits. Review it in the composer, select the audience and schedule, then confirm to create the campaign.</p>
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
                   <Link href={composerUrl("email", draftEvent, draft)} className="rounded-xl border border-violet-200 bg-white p-3 text-sm font-semibold text-violet-900 hover:bg-violet-50">
                     Email: {draft.email.subject}

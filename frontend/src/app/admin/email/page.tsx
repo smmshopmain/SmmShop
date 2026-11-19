@@ -45,6 +45,7 @@ type CampaignForm = {
   includeUnsubscribed: boolean;
   sendMode: "now" | "scheduled";
   scheduledAt: string;
+  calendarEventKey?: string;
 };
 type EmailSettings = {
   brandName: string;
@@ -250,12 +251,24 @@ export default function EmailManagementPage() {
     if (parsedDate.getFullYear() !== year || parsedDate.getMonth() !== month - 1 || parsedDate.getDate() !== day) return;
     const scheduledDate = new Date(year, month - 1, day, 10);
     if (scheduledDate.getTime() <= Date.now()) scheduledDate.setTime(Date.now() + 60 * 60 * 1000);
+    const bannerPresetId = CAMPAIGN_BANNER_PRESETS.find(({ id }) => id === query.get("bannerPresetId"))?.id ?? null;
+    const bannerImageUrl = query.get("bannerImageUrl") ?? "";
+    const calendarEventKey = query.get("calendarEventKey") ?? "";
     setCampaignForm((current) => ({
       ...current,
       title: (query.get("campaignTitle") || `${calendarTitle} campaign`).slice(0, 120),
       kind: "advertisement",
       subject: query.get("subject") ?? calendarTitle,
+      greeting: query.get("greeting") ?? current.greeting,
       body: query.get("body") ?? "",
+      primaryColor: /^#[\da-f]{6}$/i.test(query.get("primaryColor") ?? "") ? query.get("primaryColor") ?? undefined : undefined,
+      accentColor: /^#[\da-f]{6}$/i.test(query.get("accentColor") ?? "") ? query.get("accentColor") ?? undefined : undefined,
+      banner: {
+        ...current.banner,
+        presetId: bannerPresetId,
+        imageUrl: /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(bannerImageUrl) ? bannerImageUrl : "",
+      },
+      calendarEventKey: /^(?:google|admin):[A-Za-z\d._-]{1,240}:\d{4}-\d{2}-\d{2}$/.test(calendarEventKey) ? calendarEventKey : undefined,
       sendMode: "scheduled",
       scheduledAt: localDateTimeValue(scheduledDate),
     }));
@@ -368,6 +381,7 @@ export default function EmailManagementPage() {
         primaryColor: undefined,
         accentColor: undefined,
         banner: { presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" },
+        calendarEventKey: undefined,
         services: [],
         selectedRecipients: [],
       }));

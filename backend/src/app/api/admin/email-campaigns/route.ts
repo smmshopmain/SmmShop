@@ -27,6 +27,9 @@ const schema = z.object({
       (!backgroundColor || Boolean(imageUrl)),
     "Choose a valid festival design and custom banner, with an optional background.",
   ).default({ presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" }),
+  calendarEventKey: z.string().trim().min(1).max(280)
+    .regex(/^(?:google|admin):[A-Za-z\d._-]{1,240}:\d{4}-\d{2}-\d{2}$/)
+    .optional(),
   serviceIds: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(10).default([]),
   serviceCountries: z.array(z.object({
     serviceId: z.string().regex(/^[a-f\d]{24}$/i),
@@ -61,6 +64,9 @@ export async function POST(request: NextRequest) {
     const { dbUser } = await requireAdmin();
     await dbConnect();
     const input = await parseBody(request, schema);
+    if (input.calendarEventKey && await EmailCampaign.exists({ calendarEventKey: input.calendarEventKey })) {
+      return fail("An email campaign is already scheduled for this calendar occasion.", 409);
+    }
     const {
       sendNow,
       serviceIds,
@@ -123,19 +129,33 @@ export async function POST(request: NextRequest) {
         max: service.max ?? 100000,
       };
     });
-    const campaign = await EmailCampaign.create({
-      ...campaignInput,
-      primaryColor: primaryColor ?? settings.email.primaryColor,
-      accentColor: accentColor ?? settings.email.accentColor,
-      services,
-      audienceMode,
-      recipientUserIds: audienceMode === "selected" ? recipientUserIds : [],
-      scheduledAt,
-      recipientCutoffAt,
-      recipientCount,
-      status: sendNow ? "queued" : "scheduled",
-      createdBy: dbUser?._id,
-    });
+    let campaign;
+    try {
+      campaign = await EmailCampaign.create({
+        ...campaignInput,
+        primaryColor: primaryColor ?? settings.email.primaryColor,
+        accentColor: accentColor ?? settings.email.accentColor,
+        services,
+        audienceMode,
+        recipientUserIds: audienceMode === "selected" ? recipientUserIds : [],
+        scheduledAt,
+        recipientCutoffAt,
+        recipientCount,
+        status: sendNow ? "queued" : "scheduled",
+        createdBy: dbUser?._id,
+      });
+    } catch (error) {
+      if (
+        input.calendarEventKey
+        && error
+        && typeof error === "object"
+        && "code" in error
+        && error.code === 11000
+      ) {
+        return fail("An email campaign is already scheduled for this calendar occasion.", 409);
+      }
+      throw error;
+    }
     return ok({ campaign });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to create email campaign");
