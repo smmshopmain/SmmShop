@@ -6,7 +6,7 @@ export function apiUrl(path: string) {
   if (baseUrl && typeof window !== "undefined") {
     const apiBase = new URL(baseUrl);
     const localHosts = ["localhost", "127.0.0.1"];
-    if (localHosts.includes(apiBase.hostname) && localHosts.includes(window.location.hostname)) {
+    if (localHosts.includes(apiBase.hostname)) {
       apiBase.hostname = window.location.hostname;
       baseUrl = apiBase.toString().replace(/\/+$/, "");
     }

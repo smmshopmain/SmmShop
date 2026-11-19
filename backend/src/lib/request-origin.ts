@@ -70,6 +70,21 @@ export function isAllowedOrigin(request: NextRequest, origin: string | null) {
   const normalizedOrigin = normalizeOrigin(origin);
   const configuredOrigins = configuredRequestOrigins();
   if (!normalizedOrigin) return false;
+  if (process.env.NODE_ENV !== "production") {
+    try {
+      const hostname = new URL(normalizedOrigin).hostname;
+      if (
+        hostname === "localhost" ||
+        hostname === "127.0.0.1" ||
+        hostname === "::1" ||
+        /^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|172\.(?:1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3})$/.test(hostname)
+      ) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
   if (configuredOrigins.size === 0) return true;
   return configuredOrigins.has(normalizedOrigin);
 }
