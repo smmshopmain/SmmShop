@@ -56,6 +56,7 @@ type ScheduleRun = {
   endDate: string;
   instructions: string;
   generateBanner: boolean;
+  canResume: boolean;
   status: "queued" | "processing" | "completed" | "partial" | "failed";
   total: number;
   scheduled: number;
@@ -173,6 +174,7 @@ export default function MarketingCalendarPage() {
   const [scheduledKeys, setScheduledKeys] = useState<Set<string>>(new Set());
   const [rangeLoading, setRangeLoading] = useState(false);
   const [scheduling, setScheduling] = useState(false);
+  const [resumingScheduleRun, setResumingScheduleRun] = useState(false);
   const [scheduleInstructions, setScheduleInstructions] = useState("");
   const [generateBanner, setGenerateBanner] = useState(true);
   const [activeScheduleRun, setActiveScheduleRun] = useState<ScheduleRun | null>(null);
@@ -498,6 +500,29 @@ export default function MarketingCalendarPage() {
     }
   }
 
+  async function resumeQueuedScheduling() {
+    if (!activeScheduleRun?.canResume || resumingScheduleRun) return;
+    const runId = activeScheduleRun.id;
+    setResumingScheduleRun(true);
+    setError("");
+    setMessage("");
+    try {
+      const result = await apiJson("/api/admin/marketing-calendar/schedule-runs/resume", {
+        method: "POST",
+        body: JSON.stringify({ runId }),
+      });
+      if (!result?.ok) throw new Error(result?.message ?? "Unable to start queued schedules.");
+      setActiveScheduleRun((current) =>
+        current?.id === runId ? { ...current, status: "processing", canResume: false } : current,
+      );
+      setMessage("Queued schedules have been restarted in the background.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Unable to start queued schedules.");
+    } finally {
+      setResumingScheduleRun(false);
+    }
+  }
+
   return (
     <AppShell>
       <AdminHeader
@@ -588,6 +613,7 @@ export default function MarketingCalendarPage() {
                   const runItem = activeScheduleRun?.events.find((item) => item.calendarEventKey === key);
                   const alreadyScheduled = scheduledKeys.has(key) || runItem?.status === "scheduled" || runItem?.status === "skipped";
                   const inBackground = runItem && ["queued", "drafting", "draft_ready", "generating_banner", "banner_ready", "campaign_ready", "scheduling"].includes(runItem.status);
+                  const processingInBackground = runItem && ["drafting", "generating_banner", "scheduling"].includes(runItem.status);
                   const selectable = !alreadyScheduled && !inBackground;
                   return (
                     <li key={key} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm">
@@ -609,8 +635,8 @@ export default function MarketingCalendarPage() {
                           <span className="block text-xs text-neutral-500">{event.date} · {event.source === "google" ? "Google holiday" : "Admin event"}</span>
                         </span>
                       </label>
-                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${alreadyScheduled || inBackground ? "bg-emerald-50 text-emerald-800" : runItem?.status === "failed" ? "bg-rose-50 text-rose-800" : "bg-amber-50 text-amber-800"}`}>
-                        {alreadyScheduled ? "Already scheduled" : inBackground ? "Queued in background" : runItem?.status === "failed" ? "Previous run failed" : "Ready"}
+                      <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${alreadyScheduled || processingInBackground ? "bg-emerald-50 text-emerald-800" : inBackground ? "bg-violet-50 text-violet-800" : runItem?.status === "failed" ? "bg-rose-50 text-rose-800" : "bg-amber-50 text-amber-800"}`}>
+                        {alreadyScheduled ? "Already scheduled" : processingInBackground ? "In progress" : inBackground ? "Queued in background" : runItem?.status === "failed" ? "Previous run failed" : "Ready"}
                       </span>
                     </li>
                   );
@@ -623,9 +649,22 @@ export default function MarketingCalendarPage() {
             <section className="rounded-xl border border-violet-200 bg-violet-50/50 p-3" aria-label="Background scheduling progress">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="text-sm font-bold text-violet-950">Background run · {activeScheduleRun.status}</p>
-                <p className="text-xs text-violet-900">
-                  {activeScheduleRun.scheduled} scheduled · {activeScheduleRun.failed} failed · {activeScheduleRun.skipped} skipped of {activeScheduleRun.total}
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                  <p className="text-xs text-violet-900">
+                    {activeScheduleRun.scheduled} scheduled · {activeScheduleRun.failed} failed · {activeScheduleRun.skipped} skipped of {activeScheduleRun.total}
+                  </p>
+                  {activeScheduleRun.canResume && (
+                    <button
+                      type="button"
+                      disabled={resumingScheduleRun}
+                      onClick={() => void resumeQueuedScheduling()}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-2.5 py-1.5 text-xs font-bold text-violet-900 hover:bg-violet-100 disabled:opacity-50"
+                    >
+                      {resumingScheduleRun ? <LoaderCircle className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                      Start queued schedules
+                    </button>
+                  )}
+                </div>
               </div>
               <p className="mt-2 text-xs text-neutral-600">
                 Banner generation: {activeScheduleRun.generateBanner ? "On" : "Off (campaigns are created without banners)"}.

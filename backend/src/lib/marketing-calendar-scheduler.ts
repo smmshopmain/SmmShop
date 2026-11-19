@@ -6,13 +6,18 @@ import { EmailCampaign, MarketingCalendarScheduleRun, Service, UploadedFile, Use
 import { SERVICE_PLATFORMS } from "@/lib/service-platforms";
 
 const ACTIVE_RUN_STATUSES: readonly string[] = ["queued", "processing"];
-const ACTIVE_ITEM_STATUSES: readonly string[] = [
+export const ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES: readonly string[] = [
   "queued",
   "drafting",
   "draft_ready",
   "generating_banner",
   "banner_ready",
   "campaign_ready",
+  "scheduling",
+];
+export const IN_FLIGHT_MARKETING_CALENDAR_ITEM_STATUSES: readonly string[] = [
+  "drafting",
+  "generating_banner",
   "scheduling",
 ];
 const RUN_LOCK_MS = 4 * 60 * 1000;
@@ -37,6 +42,24 @@ type MarketingCalendarScheduleItem = {
   };
   bannerImageUrl?: string;
 };
+
+export function startMarketingCalendarScheduleWorker(trigger: string, runId?: unknown) {
+  setImmediate(() => {
+    void (async () => {
+      try {
+        for (let batch = 0; batch < 80; batch += 1) {
+          const result = await processNextMarketingCalendarScheduleRun(runId);
+          if (!result.processed) break;
+        }
+      } catch (error) {
+        console.error("Marketing calendar background worker failed; the cron worker will retry the saved run.", {
+          trigger,
+          error,
+        });
+      }
+    })();
+  });
+}
 
 function platformForService(name: string, category: string) {
   const text = `${name} ${category}`.toLowerCase();
@@ -170,7 +193,7 @@ async function updateRunStatus(runId: unknown) {
   const run = await MarketingCalendarScheduleRun.findById(runId).select("items.status").lean();
   if (!run) throw new Error("Calendar scheduling run was not found.");
   const pending = run.items.some((item: Pick<MarketingCalendarScheduleItem, "status">) =>
-    typeof item.status === "string" && ACTIVE_ITEM_STATUSES.includes(item.status),
+    typeof item.status === "string" && ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES.includes(item.status),
   );
   const failed = run.items.filter((item: Pick<MarketingCalendarScheduleItem, "status">) =>
     item.status === "failed",
@@ -189,13 +212,14 @@ async function updateRunStatus(runId: unknown) {
   return status;
 }
 
-export async function processNextMarketingCalendarScheduleRun() {
+export async function processNextMarketingCalendarScheduleRun(runId?: unknown) {
   await dbConnect();
   const now = new Date();
   const run = await MarketingCalendarScheduleRun.findOneAndUpdate(
     {
+      ...(runId ? { _id: runId } : {}),
       status: { $in: ACTIVE_RUN_STATUSES },
-      "items.status": { $in: ACTIVE_ITEM_STATUSES },
+      "items.status": { $in: ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES },
       $or: [
         { lockUntil: { $exists: false } },
         { lockUntil: null },
@@ -208,7 +232,7 @@ export async function processNextMarketingCalendarScheduleRun() {
   if (!run) return { processed: false, message: "No calendar scheduling jobs are waiting." };
 
   const item = run.items.find((candidate: MarketingCalendarScheduleItem) =>
-    typeof candidate.status === "string" && ACTIVE_ITEM_STATUSES.includes(candidate.status),
+    typeof candidate.status === "string" && ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES.includes(candidate.status),
   );
   if (!item) {
     const status = await updateRunStatus(run._id);

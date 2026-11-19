@@ -3,7 +3,11 @@ import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import { loadGoogleHolidays, type GoogleHolidayResult } from "@/lib/google-holidays";
-import { processNextMarketingCalendarScheduleRun } from "@/lib/marketing-calendar-scheduler";
+import {
+  ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES,
+  IN_FLIGHT_MARKETING_CALENDAR_ITEM_STATUSES,
+  startMarketingCalendarScheduleWorker,
+} from "@/lib/marketing-calendar-scheduler";
 import { AuditLog, EmailCampaign, MarketingCalendarEvent, MarketingCalendarScheduleRun, getSettings } from "@/models";
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((value) => {
@@ -48,6 +52,7 @@ function serializeRun(run: {
   instructions: string;
   generateBanner?: boolean;
   status: string;
+  lockUntil?: Date | null;
   items: Array<{
     calendarEventKey: string;
     title: string;
@@ -55,13 +60,24 @@ function serializeRun(run: {
     status: string;
     error?: string;
   }>;
-}) {
+}, canResumeOverride?: boolean) {
+  const hasQueuedItems = run.items.some((item: { status: string }) => item.status === "queued");
+  const hasInFlightItem = run.items.some((item: { status: string }) =>
+    IN_FLIGHT_MARKETING_CALENDAR_ITEM_STATUSES.includes(item.status),
+  );
+  const lockIsActive = run.lockUntil instanceof Date && run.lockUntil.getTime() > Date.now();
   return {
     id: String(run._id),
     startDate: run.startDate,
     endDate: run.endDate,
     instructions: run.instructions,
     generateBanner: run.generateBanner !== false,
+    canResume: canResumeOverride ?? (
+      ["queued", "processing"].includes(run.status)
+      && hasQueuedItems
+      && !hasInFlightItem
+      && !lockIsActive
+    ),
     status: run.status,
     total: run.items.length,
     scheduled: run.items.filter((item) => item.status === "scheduled").length,
@@ -186,17 +202,7 @@ export async function POST(request: NextRequest) {
           items: {
             $elemMatch: {
               calendarEventKey: { $in: pending.map((event) => event.calendarEventKey) },
-              status: {
-                $in: [
-                  "queued",
-                  "drafting",
-                  "draft_ready",
-                  "generating_banner",
-                  "banner_ready",
-                  "campaign_ready",
-                  "scheduling",
-                ],
-              },
+              status: { $in: ACTIVE_MARKETING_CALENDAR_ITEM_STATUSES },
             },
           },
         })
@@ -237,20 +243,9 @@ export async function POST(request: NextRequest) {
       },
     });
     if (pending.length) {
-      setImmediate(() => {
-        void (async () => {
-          try {
-            for (let batch = 0; batch < 80; batch += 1) {
-              const result = await processNextMarketingCalendarScheduleRun();
-              if (!result.processed) break;
-            }
-          } catch (error) {
-            console.error("Immediate calendar scheduling worker failed; the cron worker will retry the saved run.", error);
-          }
-        })();
-      });
+      startMarketingCalendarScheduleWorker("new calendar schedule run", run._id);
     }
-    return ok({ run: serializeRun(run) }, { status: 202 });
+    return ok({ run: serializeRun(run, false) }, { status: 202 });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to start calendar scheduling.");
   }
