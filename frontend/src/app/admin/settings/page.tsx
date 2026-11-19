@@ -5,6 +5,7 @@ import { SettingsForm, ActionButton } from "@/components/admin-controls";
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { AnimationControls } from "@/components/animation-controls";
+import { AIAssistantSettings } from "@/components/ai-assistant-settings";
 import { DeveloperCreditSettings } from "@/components/developer-credit-settings";
 import { SiteFooterSettings } from "@/components/site-footer-settings";
 import {
@@ -45,6 +46,11 @@ type PlatformSettings = {
     commissionAmount: number;
     minimumReferredWalletAddAmount: number;
   };
+  ai: {
+    enabled: boolean;
+    actionMode: "preview_confirm" | "admin_direct" | "direct_all";
+    keyConfigured: boolean;
+  };
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -73,6 +79,7 @@ const DEFAULT_SETTINGS: PlatformSettings = {
     commissionAmount: 0,
     minimumReferredWalletAddAmount: 0,
   },
+  ai: { enabled: false, actionMode: "preview_confirm", keyConfigured: false },
 };
 
 export default function SettingsPage() {
@@ -98,6 +105,7 @@ export default function SettingsPage() {
             quickLinks: nextSettings.siteFooter?.quickLinks ?? DEFAULT_SITE_FOOTER.quickLinks,
             supportLinks: nextSettings.siteFooter?.supportLinks ?? DEFAULT_SITE_FOOTER.supportLinks,
           },
+          ai: { ...DEFAULT_SETTINGS.ai, ...(nextSettings.ai ?? {}) },
         });
         setLoadError("");
       })
@@ -136,6 +144,12 @@ export default function SettingsPage() {
       </div>
       <SiteFooterSettings initialSettings={settings.siteFooter} />
       <DeveloperCreditSettings initialSettings={settings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT} />
+      <AIAssistantSettings
+        key={JSON.stringify(settings.ai)}
+        initialEnabled={settings.ai.enabled}
+        initialActionMode={settings.ai.actionMode}
+        keyConfigured={settings.ai.keyConfigured}
+      />
       <SettingsForm
         key={JSON.stringify([settings.deposits, settings.provider, settings.referrals])}
         mode={settings.deposits.verificationMode}

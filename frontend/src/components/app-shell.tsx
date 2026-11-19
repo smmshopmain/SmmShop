@@ -27,6 +27,7 @@ import {
   Wallet,
   X,
   Search,
+  Sparkles,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -63,6 +64,7 @@ const userLinks: NavItem[] = [
   { href: "/dashboard/referrals", label: "Invite & earn", icon: BadgeIndianRupee },
   { href: "/dashboard/tickets", label: "Get help", icon: Ticket },
   { href: "/dashboard/notifications", label: "Updates", icon: Bell },
+  { href: "/dashboard/assistant" as Route, label: "AI Assistant", icon: Sparkles },
   { href: "/dashboard/profile", label: "My account", icon: UserRound },
 ];
 
@@ -85,6 +87,7 @@ const adminLinks: NavItem[] = [
   { href: "/admin/settings#animation-settings" as Route, label: "Animations", icon: Palette },
   { href: "/admin/email" as Route, label: "Email Management", icon: Mail },
   { href: "/admin/popups" as Route, label: "Popup Campaigns", icon: Megaphone },
+  { href: "/admin/assistant" as Route, label: "AI Assistant", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -99,6 +102,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
     requiresPhone?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [aiEnabled, setAiEnabled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [workspaceHealth, setWorkspaceHealth] = useState<WorkspaceHealth>({
     state: "checking",
@@ -236,6 +240,27 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
     };
   }, [isAdmin, user]);
 
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const refreshAIStatus = async () => {
+      try {
+        const result = await apiJson("/api/ai/assistant", { cache: "no-store" });
+        if (active) setAiEnabled(result?.ok === true && result.enabled === true);
+      } catch {
+        if (active) setAiEnabled(false);
+      }
+    };
+    void refreshAIStatus();
+    const timer = window.setInterval(refreshAIStatus, 30_000);
+    window.addEventListener("ai-settings-updated", refreshAIStatus);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("ai-settings-updated", refreshAIStatus);
+    };
+  }, [user]);
+
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center px-4">
@@ -246,7 +271,9 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
 
   if (!user) return null;
 
-  const links = isAdmin ? adminLinks : userLinks;
+  const links = (isAdmin ? adminLinks : userLinks).filter(
+    (item) => aiEnabled || !["/admin/assistant", "/dashboard/assistant"].includes(String(item.href)),
+  );
   const navigationGroups = isAdmin
     ? [{ label: "Workspace", items: links }]
     : [

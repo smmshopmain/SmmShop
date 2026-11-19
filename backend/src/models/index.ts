@@ -425,6 +425,18 @@ const RateLimitSchema = new Schema(
 );
 RateLimitSchema.index({ resetAt: 1 }, { expireAfterSeconds: 0 });
 
+const AIAssistantActionSchema = new Schema(
+  {
+    owner: { type: String, required: true, index: true },
+    name: { type: String, required: true },
+    payload: { type: Schema.Types.Mixed, required: true },
+    status: { type: String, enum: ["pending", "running", "completed", "failed"], default: "pending", index: true },
+    result: String,
+    expiresAt: { type: Date, required: true, index: { expires: 0 } },
+  },
+  { timestamps: true },
+);
+
 export const User = models.User || model("User", UserSchema);
 export const PendingRegistration =
   models.PendingRegistration || model("PendingRegistration", PendingRegistrationSchema);
@@ -461,6 +473,7 @@ export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSch
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
+export const AIAssistantAction = models.AIAssistantAction || model("AIAssistantAction", AIAssistantActionSchema);
 
 export type PlatformSettings = {
   appearance: {
@@ -531,6 +544,10 @@ export type PlatformSettings = {
     commissionPercent: number;
     commissionAmount: number;
     minimumReferredWalletAddAmount: number;
+  };
+  ai: {
+    enabled: boolean;
+    actionMode: "preview_confirm" | "admin_direct" | "direct_all";
   };
 };
 
@@ -652,6 +669,7 @@ export async function getSettings() {
       commissionAmount: 0,
       minimumReferredWalletAddAmount: 0,
     },
+    ai: { enabled: false, actionMode: "preview_confirm" },
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
@@ -709,6 +727,7 @@ export async function getSettings() {
       };
     }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
+    if (record.key === "ai") settings.ai = { ...settings.ai, ...(record.value as Partial<PlatformSettings["ai"]>) };
   }
 
   return settings;

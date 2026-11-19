@@ -14,7 +14,7 @@ import {
 } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter"]),
+  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter", "ai"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -157,6 +157,11 @@ const siteFooterSchema = z.object({
   }
 });
 
+const aiSettingsSchema = z.object({
+  enabled: z.boolean(),
+  actionMode: z.enum(["preview_confirm", "admin_direct", "direct_all"]),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -240,6 +245,14 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
     });
   }
 
+  if (key === "ai") {
+    const aiSettings = aiSettingsSchema.parse(value);
+    if (aiSettings.enabled && !process.env.OPENAI_API_KEY?.trim()) {
+      throw new Error("Set OPENAI_API_KEY in the backend environment before enabling the AI assistant.");
+    }
+    return aiSettings;
+  }
+
   if (key === "appearance") {
     const appearance = appearanceSchema.parse(value);
     return {
@@ -296,6 +309,10 @@ export async function GET() {
     const settings = await getSettings();
     return ok({
       ...settings,
+      ai: {
+        ...settings.ai,
+        keyConfigured: Boolean(process.env.OPENAI_API_KEY?.trim()),
+      },
       auth: {
         ...settings.auth,
         googleConfigured:

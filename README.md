@@ -54,6 +54,7 @@ SMTP_PASS=
 FROM_EMAIL=
 EMAIL_WORKER_URL=https://your-frontend.vercel.app/api/internal/send-email
 EMAIL_WORKER_SECRET=replace-with-a-long-random-secret
+OPENAI_API_KEY=
 ```
 
 3. Start both development servers in separate terminals:
@@ -108,6 +109,12 @@ Administrators can manage the site-wide appearance and loading animations from *
 In **Admin > Email Management**, announcement and advertisement campaigns can include a selectable festival banner, an uploaded JPG, PNG, or WEBP banner (up to 10 MB), or both together. Upload progress is shown as a percentage and uploaded images appear in the preview. Festival selections theme the email to match. Custom banners and optional email background images (also up to 10 MB) are attached inline so recipients can view them after campaign uploads are cleaned up. After a campaign is successfully sent, its uploaded banner and background images are removed from the database unless another scheduled or in-progress campaign still uses them.
 
 In **Admin > Popup Campaigns**, administrators can create multiple scheduled announcements, festival greetings, and advertisements; attach JPG, PNG, or WEBP images with upload progress; and set automatic start and expiry times. Links are optional and can target an internal page, any active service, or an external HTTP(S) URL; links open in the same tab. Website visitors see eligible popups one at a time outside the admin panel; they can dismiss one for the session or choose **Don't show this again today**. Popup styling follows the selected website theme.
+
+### AI Assistant
+
+Set `OPENAI_API_KEY` only in the backend environment (Render); it is never sent to the browser. Enable the AI assistant and choose its action policy from **Admin > Settings**. Admins can ask it for workspace counts, create/schedule opted-in email campaigns, create scheduled popups, and change supported website appearance settings. User assistants can search active services, view only their own recent orders, and create support tickets. Uploaded campaign and popup images can be attached in the admin assistant.
+
+The default **Preview first** policy requires approval for actions. **Admin direct** applies admin actions immediately but asks users to approve their assistant actions. **Direct all** applies supported actions immediately. Disabling AI removes both assistant navigation entries and rejects assistant requests. Email campaigns created by the assistant are one-time scheduled campaigns; recurring yearly calendar campaigns and arbitrary admin/user operations are not currently automated.
 
 The website has a responsive, theme-matched footer on the homepage, sign-in pages, and user workspace. Administrators can edit the brand details, section headings, quick links, support links, contact email/phone/WhatsApp, address, business hours, copyright text, and visibility from **Admin > Settings**. The optional **Developer credit** can also be enabled or hidden there and can link to the developer or agency website.
 

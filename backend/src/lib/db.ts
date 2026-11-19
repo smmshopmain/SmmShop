@@ -22,12 +22,11 @@ export async function dbConnect() {
   }
 
   if (!cache.promise) {
-    console.log("MongoDB connecting to:", uri.slice(0, 60), "...");
     mongoose.connection.on("connected", () => {
       console.log("MongoDB connection established");
     });
-    mongoose.connection.on("error", (error) => {
-      console.error("MongoDB connection error:", error);
+    mongoose.connection.on("error", () => {
+      console.error("MongoDB connection error.");
     });
 
     cache.promise = mongoose.connect(uri, {
@@ -43,8 +42,10 @@ export async function dbConnect() {
       return conn;
     }).catch((error) => {
       cache.promise = null;
-      console.error("MongoDB connection failed:", error);
-      throw error;
+      console.error("MongoDB connection failed.", {
+        errorName: error instanceof Error ? error.name : "UnknownError",
+      });
+      throw new Error("Unable to connect to the database.");
     });
   }
 
