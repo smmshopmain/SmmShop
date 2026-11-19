@@ -9,6 +9,27 @@ const ACTIVE_RUN_STATUSES: readonly string[] = ["queued", "processing"];
 const ACTIVE_ITEM_STATUSES: readonly string[] = ["queued", "draft_ready", "banner_ready", "campaign_ready"];
 const RUN_LOCK_MS = 4 * 60 * 1000;
 
+type MarketingCalendarScheduleItem = {
+  _id: unknown;
+  calendarEventKey: string;
+  title: string;
+  date: string;
+  category: string;
+  description?: string;
+  status: string;
+  draft?: {
+    title: string;
+    subject: string;
+    greeting: string;
+    body: string;
+    bannerPrompt?: string;
+    primaryColor?: string;
+    accentColor?: string;
+    presetId?: string | null;
+  };
+  bannerImageUrl?: string;
+};
+
 function platformForService(name: string, category: string) {
   const text = `${name} ${category}`.toLowerCase();
   return SERVICE_PLATFORMS.find((platform) =>
@@ -49,38 +70,8 @@ async function createScheduledCampaign(run: {
   _id: unknown;
   createdBy: unknown;
   generateBanner?: boolean;
-  items: Array<{
-    _id: unknown;
-    calendarEventKey: string;
-    title: string;
-    date: string;
-    draft?: {
-      title: string;
-      subject: string;
-      greeting: string;
-      body: string;
-      primaryColor?: string;
-      accentColor?: string;
-      presetId?: string | null;
-    };
-    bannerImageUrl?: string;
-  }>;
-}, item: {
-  _id: unknown;
-  calendarEventKey: string;
-  title: string;
-  date: string;
-  bannerImageUrl?: string;
-  draft?: {
-    title: string;
-    subject: string;
-    greeting: string;
-    body: string;
-    primaryColor?: string;
-    accentColor?: string;
-    presetId?: string | null;
-  };
-}) {
+  items: MarketingCalendarScheduleItem[];
+}, item: MarketingCalendarScheduleItem) {
   const shouldGenerateBanner = run.generateBanner !== false;
   if (!item.draft || (shouldGenerateBanner && !item.bannerImageUrl)) {
     throw new Error("The generated campaign draft or enabled banner is missing.");
@@ -170,10 +161,12 @@ async function createScheduledCampaign(run: {
 async function updateRunStatus(runId: unknown) {
   const run = await MarketingCalendarScheduleRun.findById(runId).select("items.status").lean();
   if (!run) throw new Error("Calendar scheduling run was not found.");
-  const pending = run.items.some((item) =>
+  const pending = run.items.some((item: Pick<MarketingCalendarScheduleItem, "status">) =>
     typeof item.status === "string" && ACTIVE_ITEM_STATUSES.includes(item.status),
   );
-  const failed = run.items.filter((item) => item.status === "failed").length;
+  const failed = run.items.filter((item: Pick<MarketingCalendarScheduleItem, "status">) =>
+    item.status === "failed",
+  ).length;
   const status = pending
     ? "queued"
     : failed === run.items.length
@@ -206,7 +199,7 @@ export async function processNextMarketingCalendarScheduleRun() {
   );
   if (!run) return { processed: false, message: "No calendar scheduling jobs are waiting." };
 
-  const item = run.items.find((candidate) =>
+  const item = run.items.find((candidate: MarketingCalendarScheduleItem) =>
     typeof candidate.status === "string" && ACTIVE_ITEM_STATUSES.includes(candidate.status),
   );
   if (!item) {
