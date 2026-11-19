@@ -101,7 +101,7 @@ export function FloatingAIAssistant({ admin }: { admin: boolean }) {
         role="dialog"
         aria-label={admin ? "Admin AI assistant" : "AI assistant"}
         aria-hidden={!open}
-        className={`${open ? "fixed" : "hidden"} inset-x-3 bottom-[5.5rem] z-[70] h-[min(72dvh,38rem)] sm:inset-x-auto sm:bottom-20 sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]`}
+        className={`ai-assistant-window ${open ? "fixed" : "hidden"} inset-x-3 bottom-[5.5rem] z-[70] h-[min(72dvh,38rem)] sm:inset-x-auto sm:bottom-20 sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]`}
       >
         <AIAssistantWorkspace admin={admin} compact active={open} />
         <button
@@ -120,7 +120,7 @@ export function FloatingAIAssistant({ admin }: { admin: boolean }) {
         aria-label={open ? "Close AI assistant" : "Open AI assistant; drag or use Shift and arrow keys to move"}
         aria-expanded={open}
         title="AI assistant · drag to move"
-        className="fixed z-[80] grid size-[60px] touch-none cursor-grab select-none place-items-center rounded-full border border-white/20 bg-gradient-to-br from-teal-700 via-teal-800 to-slate-950 text-white shadow-[0_12px_35px_rgba(4,47,46,0.38)] transition-transform hover:scale-105 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-teal-500"
+        className="ai-assistant-launcher fixed z-[80] grid size-[60px] touch-none cursor-grab select-none place-items-center rounded-full text-white transition-transform hover:scale-105 active:cursor-grabbing focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4"
         style={{ left: position.x, top: position.y }}
         onPointerDown={(event) => {
           if (event.button !== 0) return;
@@ -150,8 +150,11 @@ export function FloatingAIAssistant({ admin }: { admin: boolean }) {
           if (event.detail === 0) setOpen((current) => !current);
         }}
       >
-        {open ? <Bot className="size-6" /> : <Sparkles className="size-6 motion-safe:animate-pulse" />}
-        <span className="absolute -right-0.5 -top-0.5 size-3 rounded-full border-2 border-white bg-emerald-400" aria-hidden="true" />
+        <span className="ai-assistant-launcher-halo glow-pulse" aria-hidden="true" />
+        <span className="ai-assistant-launcher-icon" aria-hidden="true">
+          {open ? <Bot className="size-6" /> : <Sparkles className="size-6" />}
+        </span>
+        <span className="ai-assistant-launcher-status" aria-hidden="true" />
       </button>
     </>
   );

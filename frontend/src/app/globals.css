@@ -4236,3 +4236,222 @@ html[data-design] .app-shell-admin main .workspace-hero a[class~="bg-white"] {
   background: var(--admin-surface);
   color: var(--admin-accent-strong);
 }
+
+.ai-assistant-shell {
+  --assistant-action: var(--public-accent-strong, #115e59);
+  --assistant-action-ink: #fff;
+  --assistant-header-button-ink: var(--public-accent-strong, #115e59);
+  border-color: var(--public-border, #dce7e7);
+  border-radius: 1.5rem;
+  background: var(--public-panel, #fff);
+  color: var(--public-ink, #14202a);
+}
+
+html[data-design="default"] .ai-assistant-shell,
+html[data-design="studio"] .ai-assistant-shell {
+  --assistant-action-ink: #fff;
+}
+
+html[data-design="orbit"] .ai-assistant-shell {
+  --assistant-action-ink: #fff;
+  --assistant-header-button-ink: #5835d1;
+  border-radius: 1.75rem;
+}
+
+html[data-design="atelier"] .ai-assistant-shell {
+  --assistant-action-ink: #fff;
+  --assistant-header-button-ink: #913a28;
+  border-radius: 1rem;
+}
+
+html[data-design="pulse"] .ai-assistant-shell {
+  --assistant-action: #67e8d0;
+  --assistant-action-ink: #08201f;
+  --assistant-header-button-ink: #0b4b45;
+  border-radius: 1.25rem;
+}
+
+html[data-design="midnight"] .ai-assistant-shell {
+  --assistant-action: #a5b4fc;
+  --assistant-action-ink: #10152b;
+  --assistant-header-button-ink: #312e81;
+  border-radius: 1.25rem;
+}
+
+.ai-assistant-header {
+  border-color: color-mix(in srgb, var(--public-accent, #0f766e) 22%, transparent);
+  background:
+    radial-gradient(ellipse at 86% 0%, color-mix(in srgb, var(--public-accent, #0f766e) 42%, transparent), transparent 62%),
+    linear-gradient(135deg, #172631, #0b1520);
+}
+
+.ai-assistant-brand-mark {
+  border: 1px solid color-mix(in srgb, var(--public-accent, #0f766e) 38%, transparent);
+  background: color-mix(in srgb, var(--public-accent, #0f766e) 20%, #14232d);
+  color: var(--public-accent-soft, #99f6e4);
+}
+
+.ai-assistant-header [class~="text-teal-100/80"] {
+  color: rgb(226 232 240 / 82%);
+}
+
+.ai-assistant-header button[class~="bg-white"] {
+  background: #fff;
+  color: var(--assistant-header-button-ink);
+}
+
+.ai-assistant-messages {
+  background: var(--public-page, #f4f7f7);
+}
+
+.ai-assistant-loading {
+  color: var(--public-accent-strong, #115e59);
+}
+
+.ai-assistant-composer {
+  border-color: var(--public-border, #dce7e7);
+  background: var(--public-panel, #fff);
+}
+
+.ai-assistant-shell [class~="bg-white"] {
+  background-color: var(--public-panel, #fff);
+}
+
+.ai-assistant-shell [class~="bg-neutral-50"],
+.ai-assistant-shell [class~="bg-neutral-50/70"] {
+  background-color: color-mix(in srgb, var(--public-accent, #0f766e) 5%, var(--public-panel, #fff));
+}
+
+.ai-assistant-shell [class~="border-neutral-200"],
+.ai-assistant-shell [class~="border-neutral-300"] {
+  border-color: var(--public-border, #dce7e7);
+}
+
+.ai-assistant-shell [class~="text-neutral-950"],
+.ai-assistant-shell [class~="text-neutral-900"],
+.ai-assistant-shell [class~="text-neutral-800"] {
+  color: var(--public-ink, #14202a);
+}
+
+.ai-assistant-shell [class~="text-neutral-700"],
+.ai-assistant-shell [class~="text-neutral-600"],
+.ai-assistant-shell [class~="text-neutral-500"] {
+  color: var(--public-muted, #66747f);
+}
+
+.ai-assistant-shell [class~="text-teal-700"],
+.ai-assistant-shell [class~="text-teal-800"],
+.ai-assistant-shell [class~="text-teal-900"] {
+  color: var(--public-accent-strong, #115e59);
+}
+
+.ai-assistant-message-user,
+.ai-assistant-primary-button {
+  background: var(--assistant-action);
+  color: var(--assistant-action-ink);
+}
+
+.ai-assistant-message-bot {
+  border-color: var(--public-border, #dce7e7);
+  background: var(--public-panel, #fff);
+  color: var(--public-ink, #14202a);
+}
+
+.ai-assistant-history-item {
+  border-color: var(--public-border, #dce7e7);
+  background: var(--public-panel, #fff);
+  color: var(--public-ink, #14202a);
+}
+
+.ai-assistant-history-item:hover,
+.ai-assistant-history-item.is-selected,
+.ai-assistant-suggestion {
+  border-color: color-mix(in srgb, var(--public-accent, #0f766e) 30%, var(--public-border, #dce7e7));
+  background: color-mix(in srgb, var(--public-accent, #0f766e) 10%, var(--public-panel, #fff));
+  color: var(--public-accent-strong, #115e59);
+}
+
+.ai-assistant-secondary-button {
+  border-color: var(--public-border, #dce7e7);
+  background: var(--public-panel, #fff);
+  color: var(--public-ink, #14202a);
+}
+
+.ai-assistant-secondary-button:hover,
+.ai-assistant-shell button[class~="border-neutral-300"]:hover {
+  background: color-mix(in srgb, var(--public-accent, #0f766e) 6%, var(--public-panel, #fff));
+}
+
+.ai-assistant-shell input[type="search"],
+.ai-assistant-shell select,
+.ai-assistant-shell textarea {
+  border-color: var(--public-border, #dce7e7);
+  background-color: var(--public-panel, #fff);
+  color: var(--public-ink, #14202a);
+}
+
+.ai-assistant-shell input[type="search"]:focus,
+.ai-assistant-shell textarea:focus {
+  border-color: var(--public-accent, #0f766e);
+  --tw-ring-color: color-mix(in srgb, var(--public-accent, #0f766e) 16%, transparent);
+}
+
+.ai-assistant-shell input::placeholder,
+.ai-assistant-shell textarea::placeholder {
+  color: var(--public-muted, #66747f);
+}
+
+.ai-assistant-launcher {
+  position: fixed;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--public-accent, #0f766e) 55%, #fff);
+  background:
+    radial-gradient(circle at 30% 18%, color-mix(in srgb, var(--public-accent, #0f766e) 34%, transparent), transparent 58%),
+    linear-gradient(145deg, #172732, #09131d);
+  box-shadow:
+    0 12px 35px color-mix(in srgb, var(--public-accent, #0f766e) 32%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 18%);
+}
+
+.ai-assistant-launcher:focus-visible {
+  outline-color: var(--public-accent, #0f766e);
+}
+
+.ai-assistant-launcher-halo {
+  position: absolute;
+  inset: -7px;
+  border: 1px solid color-mix(in srgb, var(--public-accent, #0f766e) 48%, transparent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.ai-assistant-launcher-icon {
+  position: relative;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgb(255 255 255 / 17%), rgb(255 255 255 / 5%));
+  color: #fff;
+  filter: drop-shadow(0 2px 6px color-mix(in srgb, var(--public-accent, #0f766e) 48%, transparent));
+  pointer-events: none;
+}
+
+.ai-assistant-launcher-status {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 0 2px #0b1520;
+  pointer-events: none;
+}
+
+html[data-motion-entrance="on"] .ai-assistant-window:not(.hidden) {
+  animation: rise-in var(--motion-menu-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}

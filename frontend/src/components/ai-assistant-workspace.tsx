@@ -457,21 +457,21 @@ export function AIAssistantWorkspace({
   }
 
   if (loading) {
-    return <div className="grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin text-teal-700" /></div>;
+    return <div className="ai-assistant-loading grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin" /></div>;
   }
   if (!enabled) {
     return compact
       ? <p role="status" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{error || "AI assistant is unavailable."}</p>
-      : <div className="grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin text-teal-700" /></div>;
+      : <div className="ai-assistant-loading grid min-h-56 place-items-center"><LoaderCircle className="size-6 animate-spin" /></div>;
   }
 
   const renderedMessages = messages.map((message, index) => (
     <div
       key={`${index}-${message.role}`}
-      className={`max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
+      className={`ai-assistant-message max-w-[92%] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
         message.role === "user"
-          ? "ml-auto bg-teal-800 text-white"
-          : "mr-auto border border-neutral-200 bg-white text-neutral-800 shadow-sm"
+          ? "ai-assistant-message-user ml-auto"
+          : "ai-assistant-message-bot mr-auto border shadow-sm"
       }`}
     >
       {message.content}
@@ -482,10 +482,10 @@ export function AIAssistantWorkspace({
   );
 
   return (
-    <section className={`mx-auto flex w-full flex-col overflow-hidden border border-neutral-200 bg-white shadow-sm ${compact ? "h-full rounded-2xl" : "max-w-4xl rounded-3xl"}`}>
-      <header className={`shrink-0 border-b border-neutral-200 bg-gradient-to-br from-teal-950 to-slate-900 text-white ${compact ? "px-4 py-4" : "px-5 py-5 sm:px-7"}`}>
+    <section className={`ai-assistant-shell mx-auto flex w-full flex-col overflow-hidden border shadow-sm ${compact ? "h-full rounded-2xl" : "max-w-4xl rounded-3xl"}`}>
+      <header className={`ai-assistant-header shrink-0 border-b text-white ${compact ? "px-4 py-4" : "px-5 py-5 sm:px-7"}`}>
         <div className="flex items-center gap-3">
-          <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-white/10"><Sparkles className="size-5 text-teal-200" /></span>
+          <span className="ai-assistant-brand-mark grid size-11 shrink-0 place-items-center rounded-2xl"><Sparkles className="size-5" /></span>
           <div className="min-w-0">
             <h2 className="text-lg font-bold">{admin ? "Admin AI assistant" : "Your AI assistant"}</h2>
             <p className="mt-1 text-xs text-teal-100/80">
@@ -524,7 +524,7 @@ export function AIAssistantWorkspace({
         </div>
       </header>
 
-      <div ref={messagesContainer} className={`min-h-0 flex-1 space-y-4 overflow-y-auto bg-neutral-50/70 px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
+      <div ref={messagesContainer} className={`ai-assistant-messages min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-7 ${compact ? "" : "min-h-72"}`}>
         {historyOpen ? (
           <>
             <div className="flex items-center justify-between gap-3">
@@ -568,11 +568,7 @@ export function AIAssistantWorkspace({
                   disabled={switchingConversation || sending}
                   onClick={() => void openConversation(conversation.id)}
                   aria-current={conversation.id === conversationId ? true : undefined}
-                  className={`w-full rounded-xl border p-3 text-left transition disabled:opacity-60 ${
-                    conversation.id === conversationId
-                      ? "border-teal-300 bg-teal-50"
-                      : "border-neutral-200 bg-white hover:border-teal-200 hover:bg-teal-50/50"
-                  }`}
+                  className={`ai-assistant-history-item w-full rounded-xl border p-3 text-left transition disabled:opacity-60 ${conversation.id === conversationId ? "is-selected" : ""}`}
                 >
                   <span className="block truncate text-sm font-semibold text-neutral-900">{conversation.title}</span>
                   <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-neutral-500">
@@ -605,7 +601,7 @@ export function AIAssistantWorkspace({
             <button
               type="button"
               onClick={() => setText(sectionContext.suggestion)}
-              className="mt-3 rounded-lg bg-teal-50 px-3 py-2 text-left text-xs font-semibold text-teal-900 hover:bg-teal-100"
+              className="ai-assistant-suggestion mt-3 rounded-lg px-3 py-2 text-left text-xs font-semibold transition"
             >
               Try: {sectionContext.suggestion}
             </button>
@@ -648,24 +644,24 @@ export function AIAssistantWorkspace({
       </div>
 
       {historyOpen ? (
-        <div className="flex shrink-0 gap-2 border-t border-neutral-200 bg-white p-4 sm:p-5">
+        <div className="ai-assistant-composer flex shrink-0 gap-2 border-t p-4 sm:p-5">
           <button
             type="button"
             disabled={switchingConversation || sending}
             onClick={() => void startNewChat()}
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white px-4 py-3 text-sm font-bold text-neutral-800 hover:bg-neutral-50 disabled:opacity-60"
+            className="ai-assistant-secondary-button inline-flex flex-1 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold transition disabled:opacity-60"
           >
             <Plus className="size-4" /> New chat
           </button>
           <button
             type="button"
             onClick={() => setHistoryOpen(false)}
-            className="flex-1 rounded-xl bg-teal-800 px-4 py-3 text-sm font-bold text-white hover:bg-teal-900"
+            className="ai-assistant-primary-button flex-1 rounded-xl px-4 py-3 text-sm font-bold text-white transition"
           >
             Back to chat
           </button>
         </div>
-      ) : <form onSubmit={sendMessage} className="shrink-0 border-t border-neutral-200 bg-white p-4 sm:p-5">
+      ) : <form onSubmit={sendMessage} className="ai-assistant-composer shrink-0 border-t p-4 sm:p-5">
         {!modelAvailable && (
           <p role="alert" className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
             Velona is not configured on the backend. Ask an administrator to set VELONA_API_KEY.
@@ -721,7 +717,7 @@ export function AIAssistantWorkspace({
           <button
             type="submit"
             disabled={sending || !text.trim() || !modelAvailable}
-            className="grid size-11 shrink-0 place-items-center rounded-xl bg-teal-800 text-white hover:bg-teal-900 disabled:opacity-50"
+            className="ai-assistant-primary-button grid size-11 shrink-0 place-items-center rounded-xl text-white transition disabled:opacity-50"
             aria-label="Send message"
           >
             <Send className="size-4" />
