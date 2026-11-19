@@ -437,6 +437,25 @@ const AIAssistantActionSchema = new Schema(
   { timestamps: true },
 );
 
+const AIAssistantConversationMessageSchema = new Schema(
+  {
+    role: { type: String, enum: ["user", "assistant"], required: true },
+    content: { type: String, required: true, maxlength: 8000 },
+    createdAt: { type: Date, required: true, default: Date.now },
+  },
+  { _id: false },
+);
+
+const AIAssistantConversationSchema = new Schema(
+  {
+    owner: { type: String, required: true },
+    scope: { type: String, enum: ["user", "admin"], required: true },
+    messages: { type: [AIAssistantConversationMessageSchema], default: [] },
+  },
+  { timestamps: true },
+);
+AIAssistantConversationSchema.index({ owner: 1, scope: 1 }, { unique: true });
+
 export const User = models.User || model("User", UserSchema);
 export const PendingRegistration =
   models.PendingRegistration || model("PendingRegistration", PendingRegistrationSchema);
@@ -474,6 +493,8 @@ export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
 export const AIAssistantAction = models.AIAssistantAction || model("AIAssistantAction", AIAssistantActionSchema);
+export const AIAssistantConversation =
+  models.AIAssistantConversation || model("AIAssistantConversation", AIAssistantConversationSchema);
 
 export type PlatformSettings = {
   appearance: {

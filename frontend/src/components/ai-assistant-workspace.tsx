@@ -8,6 +8,27 @@ import { apiFetch, apiJson } from "@/lib/client-api";
 type ChatMessage = { role: "user" | "assistant"; content: string };
 type PendingAction = { id: string; name: string; summary: string };
 
+function isChatMessage(value: unknown): value is ChatMessage {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "role" in value &&
+      (value.role === "user" || value.role === "assistant") &&
+      "content" in value &&
+      typeof value.content === "string",
+  );
+}
+
+function parseChatHistory(value: unknown) {
+  if (!Array.isArray(value)) throw new Error("Unable to load your conversation history.");
+  const history: ChatMessage[] = [];
+  for (const message of value) {
+    if (!isChatMessage(message)) throw new Error("Conversation history contains an invalid message.");
+    history.push(message);
+  }
+  return history;
+}
+
 function getSectionContext(pathname: string, admin: boolean) {
   const sections = admin
     ? [
@@ -73,37 +94,54 @@ export function AIAssistantWorkspace({
   useEffect(() => {
     if (!active) return;
     let mounted = true;
-    const refreshStatus = () => {
-      void apiJson("/api/ai/assistant", { cache: "no-store" })
-        .then((result) => {
-          if (!mounted) return;
-          if (!result?.ok || !result.enabled) {
-            if (compact) {
-              setEnabled(false);
-              setError(result?.message || "AI assistant is unavailable. Check its settings or backend status.");
-              return;
-            }
-            router.replace(admin ? "/admin/settings" : "/dashboard");
-            return;
-          }
-          setEnabled(true);
-          setModelAvailable(result.modelAvailable !== false);
-          setError("");
-        })
-        .catch(() => {
-          if (!mounted) return;
+    const refreshStatus = async () => {
+      try {
+        const result = await apiJson("/api/ai/assistant", { cache: "no-store" });
+        if (!mounted) return false;
+        if (!result?.ok || !result.enabled) {
           if (compact) {
             setEnabled(false);
-            setError("AI assistant could not be reached. Check the backend connection and try again.");
+            setError(result?.message || "AI assistant is unavailable. Check its settings or backend status.");
           } else {
             router.replace(admin ? "/admin/settings" : "/dashboard");
           }
-        })
-        .finally(() => {
-          if (mounted) setLoading(false);
-        });
+          return false;
+        }
+        setEnabled(true);
+        setModelAvailable(result.modelAvailable !== false);
+        setError("");
+        return true;
+      } catch {
+        if (!mounted) return false;
+        if (compact) {
+          setEnabled(false);
+          setError("AI assistant could not be reached. Check the backend connection and try again.");
+        } else {
+          router.replace(admin ? "/admin/settings" : "/dashboard");
+        }
+        return false;
+      }
     };
-    refreshStatus();
+    const loadConversation = async () => {
+      setLoading(true);
+      setMessages([]);
+      if (!await refreshStatus() || !mounted) {
+        if (mounted) setLoading(false);
+        return;
+      }
+      try {
+        const result = await apiJson("/api/ai/assistant/history", { cache: "no-store" });
+        if (!result?.ok) throw new Error(result?.message || "Unable to load your conversation history.");
+        if (mounted) setMessages(parseChatHistory(result.messages));
+      } catch (historyError) {
+        if (mounted) {
+          setError(historyError instanceof Error ? historyError.message : "Unable to load your conversation history.");
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+    void loadConversation();
     const interval = compact ? undefined : window.setInterval(refreshStatus, 30_000);
     return () => {
       mounted = false;
@@ -128,7 +166,7 @@ export function AIAssistantWorkspace({
       const result = await apiJson("/api/ai/assistant", {
         method: "POST",
         body: JSON.stringify({
-          messages: nextMessages.slice(-12),
+          message: content,
           pageContext: { path: pathname },
         }),
       });
@@ -152,7 +190,6 @@ export function AIAssistantWorkspace({
       const result = await apiJson("/api/ai/assistant", {
         method: "POST",
         body: JSON.stringify({
-          messages: [{ role: "user", content: "Approve the pending action." }],
           approveActionId: action.id,
         }),
       });
@@ -173,12 +210,12 @@ export function AIAssistantWorkspace({
       const result = await apiJson("/api/ai/assistant", {
         method: "POST",
         body: JSON.stringify({
-          messages: [{ role: "user", content: "Cancel the pending action." }],
           rejectActionId: action.id,
         }),
       });
       if (!result?.ok) throw new Error(result?.message || "Unable to cancel this action.");
       setPendingActions((current) => current.filter((item) => item.id !== action.id));
+      setMessages((current) => [...current, { role: "assistant", content: result.message }]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to cancel this action.");
     } finally {
@@ -362,8 +399,8 @@ export function AIAssistantWorkspace({
         </div>
         <p className="mt-2 text-[11px] leading-5 text-neutral-500">
           {admin
-            ? "Email delivery and popup publishing follow the configured approval policy. Messages are sent to Velona; do not include passwords, API keys, OTPs, or payment credentials."
-            : "Messages and relevant order details are sent to Velona. Your assistant only accesses your own orders and the public service catalog; never share passwords, OTPs, or payment credentials. Orders must still be placed through the order form."}
+            ? "This conversation is saved to your admin account. Email delivery and popup publishing follow the configured approval policy. Messages are sent to Velona; do not include passwords, API keys, OTPs, or payment credentials."
+            : "This conversation is saved to your account, and recent messages help your assistant remember context. Messages and relevant order details are sent to Velona. Your assistant only accesses your own orders and the public service catalog; never share passwords, OTPs, or payment credentials. Orders must still be placed through the order form."}
         </p>
       </form>
     </section>

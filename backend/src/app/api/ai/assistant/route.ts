@@ -11,6 +11,10 @@ import { notifyInApp } from "@/lib/notifications";
 import { ensureTelegramWebhook, notifyTelegram, supportTicketKeyboard } from "@/lib/telegram";
 import { CAMPAIGN_BANNER_PRESETS } from "@/lib/campaign-banners";
 import {
+  appendAssistantConversationMessages,
+  getAssistantConversation,
+} from "@/lib/ai-assistant-conversation";
+import {
   AIAssistantAction,
   AuditLog,
   Deposit,
@@ -35,17 +39,16 @@ const VELONA_CHAT_COMPLETIONS_URL = "https://velona.in/v1/chat/completions";
 const VELONA_MODEL = "openai/gpt-4o-mini";
 
 const requestSchema = z.object({
-  messages: z.array(z.object({
-    role: z.enum(["user", "assistant"]),
-    content: z.string().trim().min(1).max(4000),
-  })).min(1).max(12),
+  message: z.string().trim().min(1).max(4000).optional(),
   pageContext: z.object({ path: z.string().trim().min(1).max(160) }).optional(),
   approveActionId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
   rejectActionId: z.string().regex(/^[a-f\d]{24}$/i).optional(),
-}).strict().refine(
-  (input) => !(input.approveActionId && input.rejectActionId),
-  "An action can only be approved or cancelled once.",
-);
+}).strict().refine((input) => {
+  const actionCount = Number(Boolean(input.approveActionId)) + Number(Boolean(input.rejectActionId));
+  return actionCount === 0
+    ? Boolean(input.message)
+    : actionCount === 1 && input.message === undefined;
+}, "Provide a message or approve/cancel one pending action.");
 
 const campaignInputSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -1268,21 +1271,32 @@ export async function POST(request: NextRequest) {
     const input = requestSchema.parse(await request.json());
     if (input.approveActionId) {
       const result = await runApprovedAction(input.approveActionId, auth);
+      await appendAssistantConversationMessages(auth, [{ role: "assistant", content: result }]);
       return ok({ message: result, pendingActions: [] });
     }
     if (input.rejectActionId) {
       const result = await rejectPendingAction(input.rejectActionId, auth);
+      await appendAssistantConversationMessages(auth, [{ role: "assistant", content: result }]);
       return ok({ message: result, pendingActions: [] });
     }
+    if (!input.message) return fail("Write a message for the assistant.", 400);
     const apiKey = process.env.VELONA_API_KEY?.trim();
     if (!apiKey) return fail("AI is enabled, but VELONA_API_KEY is not configured on the backend.", 503);
-    if (input.messages.reduce((total, message) => total + message.content.length, 0) > 16000) {
-      return fail("This conversation is too long. Start a new conversation and try again.", 413);
-    }
 
     const admin = isAdminRole(auth.role);
     const mode = settings.ai.actionMode;
     const currentSection = getAssistantSection(input.pageContext?.path, admin);
+    const conversation = await getAssistantConversation(auth);
+    const conversationMessages = [
+      ...conversation.messages.map(({ role, content }) => ({ role, content })),
+      { role: "user" as const, content: input.message },
+    ].slice(-12);
+    let contextLength = conversationMessages.reduce((total, message) => total + message.content.length, 0);
+    while (contextLength > 16_000 && conversationMessages.length > 1) {
+      const oldestMessage = conversationMessages.shift();
+      if (!oldestMessage) break;
+      contextLength -= oldestMessage.content.length;
+    }
     const currentDate = new Intl.DateTimeFormat("en-IN", {
       dateStyle: "full",
       timeStyle: "short",
@@ -1294,7 +1308,7 @@ export async function POST(request: NextRequest) {
 
     const messages: Array<Record<string, unknown>> = [
       { role: "system", content: instructions },
-      ...input.messages,
+      ...conversationMessages,
     ];
     const tools = admin ? adminTools : userTools;
     const pendingActions: Array<{ id: string; name: string; summary: string }> = [];
@@ -1357,7 +1371,12 @@ export async function POST(request: NextRequest) {
       const assistantMessage = result.choices?.[0]?.message;
       if (!assistantMessage) return fail("Velona returned an empty assistant response.", 502);
       if (!assistantMessage.tool_calls?.length) {
-        return ok({ message: assistantMessage.content?.trim() || "I couldn't generate a response. Please try again.", pendingActions });
+        const reply = assistantMessage.content?.trim() || "I couldn't generate a response. Please try again.";
+        await appendAssistantConversationMessages(auth, [
+          { role: "user", content: input.message },
+          { role: "assistant", content: reply },
+        ]);
+        return ok({ message: reply, pendingActions });
       }
       messages.push({
         role: "assistant",
@@ -1385,10 +1404,20 @@ export async function POST(request: NextRequest) {
         messages.push({ role: "tool", tool_call_id: call.id, content });
       }
       if (pendingActions.length) {
-        return ok({ message: "Your action draft is ready. Review and approve it below to apply it.", pendingActions });
+        const reply = "Your action draft is ready. Review and approve it below to apply it.";
+        await appendAssistantConversationMessages(auth, [
+          { role: "user", content: input.message },
+          { role: "assistant", content: reply },
+        ]);
+        return ok({ message: reply, pendingActions });
       }
       if (completedActions.length) {
-        return ok({ message: completedActions.join("\n"), pendingActions });
+        const reply = completedActions.join("\n");
+        await appendAssistantConversationMessages(auth, [
+          { role: "user", content: input.message },
+          { role: "assistant", content: reply },
+        ]);
+        return ok({ message: reply, pendingActions });
       }
     }
     return fail("The assistant reached its action limit. Please try a shorter request.", 502);
