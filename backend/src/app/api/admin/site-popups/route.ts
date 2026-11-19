@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { isHttpImageUrl } from "@/lib/image-url";
 import { AuditLog, Setting, SitePopup, UploadedFile } from "@/models";
 
 const DEFAULT_SLIDESHOW_DURATION_SECONDS = 10;
@@ -10,7 +11,7 @@ const popupFieldsSchema = z.object({
   kind: z.enum(["announcement", "advertisement"]),
   message: z.string().trim().max(2000).default(""),
   emoji: z.string().trim().max(16).default("✨"),
-  imageUrl: z.string().trim().max(500).default(""),
+  imageUrl: z.string().trim().max(2048).default(""),
   linkType: z.enum(["none", "internal", "external"]).default("none"),
   linkHref: z.string().trim().max(2048).default(""),
   linkLabel: z.string().trim().max(60).default(""),
@@ -39,8 +40,12 @@ const popupSchema = popupFieldsSchema.superRefine((popup, context) => {
   if (new Date(popup.expiresAt).getTime() <= new Date(popup.startsAt).getTime()) {
     context.addIssue({ code: "custom", path: ["expiresAt"], message: "Expiry must be after the start time." });
   }
-  if (popup.imageUrl && !/^\/api\/uploads\/file\/popup-images\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(popup.imageUrl)) {
-    context.addIssue({ code: "custom", path: ["imageUrl"], message: "Choose a valid uploaded popup image." });
+  if (
+    popup.imageUrl &&
+    !/^\/api\/uploads\/file\/popup-images\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(popup.imageUrl) &&
+    !isHttpImageUrl(popup.imageUrl)
+  ) {
+    context.addIssue({ code: "custom", path: ["imageUrl"], message: "Choose a valid uploaded image or HTTP(S) image URL." });
   }
   if (popup.linkType === "none" && popup.linkHref) {
     context.addIssue({ code: "custom", path: ["linkHref"], message: "Choose an internal or external destination for this link." });
@@ -105,6 +110,7 @@ async function removeUnusedImage(imageUrl: string) {
 
 async function validatePopupImage(imageUrl: string) {
   if (!imageUrl) return;
+  if (isHttpImageUrl(imageUrl)) return;
   const fileName = imageUrl.split("/").at(-1);
   if (!fileName || !await UploadedFile.exists({ folder: "popup-images", fileName })) {
     throw new Error("Popup image upload was not found. Upload the image again.");

@@ -4,7 +4,7 @@ import Image from "next/image";
 import { ArrowRight, Megaphone, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { apiJson, apiUrl } from "@/lib/client-api";
+import { apiJson, backendAssetUrl } from "@/lib/client-api";
 
 type SitePopupItem = {
   _id: string;
@@ -183,7 +183,7 @@ export function SitePopup() {
         imageOnly ? (
           <div className="relative h-dvh w-screen">
             <Image
-              src={apiUrl(currentPopup.imageUrl)}
+              src={backendAssetUrl(currentPopup.imageUrl)}
               alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
               fill
               sizes="100vw"
@@ -194,7 +194,7 @@ export function SitePopup() {
         ) : (
           <div className="relative mb-5 h-[min(60dvh,520px)] w-full">
             <Image
-              src={apiUrl(currentPopup.imageUrl)}
+              src={backendAssetUrl(currentPopup.imageUrl)}
               alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
               fill
               sizes="(max-width: 768px) 100vw, 768px"

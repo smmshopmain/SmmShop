@@ -50,7 +50,7 @@ function escapeHtml(value: string) {
 
 function safeHttpUrl(value: string) {
   const url = new URL(value);
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password) {
     throw new Error("Email links must use HTTP or HTTPS.");
   }
   return escapeHtml(url.toString());
@@ -124,18 +124,23 @@ export function buildCampaignEmail(input: {
   const emailBackgroundImageUrl = input.banner?.backgroundImageUrl
     ? safeHttpUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString())
     : "";
+  const uploadedImagePath = /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i;
+  const bannerImageIsUploaded = Boolean(input.banner?.imageUrl && uploadedImagePath.test(input.banner.imageUrl));
+  const backgroundImageIsUploaded = Boolean(input.banner?.backgroundImageUrl && uploadedImagePath.test(input.banner.backgroundImageUrl));
+  const bannerImageSource = bannerImageIsUploaded ? "cid:campaign-banner" : bannerImageUrl;
+  const backgroundImageSource = backgroundImageIsUploaded ? "cid:campaign-background" : emailBackgroundImageUrl;
   const inlineImages = [
-    ...(bannerImageUrl ? [{ cid: "campaign-banner", url: bannerImageUrl }] : []),
-    ...(emailBackgroundImageUrl ? [{ cid: "campaign-background", url: emailBackgroundImageUrl }] : []),
+    ...(bannerImageUrl && bannerImageIsUploaded ? [{ cid: "campaign-banner", url: bannerImageUrl }] : []),
+    ...(emailBackgroundImageUrl && backgroundImageIsUploaded ? [{ cid: "campaign-background", url: emailBackgroundImageUrl }] : []),
   ];
   const festivalBannerHtml = bannerPreset
     ? `<tr><td align="center" bgcolor="${bannerPreset.colors[0]}" style="padding:30px 20px;background-color:${bannerPreset.colors[0]};background-image:linear-gradient(120deg,${bannerPreset.colors[0]},${bannerPreset.colors[1]});color:#ffffff;font-family:Arial,Helvetica,sans-serif"><div style="font-size:36px;line-height:1.2">${bannerPreset.emoji}</div><div style="margin-top:8px;font-size:22px;font-weight:700">${escapeHtml(bannerPreset.title)}</div></td></tr>`
     : "";
   const customBannerHtml = bannerImageUrl
-    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="cid:campaign-banner" alt="Campaign advertisement for ${safeBrand}" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr><tr><td align="right" bgcolor="${themePrimary}" style="padding:8px 18px;background-color:${themePrimary};color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700">${safeBrand}</td></tr>`
+    ? `<tr><td style="padding:0;font-size:0;line-height:0"><img src="${bannerImageSource}" alt="Campaign advertisement for ${safeBrand}" width="640" style="display:block;width:100%;max-width:640px;height:auto;border:0"></td></tr><tr><td align="right" bgcolor="${themePrimary}" style="padding:8px 18px;background-color:${themePrimary};color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:12px;font-weight:700">${safeBrand}</td></tr>`
     : "";
   const bannerHtml = `${festivalBannerHtml}${customBannerHtml}`;
-  const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? "\n\nA campaign banner image is attached." : ""}`;
+  const bannerText = `${bannerPreset ? `\n\n${bannerPreset.title}` : ""}${bannerImageUrl ? "\n\nA campaign banner image is shown in this email." : ""}`;
   const services = input.services ?? [];
   const serviceText = services.length
     ? `\n\nFeatured services:\n${services.map((service) => `${service.platform}${service.country ? ` · ${service.country}` : ""} · ${service.name} · Rs.${service.sellingRate.toFixed(2)} per 1,000`).join("\n")}`
@@ -152,9 +157,9 @@ export function buildCampaignEmail(input: {
         <div style="font-size:11px;color:#829ab1">per 1,000</div>
       </td>
     </tr>`).join("");
-  const backgroundAttribute = emailBackgroundImageUrl ? ` background="cid:campaign-background"` : "";
+  const backgroundAttribute = emailBackgroundImageUrl ? ` background="${backgroundImageSource}"` : "";
   const backgroundImageStyle = emailBackgroundImageUrl
-    ? "background-image:url('cid:campaign-background');background-position:center top;background-repeat:no-repeat;background-size:cover;"
+    ? `background-image:url('${backgroundImageSource}');background-position:center top;background-repeat:no-repeat;background-size:cover;`
     : "";
   return {
     subject,

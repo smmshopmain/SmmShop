@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { AdminHeader, AdminSection } from "@/components/admin-ui";
 import { GoogleAuthSettings } from "@/components/google-auth-settings";
-import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
+import { apiFetch, apiJson, apiUrl, backendAssetUrl } from "@/lib/client-api";
 import { CAMPAIGN_BANNER_PRESETS, type CampaignBanner } from "@/lib/campaign-banners";
 import { ImagePlus, Search, Sparkles, X } from "lucide-react";
 
@@ -725,10 +725,25 @@ export default function EmailManagementPage() {
                     }}
                   />
                 </label>
+                <label className="mt-3 block max-w-2xl text-sm font-semibold text-neutral-800">
+                  Or use a public banner image URL
+                  <input
+                    type="url"
+                    maxLength={2048}
+                    value={/^https?:\/\//i.test(campaignForm.banner.imageUrl) ? campaignForm.banner.imageUrl : ""}
+                    onChange={(event) => setCampaignForm((current) => ({
+                      ...current,
+                      banner: { ...current.banner, imageUrl: event.target.value },
+                    }))}
+                    placeholder="https://example.com/banner.jpg"
+                    className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm font-normal"
+                  />
+                  <span className="mt-1 block text-xs font-normal text-neutral-500">The URL must point to a publicly accessible image. It will be shown as an image in the email.</span>
+                </label>
                 {campaignForm.banner.imageUrl && (
                   <div className="mt-4 flex flex-wrap items-start gap-3">
                     <Image
-                      src={apiUrl(campaignForm.banner.imageUrl)}
+                      src={backendAssetUrl(campaignForm.banner.imageUrl)}
                       alt="Custom campaign banner preview"
                       width={592}
                       height={320}
@@ -790,11 +805,24 @@ export default function EmailManagementPage() {
                           }}
                         />
                       </label>
+                      <input
+                        type="url"
+                        maxLength={2048}
+                        aria-label="Email background image URL"
+                        value={/^https?:\/\//i.test(campaignForm.banner.backgroundImageUrl) ? campaignForm.banner.backgroundImageUrl : ""}
+                        onChange={(event) => setCampaignForm((current) => ({
+                          ...current,
+                          banner: { ...current.banner, backgroundImageUrl: event.target.value },
+                        }))}
+                        placeholder="https://example.com/background.jpg"
+                        className="mt-2 block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-normal"
+                      />
+                      <span className="mt-1 block text-xs font-normal text-neutral-500">Or paste a publicly accessible HTTP(S) image URL.</span>
                     </div>
                     {campaignForm.banner.backgroundImageUrl && (
                       <div className="flex items-start gap-3 sm:col-span-2">
                         <Image
-                          src={apiUrl(campaignForm.banner.backgroundImageUrl)}
+                          src={backendAssetUrl(campaignForm.banner.backgroundImageUrl)}
                           alt="Email background preview"
                           width={320}
                           height={120}
@@ -987,7 +1015,7 @@ export default function EmailManagementPage() {
                   style={{
                     backgroundColor: previewBackgroundColor,
                     backgroundImage: campaignForm.banner.backgroundImageUrl
-                      ? `url("${apiUrl(campaignForm.banner.backgroundImageUrl)}")`
+                      ? `url("${backendAssetUrl(campaignForm.banner.backgroundImageUrl)}")`
                       : undefined,
                     backgroundPosition: "center",
                     backgroundRepeat: "no-repeat",
@@ -1014,7 +1042,7 @@ export default function EmailManagementPage() {
                     )}
                     {campaignForm.banner.imageUrl && (
                       <Image
-                        src={apiUrl(campaignForm.banner.imageUrl)}
+                        src={backendAssetUrl(campaignForm.banner.imageUrl)}
                         alt="Custom campaign banner preview"
                         width={640}
                         height={320}

@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, parseBody, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
+import { isHttpImageUrl } from "@/lib/image-url";
 import { CAMPAIGN_BANNER_PRESETS, type CampaignBannerPresetId } from "@/lib/campaign-banners";
 import { SERVICE_PLATFORMS } from "@/lib/service-platforms";
 import { EmailCampaign, getSettings, Service, User } from "@/models";
@@ -17,13 +18,13 @@ const schema = z.object({
   accentColor: z.string().regex(/^#[\da-f]{6}$/i).optional(),
   banner: z.object({
     presetId: z.enum(bannerPresetIds).nullable(),
-    imageUrl: z.string().trim().max(500),
-    backgroundImageUrl: z.string().trim().max(500).default(""),
+    imageUrl: z.string().trim().max(2048),
+    backgroundImageUrl: z.string().trim().max(2048).default(""),
     backgroundColor: z.string().regex(/^$|^#[\da-f]{6}$/i).default(""),
   }).refine(
     ({ imageUrl, backgroundImageUrl, backgroundColor }) =>
-      (!imageUrl || /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(imageUrl)) &&
-      (!backgroundImageUrl || (/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(backgroundImageUrl) && Boolean(imageUrl))) &&
+      (!imageUrl || /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(imageUrl) || isHttpImageUrl(imageUrl)) &&
+      (!backgroundImageUrl || ((/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(backgroundImageUrl) || isHttpImageUrl(backgroundImageUrl)) && Boolean(imageUrl))) &&
       (!backgroundColor || Boolean(imageUrl)),
     "Choose a valid festival design and custom banner, with an optional background.",
   ).default({ presetId: null, imageUrl: "", backgroundImageUrl: "", backgroundColor: "" }),
