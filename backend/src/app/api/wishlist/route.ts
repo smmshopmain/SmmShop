@@ -16,7 +16,7 @@ export async function GET() {
     const user = await User.findById(auth.id).select("wishlistServices").lean();
     if (!user) return fail("User not found", 404);
 
-    const serviceIds = (user.wishlistServices ?? []).map(String);
+    const serviceIds: string[] = (user.wishlistServices ?? []).map((serviceId: unknown) => String(serviceId));
     const services = await Service.find({ _id: { $in: serviceIds } })
       .select("providerServiceId name category sellingRate min max refill active")
       .lean();
