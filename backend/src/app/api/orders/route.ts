@@ -38,8 +38,16 @@ const ORDER_CANCELLATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
 type StatusResponse = {
   status?: string;
   start_count?: string | number;
+  startCount?: string | number;
+  start?: string | number;
+  start_count_number?: string | number;
   remains?: string | number;
+  remains_count?: string | number;
+  remaining?: string | number;
+  remains_number?: string | number;
   charge?: string | number;
+  providerCharge?: string | number;
+  provider_charge?: string | number;
 };
 
 type ProviderRecord = {
@@ -79,6 +87,12 @@ function isValidOrderLink(value: string) {
   }
 }
 
+function finiteNumber(value: unknown) {
+  if (typeof value === "string" && !value.trim()) return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 async function syncOrdersWithProvider(orders: SyncableOrder[]) {
   const syncable = orders.filter((order) => order.providerOrderId && order.provider);
   const ordersByProvider = new Map<string, SyncableOrder[]>();
@@ -104,28 +118,38 @@ async function syncOrdersWithProvider(orders: SyncableOrder[]) {
         const normalizedStatus = normalizeProviderOrderStatus(status.status);
         if (normalizedStatus) order.status = normalizedStatus;
 
-        if (status.start_count !== undefined) {
-          const startCount = Number(status.start_count);
-          if (Number.isFinite(startCount)) order.startCount = startCount;
-        }
+        const startCountValue = status.start_count ?? status.startCount ?? status.start ?? status.start_count_number;
+        const startCount = finiteNumber(startCountValue);
+        if (startCount !== undefined) order.startCount = startCount;
 
-        if (status.remains !== undefined) {
-          const remains = Number(status.remains);
-          if (Number.isFinite(remains)) order.remains = remains;
-        }
+        const remainsValue = status.remains ?? status.remains_count ?? status.remaining ?? status.remains_number;
+        const remains = finiteNumber(remainsValue);
+        if (remains !== undefined) order.remains = remains;
 
-        if (status.charge !== undefined) {
-          const providerCharge = Number(status.charge);
-          if (Number.isFinite(providerCharge)) {
-            order.providerCharge = providerCharge;
-            order.providerCost = providerCharge;
-            order.profit = order.sellingPrice - providerCharge;
-          }
+        const providerChargeValue = status.charge ?? status.providerCharge ?? status.provider_charge;
+        const providerCharge = finiteNumber(providerChargeValue);
+        if (providerCharge !== undefined) {
+          order.providerCharge = providerCharge;
+          order.providerCost = providerCharge;
+          order.profit = order.sellingPrice - providerCharge;
         }
 
         order.lastStatusSyncAt = new Date();
         order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
         await order.save();
+        const manuallyCompleted = await Order.exists({
+          _id: order._id,
+          adminCompletedAt: { $exists: true },
+        });
+        if (manuallyCompleted) {
+          await Order.updateOne(
+            { _id: order._id, adminCompletedAt: { $exists: true } },
+            { $set: { status: "Completed", remains: 0 } },
+          );
+          order.status = "Completed";
+          order.remains = 0;
+          continue;
+        }
         if (order.queueKey && ["Completed", "Partial", "Canceled", "Failed"].includes(order.status)) {
           await advanceOrderQueueAfterTerminal(String(order._id), String(order.user), order.link);
         }
@@ -153,10 +177,16 @@ export async function GET(request: NextRequest) {
     const filter = { user: auth.id };
 
     if (shouldSync) {
+      const syncBefore = new Date(Date.now() - 60_000);
       const activeOrders = (await Order.find({
         ...filter,
         status: { $in: ["Pending", "Processing", "In Progress", "Partial"] },
-        providerOrderId: { $exists: true },
+        providerOrderId: { $exists: true, $nin: [null, ""] },
+        adminCompletedAt: { $exists: false },
+        $or: [
+          { lastStatusSyncAt: { $lt: syncBefore } },
+          { lastStatusSyncAt: { $exists: false } },
+        ],
       })
         .populate("provider")
         .sort({ createdAt: -1 })

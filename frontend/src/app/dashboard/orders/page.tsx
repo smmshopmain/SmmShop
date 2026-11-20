@@ -18,9 +18,10 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     createdAt: string;
     updatedAt: string;
     lastStatusSyncAt?: string;
+    adminCompletedAt?: string;
     providerOrderId?: string;
     providerResponse?: { lastStatus?: { status?: string; start_count?: string | number; remains?: string | number; charge?: string | number } };
-    service?: { name?: string; refill?: boolean; cancel?: boolean };
+    service?: { _id?: string; name?: string; refill?: boolean; cancel?: boolean };
   }> = [];
 
   try {
@@ -41,6 +42,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     createdAt: new Date(order.createdAt).toISOString(),
     updatedAt: new Date(order.updatedAt).toISOString(),
     lastStatusSyncAt: order.lastStatusSyncAt ? new Date(order.lastStatusSyncAt).toISOString() : undefined,
+    adminCompletedAt: order.adminCompletedAt ? new Date(order.adminCompletedAt).toISOString() : undefined,
     providerOrderId: order.providerOrderId,
     providerResponse: order.providerResponse
       ? {
@@ -56,6 +58,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
       : undefined,
     service: order.service
       ? {
+          _id: String(order.service._id),
           name: order.service.name,
           refill: Boolean(order.service.refill),
           cancel: Boolean(order.service.cancel),

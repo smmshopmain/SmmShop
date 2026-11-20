@@ -2,14 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, RefreshCcw, ShoppingBag, Wifi, X } from "lucide-react";
+import Link from "next/link";
 import { ActionButton } from "@/components/admin-controls";
+import { CopyTargetLink } from "@/components/copy-target-link";
 import { StatusBadge } from "@/components/status-badge";
 import { apiFetch } from "@/lib/client-api";
 
 type ProviderStatusPayload = {
   status?: string;
   start_count?: string | number;
+  startCount?: string | number;
+  start?: string | number;
+  start_count_number?: string | number;
   remains?: string | number;
+  remains_count?: string | number;
+  remaining?: string | number;
+  remains_number?: string | number;
   charge?: string | number;
 };
 
@@ -26,9 +34,10 @@ export type LiveOrder = {
   createdAt: string;
   updatedAt: string;
   lastStatusSyncAt?: string;
+  adminCompletedAt?: string;
   providerOrderId?: string;
   providerResponse?: { lastStatus?: ProviderStatusPayload };
-  service?: { name?: string; refill?: boolean; cancel?: boolean };
+  service?: { _id?: string; name?: string; refill?: boolean; cancel?: boolean };
 };
 
 function providerRawStatus(order: LiveOrder) {
@@ -41,8 +50,9 @@ function formatDate(value?: string) {
 }
 
 function completionText(order: LiveOrder) {
-  if (typeof order.remains !== "number") return "Waiting for provider";
-  const done = Math.max(0, order.quantity - order.remains);
+  const remains = order.status === "Completed" ? 0 : typeof order.remains === "number" ? order.remains : null;
+  if (remains === null) return "Waiting for provider";
+  const done = Math.min(order.quantity, Math.max(0, order.quantity - remains));
   const percent = order.quantity > 0 ? Math.min(100, Math.round((done / order.quantity) * 100)) : 0;
   return `${done}/${order.quantity} completed (${percent}%)`;
 }
@@ -71,14 +81,18 @@ export function OrderLiveList({
   const [cancelError, setCancelError] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
   const refreshing = useRef(false);
+  const lastProviderSyncAttemptAt = useRef(0);
 
   const refreshOrders = useCallback(async () => {
     if (refreshing.current) return;
     refreshing.current = true;
     setLoading(true);
     setError("");
+    const shouldSyncProvider = Date.now() - lastProviderSyncAttemptAt.current >= 60000;
+    if (shouldSyncProvider) lastProviderSyncAttemptAt.current = Date.now();
     try {
-      const response = await apiFetch("/api/orders", { cache: "no-store" });
+      const endpoint = shouldSyncProvider ? "/api/orders?sync=1" : "/api/orders";
+      const response = await apiFetch(endpoint, { cache: "no-store" });
       const result = await response.json();
       if (!response.ok) {
         setError("Unable to refresh order status right now.");
@@ -163,7 +177,7 @@ export function OrderLiveList({
         <div className="flex items-center gap-2 text-sm text-neutral-600">
           <Wifi className="size-4 text-teal-700" />
           <span className="font-semibold text-neutral-800">Live provider status</span>
-          <span className="hidden sm:inline">Auto refresh every 15s</span>
+          <span className="hidden sm:inline">Auto refresh every 30s</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {lastUpdated && <span className="text-xs text-neutral-500">Last sync: {formatDate(lastUpdated)}</span>}
@@ -199,7 +213,7 @@ export function OrderLiveList({
           >
             <div className="min-w-0">
               <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
-              <p className="truncate text-neutral-500">{order.link}</p>
+              <CopyTargetLink link={order.link} />
               <p className="mt-1 text-xs text-neutral-500">Order ID: {String(order._id)}</p>
               <p className="text-xs text-neutral-500">Provider Order ID: {order.providerOrderId ?? "-"}</p>
             </div>
@@ -207,6 +221,9 @@ export function OrderLiveList({
             <div className="grid grid-cols-2 gap-1 xl:block">
               <p className="text-xs font-medium uppercase text-neutral-400">App status</p>
               <StatusBadge status={order.status} />
+              {order.adminCompletedAt && (
+                <p className="mt-1 text-xs font-medium text-teal-800">Manually completed by admin</p>
+              )}
               {order.status === "Partial" && <p className="mt-1 text-xs font-semibold text-amber-700">Incomplete / Partial</p>}
               {order.status === "Scheduled" && (
                 <p className="mt-1 text-xs font-medium text-indigo-700">
@@ -227,7 +244,9 @@ export function OrderLiveList({
 
             <div className="grid grid-cols-2 gap-1 xl:block">
               <p className="text-xs font-medium uppercase text-neutral-400">Remaining</p>
-              <p className="font-semibold">{typeof order.remains === "number" ? order.remains : "-"}</p>
+              <p className="font-semibold">
+                {order.status === "Completed" ? 0 : typeof order.remains === "number" ? order.remains : "-"}
+              </p>
               <p className="text-xs text-neutral-500">Start: {typeof order.startCount === "number" ? order.startCount : "-"}</p>
             </div>
 
@@ -243,6 +262,14 @@ export function OrderLiveList({
             </div>
 
             <div className="flex flex-wrap gap-2 xl:justify-end">
+              {order.service?._id && (
+                <Link
+                  href={`/dashboard/services?serviceId=${encodeURIComponent(order.service._id)}`}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-teal-700 px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-50"
+                >
+                  <ShoppingBag className="size-3.5" /> Generate new order
+                </Link>
+              )}
               {order.service?.refill && order.status === "Completed" && (
                 <ActionButton label="Refill" endpoint="/api/refills" method="POST" body={{ orderId: String(order._id) }} />
               )}

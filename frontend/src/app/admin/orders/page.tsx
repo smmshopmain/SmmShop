@@ -3,6 +3,7 @@
 import { ActionButton } from "@/components/admin-controls";
 import { AdminEmptyState, AdminHeader, AdminSection } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
+import { CopyTargetLink } from "@/components/copy-target-link";
 import { StatusBadge } from "@/components/status-badge";
 import { apiJson } from "@/lib/client-api";
 import { Search, ShoppingBag, SlidersHorizontal } from "lucide-react";
@@ -18,10 +19,23 @@ type AdminOrder = {
     startCount?: number;
     remains?: number;
     providerOrderId?: string;
+    hasRefund?: boolean;
+    adminCompletedAt?: string;
+    adminReverifiedAt?: string;
+    providerResponse?: { lastStatus?: { status?: string } };
     user?: { email?: string };
     service?: { name?: string; cancel?: boolean };
     createdAt: Date;
 };
+
+function canCancelOrder(order: AdminOrder) {
+  return order.status === "Scheduled" ||
+    (order.service?.cancel === true && ["Pending", "Processing", "In Progress"].includes(order.status));
+}
+
+function canManuallyCompleteOrder(order: AdminOrder) {
+  return order.status !== "Completed" && !order.hasRefund;
+}
 
 export default function AdminOrdersPage() {
   const searchParams = useSearchParams();
@@ -72,7 +86,7 @@ export default function AdminOrdersPage() {
         }
       />
       <AdminSection title="Order queue" description="Latest provider orders and operational actions" icon={ShoppingBag}>
-        <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:grid-cols-[minmax(0,1fr)_170px_110px_100px_120px]">
+        <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:grid-cols-[minmax(0,1fr)_170px_110px_100px_180px]">
           <span>Order</span>
           <span>Created</span>
           <span>Status</span>
@@ -80,21 +94,52 @@ export default function AdminOrdersPage() {
           <span>Action</span>
         </div>
         {orders.map((order) => (
-          <div key={String(order._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm xl:grid-cols-[minmax(0,1fr)_170px_110px_100px_120px] xl:items-center">
+          <div key={String(order._id)} className="grid gap-3 border-b border-neutral-100 p-4 text-sm xl:grid-cols-[minmax(0,1fr)_170px_110px_100px_180px] xl:items-center">
             <div className="min-w-0">
               <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
               <p className="text-neutral-500">{order.user?.email ?? "User"} / {order.providerOrderId ?? "-"}</p>
-              <p className="text-neutral-500">Start {order.startCount ?? "-"} / Remains {order.remains ?? "-"}</p>
-              <p className="truncate text-neutral-500">{order.link}</p>
+              <p className="text-neutral-500">
+                Start {order.startCount ?? "-"} / Remains {order.status === "Completed" ? 0 : order.remains ?? "-"}
+              </p>
+              <CopyTargetLink link={order.link} />
             </div>
             <span className="text-neutral-500">{new Date(order.createdAt).toLocaleString()}</span>
-            <StatusBadge status={order.status} />
+            <div>
+              <StatusBadge status={order.status} />
+              {order.providerResponse?.lastStatus?.status && (
+                <p className="mt-1 text-xs text-neutral-500">
+                  Provider: {order.providerResponse.lastStatus.status}
+                </p>
+              )}
+              {order.adminCompletedAt && <p className="mt-1 text-xs text-teal-800">Manually completed</p>}
+              {order.adminReverifiedAt && <p className="mt-1 text-xs text-sky-800">Provider reverified</p>}
+              {order.hasRefund && <p className="mt-1 text-xs font-medium text-rose-700">Refunded — cannot mark completed</p>}
+            </div>
             <strong>Rs.{order.sellingPrice}</strong>
-            {order.status === "Scheduled" || (order.service?.cancel && ["Pending", "Processing", "In Progress"].includes(order.status)) ? (
-              <ActionButton label="Cancel" endpoint="/api/admin/orders" body={{ id: String(order._id), action: "cancel" }} danger />
-            ) : (
-              <span className="text-xs text-neutral-400">No action</span>
-            )}
+            <div className="flex flex-col items-start gap-2">
+              {canManuallyCompleteOrder(order) && (
+                <ActionButton
+                  label="Mark completed"
+                  endpoint="/api/admin/orders"
+                  body={{ id: String(order._id), action: "complete" }}
+                  confirmMessage="Mark this order as completed? This will not issue a refund, and the next queued order may start."
+                />
+              )}
+              {order.providerOrderId && !order.adminReverifiedAt && (
+                <ActionButton
+                  label="Reverify provider"
+                  endpoint="/api/admin/orders"
+                  body={{ id: String(order._id), action: "reverify" }}
+                  confirmMessage="Request this order's current status from the provider? This can be done once by an admin."
+                />
+              )}
+              {canCancelOrder(order) && (
+                <ActionButton label="Cancel" endpoint="/api/admin/orders" body={{ id: String(order._id), action: "cancel" }} danger />
+              )}
+              {!canManuallyCompleteOrder(order) && !order.providerOrderId && !canCancelOrder(order) && (
+                <span className="text-xs text-neutral-400">No actions available</span>
+              )}
+            </div>
           </div>
         ))}
         {orders.length === 0 && <AdminEmptyState icon={ShoppingBag} title="No orders found" description="Try changing the filters or wait for new customer orders." />}

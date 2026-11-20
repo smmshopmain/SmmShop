@@ -187,6 +187,8 @@ const OrderSchema = new Schema(
     remains: Number,
     warningAcceptedAt: { type: Date, required: true },
     lastStatusSyncAt: Date,
+    adminCompletedAt: Date,
+    adminReverifiedAt: Date,
     providerResponse: Schema.Types.Mixed,
   },
   { timestamps: true },

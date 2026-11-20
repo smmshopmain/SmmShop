@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
     const activeOrders = await Order.find({
       status: { $in: syncableStatuses },
       providerOrderId: { $exists: true },
+      adminCompletedAt: { $exists: false },
     })
       .populate("provider")
       .limit(100);
@@ -120,6 +121,17 @@ export async function GET(request: NextRequest) {
           order.lastStatusSyncAt = new Date();
           order.providerResponse = { ...(order.providerResponse ?? {}), lastStatus: status };
           await order.save();
+          const manuallyCompleted = await Order.exists({
+            _id: order._id,
+            adminCompletedAt: { $exists: true },
+          });
+          if (manuallyCompleted) {
+            await Order.updateOne(
+              { _id: order._id, adminCompletedAt: { $exists: true } },
+              { $set: { status: "Completed", remains: 0 } },
+            );
+            continue;
+          }
           if (order.queueKey && ["Completed", "Partial", "Canceled", "Failed"].includes(order.status)) {
             await advanceOrderQueueAfterTerminal(String(order._id), String(order.user), order.link);
           }
