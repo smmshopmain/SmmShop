@@ -12,10 +12,12 @@ import {
   withOrderQueueLock,
 } from "@/lib/order-queue";
 import {
-  cancelProviderOrder,
   getProviderStatuses,
   logProviderEvent,
   normalizeProviderOrderStatus,
+  providerStatusForOrder,
+  tryCancelProviderOrder,
+  type ProviderCancellationAttempt,
 } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
 import { Order, PromoCode, Service, User, WalletTransaction } from "@/models";
@@ -32,23 +34,6 @@ const patchSchema = z.object({
   id: z.string().min(1),
   action: z.enum(["cancel"]),
 });
-
-const ORDER_CANCELLATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
-
-type StatusResponse = {
-  status?: string;
-  start_count?: string | number;
-  startCount?: string | number;
-  start?: string | number;
-  start_count_number?: string | number;
-  remains?: string | number;
-  remains_count?: string | number;
-  remaining?: string | number;
-  remains_number?: string | number;
-  charge?: string | number;
-  providerCharge?: string | number;
-  provider_charge?: string | number;
-};
 
 type ProviderRecord = {
   _id: unknown;
@@ -112,7 +97,7 @@ async function syncOrdersWithProvider(orders: SyncableOrder[]) {
       );
 
       for (const order of providerOrders) {
-        const status = statuses[String(order.providerOrderId)] as StatusResponse | undefined;
+        const status = providerStatusForOrder(statuses, String(order.providerOrderId));
         if (!status) continue;
 
         const normalizedStatus = normalizeProviderOrderStatus(status.status);
@@ -337,43 +322,63 @@ export async function PATCH(request: NextRequest) {
 
     const canceledOrder = await withOrderQueueLock(auth.id, existingOrder.link, async (queue) => {
       const order = await Order.findOne({ _id: input.id, user: auth.id })
-        .populate("provider")
-        .populate("service");
+        .populate("provider");
       if (!order) throw new Error("Order not found");
 
-      if (order.status === "Scheduled") {
+      const wasScheduled = order.status === "Scheduled";
+      if (wasScheduled) {
         order.status = "Canceled";
       } else {
         if (!["Pending", "Processing", "In Progress"].includes(order.status)) {
           throw new Error("Only active or scheduled orders can be canceled");
         }
-        const hasPassedGracePeriod =
-          Date.now() - order.createdAt.getTime() >= ORDER_CANCELLATION_GRACE_PERIOD_MS;
-        if (!order.service?.cancel && !hasPassedGracePeriod) {
-          throw new Error("This service does not support cancellation before the order has been active for one hour.");
-        }
-        if (!order.providerOrderId) throw new Error("Provider order id is missing");
 
         queue.activeOrder = order._id;
         await queue.save();
-        const result = await cancelProviderOrder(order.provider, order.providerOrderId);
-        if (result.error) throw new Error(result.error);
-        order.providerResponse = { ...(order.providerResponse ?? {}), cancel: result };
       }
 
+      let cancellationAttempt: ProviderCancellationAttempt = {
+        attempted: false,
+        accepted: false,
+        error: "Order was not submitted to the provider.",
+      };
+      if (!wasScheduled && order.providerOrderId && order.provider) {
+        cancellationAttempt = await tryCancelProviderOrder(order.provider, order.providerOrderId);
+      } else if (!wasScheduled && order.providerOrderId && !order.provider) {
+        cancellationAttempt.error = "Provider record is unavailable.";
+        await logProviderEvent({
+          level: "warning",
+          scope: "order_cancel",
+          action: "cancel",
+          message: "Provider record is unavailable; continuing with website cancellation.",
+          details: { orderId: String(order._id), providerOrderId: order.providerOrderId },
+        });
+      }
+
+      order.providerResponse = {
+        ...(order.providerResponse ?? {}),
+        ...(cancellationAttempt.response !== undefined ? { cancel: cancellationAttempt.response } : {}),
+        cancellationAttempt: { ...cancellationAttempt, attemptedAt: new Date() },
+      };
       order.lastStatusSyncAt = new Date();
       await order.save();
       await drainOrderQueueLocked(queue);
-      return order;
+      return { order, cancellationAttempt };
     });
+
+    const message = canceledOrder.cancellationAttempt.attempted
+      ? canceledOrder.cancellationAttempt.accepted
+        ? "Provider accepted cancellation. The order was canceled on the website."
+        : "The order was canceled on the website, but the provider did not confirm cancellation and may continue work."
+      : "The order was canceled before it was submitted to the provider.";
 
     await notifyInApp({
       user: auth.id,
       title: "Order canceled",
-      body: `Order ${canceledOrder._id} was canceled. No refund was issued.`,
+      body: `Order ${canceledOrder.order._id} was canceled. ${message} No refund was issued.`,
     });
 
-    return ok({ order: canceledOrder });
+    return ok({ order: canceledOrder.order, message: `${message} No refund was issued.` });
   } catch (error) {
     if (error instanceof OrderQueueBusyError) return fail(error.message, 409);
     await logProviderEvent({

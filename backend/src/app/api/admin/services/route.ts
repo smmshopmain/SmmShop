@@ -17,17 +17,23 @@ export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
     const { searchParams } = new URL(request.url);
-    const q = searchParams.get("q");
+    const q = searchParams.get("q")?.trim().slice(0, 100);
     const category = searchParams.get("category");
     const filter: Record<string, unknown> = {};
     if (category) filter.category = category;
     if (q) {
-      const terms = q.trim().split(/\s+/).filter(Boolean);
+      const terms = q.split(/\s+/).filter(Boolean);
       if (terms.length > 0) {
         const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         filter.$and = terms.map((term) => {
           const expression = new RegExp(escapeRegex(term), "i");
-          return { $or: [{ name: expression }, { category: expression }] };
+          return {
+            $or: [
+              { name: expression },
+              { category: expression },
+              { providerServiceId: expression },
+            ],
+          };
         });
       }
     }

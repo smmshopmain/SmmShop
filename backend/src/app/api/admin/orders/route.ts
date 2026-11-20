@@ -53,8 +53,7 @@ export async function PATCH(request: NextRequest) {
     const { auth } = await requireAdmin();
     const input = await parseBody(request, patchSchema);
     if (input.action === "cancel") {
-      const order = await cancelAdminOrder(input.id, auth.id);
-      return ok({ order });
+      return ok(await cancelAdminOrder(input.id, auth.id));
     }
     if (input.action === "complete") {
       const order = await completeAdminOrder(input.id, auth.id);

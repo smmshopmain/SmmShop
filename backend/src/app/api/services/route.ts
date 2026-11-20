@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q")?.trim();
+    const query = searchParams.get("q")?.trim().slice(0, 100);
     const category = searchParams.get("category");
     const platformParam = searchParams.get("platform");
     const serviceId = searchParams.get("id");
@@ -47,7 +47,13 @@ export async function GET(request: NextRequest) {
       if (terms.length > 0) {
         filter.$and = terms.map((term) => {
           const expression = new RegExp(escapeRegex(term), "i");
-          return { $or: [{ name: expression }, { category: expression }] };
+          return {
+            $or: [
+              { name: expression },
+              { category: expression },
+              { providerServiceId: expression },
+            ],
+          };
         });
       }
     }

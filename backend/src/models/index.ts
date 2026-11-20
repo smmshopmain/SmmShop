@@ -48,6 +48,7 @@ const UserSchema = new Schema(
     phoneChangeAttempts: { type: Number, default: 0 },
     passwordChangeTokenHash: String,
     passwordChangeExpiresAt: Date,
+    wishlistServices: [{ type: Schema.Types.ObjectId, ref: "Service" }],
     passwordChangeAttempts: { type: Number, default: 0 },
   },
   { timestamps: true },

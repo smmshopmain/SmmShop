@@ -9,46 +9,13 @@ import {
   logProviderEvent,
   normalizeProviderOrderStatus,
   normalizeProviderRefillStatus,
+  providerStatusForOrder,
 } from "@/lib/provider";
 import { Order, Refill } from "@/models";
-
-type StatusResponse = {
-  status?: string;
-  start_count?: string | number;
-  startCount?: string | number;
-  start?: string | number;
-  start_count_number?: string | number;
-  remains?: string | number;
-  remains_count?: string | number;
-  remaining?: string | number;
-  remains_number?: string | number;
-  charge?: string | number;
-  providerCharge?: string | number;
-  provider_charge?: string | number;
-};
 
 function asFiniteNumber(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
-}
-
-function statusResponseForOrder(statuses: unknown, providerOrderId: string): StatusResponse | null {
-  if (!statuses || typeof statuses !== "object") return null;
-  const record = statuses as Record<string, unknown>;
-  const direct = record[providerOrderId];
-  if (direct && typeof direct === "object") return direct as StatusResponse;
-
-  if ("status" in record || "start_count" in record || "remains" in record || "charge" in record) {
-    return record as StatusResponse;
-  }
-
-  const nestedKeys = ["data", "result", "response", "orders", "statuses"] as const;
-  for (const key of nestedKeys) {
-    const nested = statusResponseForOrder(record[key], providerOrderId);
-    if (nested) return nested;
-  }
-
-  return null;
 }
 
 export async function GET(request: NextRequest) {
@@ -93,7 +60,7 @@ export async function GET(request: NextRequest) {
           orders.map((order) => String(order.providerOrderId)),
         );
         for (const order of orders) {
-          const status = statusResponseForOrder(statuses, String(order.providerOrderId));
+          const status = providerStatusForOrder(statuses, String(order.providerOrderId));
           if (!status) continue;
           const normalizedStatus = normalizeProviderOrderStatus(status.status);
           if (normalizedStatus) order.status = normalizedStatus;

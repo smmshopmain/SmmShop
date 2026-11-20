@@ -22,15 +22,17 @@ type AdminOrder = {
     hasRefund?: boolean;
     adminCompletedAt?: string;
     adminReverifiedAt?: string;
-    providerResponse?: { lastStatus?: { status?: string } };
+    providerResponse?: {
+      lastStatus?: { status?: string };
+      cancellationAttempt?: { attempted?: boolean; accepted?: boolean; error?: string };
+    };
     user?: { email?: string };
     service?: { name?: string; cancel?: boolean };
     createdAt: Date;
 };
 
 function canCancelOrder(order: AdminOrder) {
-  return order.status === "Scheduled" ||
-    (order.service?.cancel === true && ["Pending", "Processing", "In Progress"].includes(order.status));
+  return ["Scheduled", "Pending", "Processing", "In Progress"].includes(order.status);
 }
 
 function canManuallyCompleteOrder(order: AdminOrder) {
@@ -63,7 +65,7 @@ export default function AdminOrdersPage() {
       <AdminHeader
         eyebrow="Order operations"
         title="Orders"
-        description="Search, filter, and cancel eligible provider orders from a clean admin queue."
+        description="Search, filter, and cancel orders. If the provider does not confirm, cancellation is still recorded on this website."
         actions={
         <form className="grid gap-2 sm:grid-cols-[1fr_150px_auto]" action="/admin/orders">
           <label className="relative min-w-0">
@@ -110,6 +112,16 @@ export default function AdminOrdersPage() {
                 <p className="mt-1 text-xs text-neutral-500">
                   Provider: {order.providerResponse.lastStatus.status}
                 </p>
+              )}
+              {order.providerResponse?.cancellationAttempt?.attempted && (
+                <p className="mt-1 text-xs text-amber-800">
+                  {order.providerResponse.cancellationAttempt.accepted
+                    ? "Provider accepted cancellation"
+                    : "Provider cancellation not confirmed"}
+                </p>
+              )}
+              {order.status === "Canceled" && order.providerResponse?.cancellationAttempt?.attempted === false && (
+                <p className="mt-1 text-xs text-neutral-500">Canceled before provider submission</p>
               )}
               {order.adminCompletedAt && <p className="mt-1 text-xs text-teal-800">Manually completed</p>}
               {order.adminReverifiedAt && <p className="mt-1 text-xs text-sky-800">Provider reverified</p>}

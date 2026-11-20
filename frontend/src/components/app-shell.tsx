@@ -20,6 +20,7 @@ import {
   RefreshCcw,
   Settings,
   Shield,
+  Star,
   Tags,
   Ticket,
   AlertTriangle,
@@ -60,6 +61,7 @@ function currentLoginPath() {
 const userLinks: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: Gauge },
   { href: "/dashboard/services", label: "Explore", icon: Layers3 },
+  { href: "/dashboard/wishlist", label: "Wishlist", icon: Star },
   { href: "/dashboard/orders", label: "My orders", icon: History },
   { href: "/dashboard/refills", label: "Refills", icon: RefreshCcw },
   { href: "/dashboard/wallet", label: "My wallet", icon: Wallet },

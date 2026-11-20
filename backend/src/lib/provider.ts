@@ -229,9 +229,69 @@ export async function addProviderOrder(
 export type ProviderStatus = {
   status?: string;
   start_count?: string | number;
+  startCount?: string | number;
+  start?: string | number;
+  start_count_number?: string | number;
   remains?: string | number;
+  remains_count?: string | number;
+  remaining?: string | number;
+  remains_number?: string | number;
   charge?: string | number;
+  providerCharge?: string | number;
+  provider_charge?: string | number;
 };
+
+export type ProviderCancellationAttempt = {
+  attempted: boolean;
+  accepted: boolean;
+  response?: unknown;
+  error?: string;
+};
+
+function isProviderStatus(value: unknown): value is ProviderStatus {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  return [
+    "status",
+    "start_count",
+    "startCount",
+    "start",
+    "start_count_number",
+    "remains",
+    "remains_count",
+    "remaining",
+    "remains_number",
+    "charge",
+    "providerCharge",
+    "provider_charge",
+  ].some((key) => key in value);
+}
+
+export function providerStatusForOrder(value: unknown, orderId: string): ProviderStatus | null {
+  if (Array.isArray(value)) {
+    const matchingOrder = value.find((item) => {
+      if (!item || typeof item !== "object") return false;
+      const record = item as Record<string, unknown>;
+      return String(record.order ?? record.order_id ?? record.id ?? "") === orderId;
+    });
+    if (matchingOrder) return providerStatusForOrder(matchingOrder, orderId);
+    return value.length === 1 ? providerStatusForOrder(value[0], orderId) : null;
+  }
+  if (!value || typeof value !== "object") return null;
+
+  const record = value as Record<string, unknown>;
+  const direct = record[orderId];
+  if (direct !== undefined) {
+    const directStatus = providerStatusForOrder(direct, orderId);
+    if (directStatus) return directStatus;
+  }
+
+  for (const key of ["data", "result", "response", "orders", "statuses"] as const) {
+    const nestedStatus = providerStatusForOrder(record[key], orderId);
+    if (nestedStatus) return nestedStatus;
+  }
+
+  return isProviderStatus(record) ? record : null;
+}
 
 export async function getProviderStatuses(
   provider: ProviderRecord,
@@ -259,6 +319,55 @@ export async function cancelProviderOrder(provider: ProviderRecord, orderId: str
     action: "cancel",
     order: orderId,
   });
+}
+
+function providerCancellationAccepted(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(providerCancellationAccepted);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if ("cancel" in record) return providerCancellationAccepted(record.cancel);
+    if ("status" in record && ["success", "accepted"].includes(String(record.status).trim().toLowerCase())) {
+      return true;
+    }
+    return ["data", "result", "response"].some((key) => providerCancellationAccepted(record[key]));
+  }
+  if (typeof value === "string" && ["success", "accepted", "cancelled", "canceled"].includes(value.trim().toLowerCase())) {
+    return true;
+  }
+  return parseProviderBoolean(value);
+}
+
+export async function tryCancelProviderOrder(
+  provider: ProviderRecord,
+  orderId: string,
+): Promise<ProviderCancellationAttempt> {
+  try {
+    const response = await cancelProviderOrder(provider, orderId);
+    const accepted = providerCancellationAccepted(response);
+    if (accepted) return { attempted: true, accepted: true, response };
+
+    const error = response.error ?? "Provider did not confirm the cancellation.";
+    await logProviderEvent({
+      provider,
+      level: "warning",
+      scope: "order_cancel",
+      action: "cancel",
+      message: `${error} The website will still cancel the order.`,
+      details: { providerOrderId: orderId, response },
+    });
+    return { attempted: true, accepted: false, response, error };
+  } catch (requestError) {
+    const error = requestError instanceof Error ? requestError.message : "Provider cancellation request failed.";
+    await logProviderEvent({
+      provider,
+      level: "warning",
+      scope: "order_cancel",
+      action: "cancel",
+      message: `${error} The website will still cancel the order.`,
+      details: { providerOrderId: orderId },
+    });
+    return { attempted: true, accepted: false, error };
+  }
 }
 
 export async function requestProviderRefill(provider: ProviderRecord, orderId: string) {

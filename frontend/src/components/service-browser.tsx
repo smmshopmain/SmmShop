@@ -1,6 +1,6 @@
 "use client";
 
-import { BadgeCheck, Filter, Info, Search, ShoppingCart, Sparkles, TrendingUp } from "lucide-react";
+import { BadgeCheck, Filter, Info, Search, ShoppingCart, Sparkles, Star, TrendingUp } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import { apiFetch } from "@/lib/client-api";
@@ -31,6 +31,7 @@ import { ContentLoading } from "@/components/content-loading";
 
 type ServiceItem = {
   _id: string;
+  providerServiceId: string;
   name: string;
   category: string;
   sellingRate: number;
@@ -99,7 +100,34 @@ export function ServiceBrowser() {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [serviceLoading, setServiceLoading] = useState(true);
+  const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
+  const [wishlistLoaded, setWishlistLoaded] = useState(false);
+  const [wishlistBusyIds, setWishlistBusyIds] = useState<Set<string>>(new Set());
+  const [wishlistMessage, setWishlistMessage] = useState("");
   const activePlatform = PLATFORM_OPTIONS.find((item) => item.id === platform) ?? PLATFORM_OPTIONS[0];
+
+  useEffect(() => {
+    let active = true;
+    apiFetch("/api/wishlist", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message ?? "Unable to load your wishlist.");
+        if (active) {
+          setWishlistIds(new Set((result.data?.services ?? []).map((service: ServiceItem) => service._id)));
+          setWishlistLoaded(true);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setWishlistMessage(error instanceof Error ? error.message : "Unable to load your wishlist.");
+          setWishlistLoaded(true);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -166,6 +194,36 @@ export function ServiceBrowser() {
   }, [quantity, selected]);
   const estimatedTotalNumber = Number(estimatedTotal);
   const finalTotal = Math.max(0, estimatedTotalNumber - (promoPreview?.discount ?? 0)).toFixed(2);
+
+  async function toggleWishlist(service: ServiceItem) {
+    const saved = wishlistIds.has(service._id);
+    setWishlistBusyIds((current) => new Set(current).add(service._id));
+    setWishlistMessage("");
+    try {
+      const response = await apiFetch("/api/wishlist", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action: saved ? "remove" : "add", serviceId: service._id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message ?? "Unable to update your wishlist.");
+      setWishlistIds((current) => {
+        const next = new Set(current);
+        if (saved) next.delete(service._id);
+        else next.add(service._id);
+        return next;
+      });
+      setWishlistMessage(saved ? "Service removed from your wishlist." : "Service saved to your wishlist.");
+    } catch (error) {
+      setWishlistMessage(error instanceof Error ? error.message : "Unable to update your wishlist.");
+    } finally {
+      setWishlistBusyIds((current) => {
+        const next = new Set(current);
+        next.delete(service._id);
+        return next;
+      });
+    }
+  }
 
   async function applyPromo() {
     if (!promoCode.trim()) {
@@ -253,17 +311,21 @@ export function ServiceBrowser() {
             <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-neutral-400" />
             <input
               value={query}
+              maxLength={100}
               onChange={(event) => {
                 setQuery(event.target.value);
                 resetSelection();
               }}
-              placeholder="Search services, categories or keywords..."
+              placeholder="Search service name, provider ID, category or keywords..."
               className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50/80 pl-11 pr-4 text-sm shadow-none focus:bg-white"
             />
             <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-[10px] font-medium text-neutral-400 sm:block">
               Search catalog
             </span>
           </label>
+          {wishlistMessage && (
+            <p role="status" className="mt-2 text-xs font-medium text-neutral-600">{wishlistMessage}</p>
+          )}
 
           <div className="mt-5">
             <div className="mb-2.5 flex items-center justify-between">
@@ -332,30 +394,53 @@ export function ServiceBrowser() {
             const active = selected?._id === service._id;
             const PlatformIcon = activePlatform.Icon;
             return (
-              <button
+              <div
                 key={service._id}
-                type="button"
-                onClick={() => {
-                  setSelected(service);
-                  setQuantity(service.min);
-                  setPromoPreview(null);
-                  setMessage("");
-                }}
-                className={`service-row grid w-full min-w-0 items-center gap-3 px-4 py-4 text-left transition sm:grid-cols-[minmax(0,1fr)_110px_90px] sm:px-6 ${
+                className={`service-row grid w-full min-w-0 items-center gap-3 px-4 py-4 transition sm:grid-cols-[minmax(0,1fr)_110px_90px] sm:px-6 ${
                   active ? "bg-teal-50/80 ring-1 ring-inset ring-teal-200" : "hover:bg-slate-50"
                 }`}
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${active ? "bg-teal-700 text-white" : "bg-neutral-100"}`}>
-                    <PlatformIcon className={active ? "text-lg text-white" : `text-lg ${activePlatform.color}`} />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-[13px] font-bold text-neutral-900">{service.name}</span>
-                    <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
-                      <span className="truncate">{service.category}</span>
-                      {service.refill && <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">Refill</span>}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelected(service);
+                      setQuantity(service.min);
+                      setPromoPreview(null);
+                      setMessage("");
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${active ? "bg-teal-700 text-white" : "bg-neutral-100"}`}>
+                      <PlatformIcon className={active ? "text-lg text-white" : `text-lg ${activePlatform.color}`} />
                     </span>
-                  </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-[13px] font-bold text-neutral-900">{service.name}</span>
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
+                        <span className="truncate">{service.category}</span>
+                        <span className="rounded-full bg-neutral-100 px-2 py-0.5 font-mono text-[10px] font-semibold text-neutral-600">
+                          ID {service.providerServiceId}
+                        </span>
+                        {service.refill && <span className="rounded-full bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">Refill</span>}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`${wishlistIds.has(service._id) ? "Remove" : "Add"} ${service.name} ${wishlistIds.has(service._id) ? "from" : "to"} wishlist`}
+                    aria-pressed={wishlistIds.has(service._id)}
+                    title={wishlistIds.has(service._id) ? "Remove from wishlist" : "Save to wishlist"}
+                    disabled={!wishlistLoaded || wishlistBusyIds.has(service._id)}
+                    aria-busy={wishlistBusyIds.has(service._id)}
+                    onClick={() => void toggleWishlist(service)}
+                    className="grid size-9 shrink-0 place-items-center rounded-xl border border-neutral-200 bg-white text-neutral-400 transition hover:border-amber-300 hover:bg-amber-50 disabled:cursor-wait disabled:opacity-60"
+                  >
+                    <Star
+                      className="size-4"
+                      fill={wishlistIds.has(service._id) ? "currentColor" : "none"}
+                      style={wishlistIds.has(service._id) ? { color: "var(--motion-accent)" } : undefined}
+                    />
+                  </button>
                 </span>
                 <span className="flex items-center justify-between gap-2 sm:block">
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 sm:hidden">Rate</span>
@@ -365,7 +450,7 @@ export function ServiceBrowser() {
                   <span className="text-[10px] font-semibold uppercase tracking-wide text-neutral-400 sm:hidden">Quantity</span>
                   <span className="text-xs font-semibold text-neutral-600">{service.min} / {service.max}</span>
                 </span>
-              </button>
+              </div>
             );
           })}
           {services.length === 0 && (

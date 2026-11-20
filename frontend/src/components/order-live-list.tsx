@@ -21,8 +21,6 @@ type ProviderStatusPayload = {
   charge?: string | number;
 };
 
-const ORDER_CANCELLATION_GRACE_PERIOD_MS = 60 * 60 * 1000;
-
 export type LiveOrder = {
   _id: string;
   link: string;
@@ -36,7 +34,10 @@ export type LiveOrder = {
   lastStatusSyncAt?: string;
   adminCompletedAt?: string;
   providerOrderId?: string;
-  providerResponse?: { lastStatus?: ProviderStatusPayload };
+  providerResponse?: {
+    lastStatus?: ProviderStatusPayload;
+    cancellationAttempt?: { attempted?: boolean; accepted?: boolean; error?: string };
+  };
   service?: { _id?: string; name?: string; refill?: boolean; cancel?: boolean };
 };
 
@@ -58,10 +59,7 @@ function completionText(order: LiveOrder) {
 }
 
 function canCancelOrder(order: LiveOrder) {
-  if (order.status === "Scheduled") return true;
-  if (!["Pending", "Processing", "In Progress"].includes(order.status)) return false;
-  return order.service?.cancel === true ||
-    Date.now() - new Date(order.createdAt).getTime() >= ORDER_CANCELLATION_GRACE_PERIOD_MS;
+  return ["Scheduled", "Pending", "Processing", "In Progress"].includes(order.status);
 }
 
 export function OrderLiveList({
@@ -77,6 +75,7 @@ export function OrderLiveList({
   const [loading, setLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
   const [error, setError] = useState("");
+  const [cancelNotice, setCancelNotice] = useState("");
   const [cancelCandidate, setCancelCandidate] = useState<LiveOrder | null>(null);
   const [cancelError, setCancelError] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
@@ -155,11 +154,17 @@ export function OrderLiveList({
       if (!response.ok) {
         throw new Error(result.message ?? "Unable to cancel order.");
       }
+      const canceledOrder = result.data?.order as LiveOrder | undefined;
       setOrders((current) =>
-        current.map((order) =>
-          order._id === cancelCandidate._id ? { ...order, status: "Canceled" } : order,
-        ),
+        current.map((order) => order._id === cancelCandidate._id
+          ? {
+              ...order,
+              status: "Canceled",
+              providerResponse: canceledOrder?.providerResponse ?? order.providerResponse,
+            }
+          : order),
       );
+      setCancelNotice(result.data?.message ?? "Order canceled on the website.");
       setCancelCandidate(null);
       void refreshOrders();
     } catch (cancelRequestError) {
@@ -194,6 +199,12 @@ export function OrderLiveList({
         </div>
       </div>
 
+      {cancelNotice && (
+        <p role="status" className="border-b border-neutral-200 bg-amber-50 px-4 py-2 text-xs font-medium text-amber-900">
+          {cancelNotice}
+        </p>
+      )}
+
       <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px]">
         <span>Service</span>
         <span>App status</span>
@@ -223,6 +234,16 @@ export function OrderLiveList({
               <StatusBadge status={order.status} />
               {order.adminCompletedAt && (
                 <p className="mt-1 text-xs font-medium text-teal-800">Manually completed by admin</p>
+              )}
+              {order.providerResponse?.cancellationAttempt?.attempted && (
+                <p className="mt-1 text-xs text-amber-800">
+                  {order.providerResponse.cancellationAttempt.accepted
+                    ? "Provider accepted cancellation"
+                    : "Provider cancellation not confirmed"}
+                </p>
+              )}
+              {order.status === "Canceled" && order.providerResponse?.cancellationAttempt?.attempted === false && (
+                <p className="mt-1 text-xs text-neutral-500">Canceled before provider submission</p>
               )}
               {order.status === "Partial" && <p className="mt-1 text-xs font-semibold text-amber-700">Incomplete / Partial</p>}
               {order.status === "Scheduled" && (
@@ -278,6 +299,7 @@ export function OrderLiveList({
                   type="button"
                   onClick={() => {
                     setCancelError("");
+                    setCancelNotice("");
                     setCancelCandidate(order);
                   }}
                   className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-800"
@@ -285,7 +307,7 @@ export function OrderLiveList({
                   Cancel
                 </button>
               )}
-              {order.status !== "Scheduled" && !order.service?.refill && !order.service?.cancel && (
+              {!order.service?.refill && !canCancelOrder(order) && (
                 <span className="text-xs text-neutral-400">No actions</span>
               )}
             </div>
@@ -339,6 +361,7 @@ export function OrderLiveList({
             <div className="mt-5 space-y-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900">
               <p lang="hi" className="font-semibold">ऑर्डर कैंसल करने पर कोई रिफंड नहीं मिलेगा।</p>
               <p>Canceling this order will not result in a refund.</p>
+              <p>If the provider does not confirm cancellation, the order will still be canceled on this website, but provider work may continue.</p>
             </div>
             {cancelError && <p className="mt-3 text-sm font-medium text-rose-700">{cancelError}</p>}
             <div className="mt-5 flex justify-end gap-2">

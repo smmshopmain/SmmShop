@@ -5,26 +5,14 @@ import {
   withOrderQueueLock,
 } from "@/lib/order-queue";
 import {
-  cancelProviderOrder,
   getProviderStatuses,
+  logProviderEvent,
   normalizeProviderOrderStatus,
+  providerStatusForOrder,
+  tryCancelProviderOrder,
+  type ProviderCancellationAttempt,
 } from "@/lib/provider";
 import { AuditLog, Order, User, WalletTransaction } from "@/models";
-
-type ReverifiedProviderStatus = {
-  status?: string;
-  start_count?: string | number;
-  startCount?: string | number;
-  start?: string | number;
-  start_count_number?: string | number;
-  remains?: string | number;
-  remains_count?: string | number;
-  remaining?: string | number;
-  remains_number?: string | number;
-  charge?: string | number;
-  providerCharge?: string | number;
-  provider_charge?: string | number;
-};
 
 function providerNumber(value: unknown) {
   if (typeof value === "string" && !value.trim()) return null;
@@ -45,24 +33,46 @@ export async function cancelAdminOrder(orderId: string, actorId: string) {
   if (!existingOrder) throw new Error("Order not found");
 
   const result = await withOrderQueueLock(String(existingOrder.user), existingOrder.link, async (queue) => {
-    const currentOrder = await Order.findById(orderId).populate("provider").populate("service");
+    const currentOrder = await Order.findById(orderId).populate("provider");
     if (!currentOrder) throw new Error("Order not found");
     const before = currentOrder.toObject();
-    if (currentOrder.status === "Scheduled") {
+    const wasScheduled = currentOrder.status === "Scheduled";
+    if (wasScheduled) {
       currentOrder.status = "Canceled";
     } else {
       if (!["Pending", "Processing", "In Progress"].includes(currentOrder.status)) {
         throw new Error("Only active or scheduled orders can be canceled");
       }
-      if (!currentOrder.service?.cancel) throw new Error("This service does not support cancellation");
-      if (!currentOrder.providerOrderId) throw new Error("Provider order id is missing");
-
       queue.activeOrder = currentOrder._id;
       await queue.save();
-      const providerResult = await cancelProviderOrder(currentOrder.provider, currentOrder.providerOrderId);
-      if (providerResult.error) throw new Error(providerResult.error);
-      currentOrder.providerResponse = { ...(currentOrder.providerResponse ?? {}), cancel: providerResult };
     }
+    let cancellationAttempt: ProviderCancellationAttempt = {
+      attempted: false,
+      accepted: false,
+      error: "Order was not submitted to the provider.",
+    };
+    if (!wasScheduled && currentOrder.providerOrderId && currentOrder.provider) {
+      cancellationAttempt = await tryCancelProviderOrder(currentOrder.provider, currentOrder.providerOrderId);
+    }
+    if (
+      !wasScheduled &&
+      currentOrder.providerOrderId &&
+      !currentOrder.provider
+    ) {
+      cancellationAttempt.error = "Provider record is unavailable.";
+      await logProviderEvent({
+        level: "warning",
+        scope: "order_cancel",
+        action: "cancel",
+        message: "Provider record is unavailable; continuing with website cancellation.",
+        details: { orderId: String(currentOrder._id), providerOrderId: currentOrder.providerOrderId },
+      });
+    }
+    currentOrder.providerResponse = {
+      ...(currentOrder.providerResponse ?? {}),
+      ...(cancellationAttempt.response !== undefined ? { cancel: cancellationAttempt.response } : {}),
+      cancellationAttempt: { ...cancellationAttempt, attemptedAt: new Date() },
+    };
     currentOrder.status = "Canceled";
     currentOrder.lastStatusSyncAt = new Date();
     await currentOrder.save();
@@ -91,7 +101,7 @@ export async function cancelAdminOrder(orderId: string, actorId: string) {
       }
     }
     await drainOrderQueueLocked(queue);
-    return { order: currentOrder, before };
+    return { order: currentOrder, before, cancellationAttempt };
   });
 
   await AuditLog.create({
@@ -105,9 +115,20 @@ export async function cancelAdminOrder(orderId: string, actorId: string) {
   await notifyInApp({
     user: result.order.user,
     title: "Order canceled by admin",
-    body: `Order ${result.order._id} was canceled and refunded.`,
+    body: `${result.cancellationAttempt.attempted
+      ? result.cancellationAttempt.accepted
+        ? "The provider accepted the cancellation."
+        : "The provider did not confirm cancellation; provider work may continue."
+      : "The order had not been sent to the provider."} Order ${result.order._id} was canceled and refunded.`,
   });
-  return result.order;
+  return {
+    order: result.order,
+    message: result.cancellationAttempt.attempted
+      ? result.cancellationAttempt.accepted
+        ? "Provider accepted cancellation. The order was canceled and refunded."
+        : "The website canceled and refunded the order, but the provider did not confirm cancellation and may continue work."
+      : "The order was canceled and refunded before provider submission.",
+  };
 }
 
 export async function completeAdminOrder(orderId: string, actorId: string) {
@@ -156,7 +177,7 @@ export async function reverifyAdminOrder(orderId: string, actorId: string) {
 
   const providerOrderId = String(existingOrder.providerOrderId);
   const statuses = await getProviderStatuses(existingOrder.provider, [providerOrderId]);
-  const providerStatus = statuses[providerOrderId] as ReverifiedProviderStatus | undefined;
+  const providerStatus = providerStatusForOrder(statuses, providerOrderId);
   if (!providerStatus) throw new Error("Provider did not return this order's status.");
 
   const result = await withOrderQueueLock(String(existingOrder.user), existingOrder.link, async (queue) => {

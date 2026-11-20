@@ -486,6 +486,7 @@ export function UserRoleForm({
 
 export type AdminServiceItem = {
   _id: string;
+  providerServiceId: string;
   name: string;
   category: string;
   providerRate: number;
@@ -674,7 +675,7 @@ export function ServiceAdminList({ services }: { services: AdminServiceItem[] })
           <div>
             <p className="font-medium">{service.name}</p>
             <p className="text-neutral-500">
-              {service.category} / {service.provider?.name ?? "Provider"} / {service.min}-{service.max}
+              {service.category} / {service.provider?.name ?? "Provider"} / ID {service.providerServiceId} / {service.min}-{service.max}
             </p>
           </div>
           <span>Cost Rs.{service.providerRate}/1k</span>
