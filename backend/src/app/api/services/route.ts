@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
     const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q");
+    const query = searchParams.get("q")?.trim();
     const category = searchParams.get("category");
     const platformParam = searchParams.get("platform");
     const serviceId = searchParams.get("id");
@@ -42,7 +42,15 @@ export async function GET(request: NextRequest) {
     const filter: Record<string, unknown> = { active: true };
     if (serviceId) filter._id = serviceId;
     if (category) filter.category = category;
-    if (query) filter.$text = { $search: query };
+    if (query) {
+      const terms = query.split(/\s+/).filter(Boolean);
+      if (terms.length > 0) {
+        filter.$and = terms.map((term) => {
+          const expression = new RegExp(escapeRegex(term), "i");
+          return { $or: [{ name: expression }, { category: expression }] };
+        });
+      }
+    }
     if (platformFilter) Object.assign(filter, platformFilter);
 
     const [services, categories] = await Promise.all([

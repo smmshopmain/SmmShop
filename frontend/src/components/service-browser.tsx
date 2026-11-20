@@ -103,27 +103,31 @@ export function ServiceBrowser() {
 
   useEffect(() => {
     let active = true;
-    const params = new URLSearchParams();
-    if (query) params.set("q", query);
-    if (category) params.set("category", category);
-    if (platform) params.set("platform", platform);
-    apiFetch(`/api/services?${params}`)
-      .then((response) => response.json())
-      .then((result) => {
-        if (!active) return;
-        setServices(result.data?.services ?? []);
-        setCategories(result.data?.categories ?? []);
-        setMessage("");
-      })
-      .catch(() => {
-        if (!active) return;
-        setMessage("Unable to load services. Showing cached results if available.");
-      })
-      .finally(() => {
-        if (active) setServiceLoading(false);
-      });
+    setServiceLoading(true);
+    const timeoutId = window.setTimeout(() => {
+      const params = new URLSearchParams();
+      if (query.trim()) params.set("q", query.trim());
+      if (category) params.set("category", category);
+      if (platform) params.set("platform", platform);
+      apiFetch(`/api/services?${params}`)
+        .then((response) => response.json())
+        .then((result) => {
+          if (!active) return;
+          setServices(result.data?.services ?? []);
+          setCategories(result.data?.categories ?? []);
+          setMessage("");
+        })
+        .catch(() => {
+          if (!active) return;
+          setMessage("Unable to load services. Showing cached results if available.");
+        })
+        .finally(() => {
+          if (active) setServiceLoading(false);
+        });
+    }, 250);
     return () => {
       active = false;
+      window.clearTimeout(timeoutId);
     };
   }, [query, category, platform]);
 

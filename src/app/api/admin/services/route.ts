@@ -21,7 +21,16 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get("category");
     const filter: Record<string, unknown> = {};
     if (category) filter.category = category;
-    if (q) filter.$text = { $search: q };
+    if (q) {
+      const terms = q.trim().split(/\s+/).filter(Boolean);
+      if (terms.length > 0) {
+        const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        filter.$and = terms.map((term) => {
+          const expression = new RegExp(escapeRegex(term), "i");
+          return { $or: [{ name: expression }, { category: expression }] };
+        });
+      }
+    }
 
     const [services, categories] = await Promise.all([
       Service.find(filter).populate("provider", "name").sort({ category: 1, name: 1 }).limit(300).lean(),
