@@ -621,8 +621,8 @@ async function executeAdminAction(rawPayload: unknown, identity: AssistantIdenti
   }
 
   if (input.action === "cancel_order") {
-    const order = await cancelAdminOrder(input.orderId, identity.id);
-    return `Order ${String(order._id)} canceled. The existing cancellation flow processed its refund if eligible.`;
+    const result = await cancelAdminOrder(input.orderId, identity.id);
+    return `Order ${String(result.order._id)} canceled. ${result.message}`;
   }
 
   if (!("ticketId" in input)) throw new Error("Unsupported admin action.");
