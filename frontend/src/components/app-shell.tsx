@@ -324,12 +324,16 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
         { label: "Manage", items: links.slice(2, 6) },
         { label: "Account", items: links.slice(6) },
       ];
-  const primaryLinks = links.filter((item) =>
-    (isAdmin
-      ? ["/admin", "/admin/orders", "/admin/deposits", "/admin/users"]
-      : ["/dashboard", "/dashboard/services", "/dashboard/orders", "/dashboard/wallet"]
-    ).includes(item.href),
-  );
+  const primaryLinkPaths = isAdmin
+    ? ["/admin", "/admin/orders", "/admin/deposits", "/admin/users"]
+    : [
+        "/dashboard",
+        "/dashboard/services",
+        "/dashboard/orders",
+        "/dashboard/wallet",
+        ...(apiEnabled ? ["/dashboard/api"] : []),
+      ];
+  const primaryLinks = links.filter((item) => primaryLinkPaths.includes(item.href));
 
   function isActive(href: string) {
     const path = href.split("#", 1)[0];
@@ -504,17 +508,18 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       </div>
 
       <nav className="app-header fixed inset-x-0 bottom-0 z-30 border-t px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_30px_rgba(15,23,42,0.08)] lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
+        <div className={`mx-auto grid max-w-md ${primaryLinks.length > 4 ? "grid-cols-6" : "grid-cols-5"} gap-1`}>
           {primaryLinks.map((item) => (
             <Link
               key={item.href}
               href={item.href}
+              aria-label={item.label}
               className={`grid min-w-0 justify-items-center gap-1 rounded-xl px-1 py-2 text-[11px] font-semibold transition ${
                 isActive(item.href) ? "bg-teal-50 text-teal-800" : "text-neutral-600 hover:bg-neutral-100"
               }`}
             >
               <item.icon className="size-5" />
-              <span className="truncate">{item.label}</span>
+              <span className="truncate">{item.href === "/dashboard/api" ? "API" : item.label}</span>
             </Link>
           ))}
           <button
