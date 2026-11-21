@@ -2231,7 +2231,13 @@ html[data-design="atelier"] .app-shell-user .app-sidebar nav {
   align-items: center;
   gap: 1.5rem;
   width: 100%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin-top: 2.5rem;
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(200 189 180 / 45%) transparent;
+  scrollbar-width: thin;
 }
 
 html[data-design="atelier"] .app-shell-user .app-sidebar nav > div,
