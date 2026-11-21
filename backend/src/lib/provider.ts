@@ -63,6 +63,7 @@ function sleep(ms: number) {
 export async function providerRequest<T>(
   provider: ProviderRecord,
   payload: ProviderPayload,
+  timeoutOverrideMs?: number,
 ) {
   const body = new URLSearchParams();
   body.set("key", provider.apiKey);
@@ -81,7 +82,7 @@ export async function providerRequest<T>(
     attempt += 1;
     // add a timeout to avoid hanging requests
     const controller = new AbortController();
-    const timeoutMs = Number(process.env.PROVIDER_REQUEST_TIMEOUT_MS ?? 15000);
+    const timeoutMs = timeoutOverrideMs ?? Number(process.env.PROVIDER_REQUEST_TIMEOUT_MS ?? 15000);
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       await logProviderEvent({
@@ -199,6 +200,7 @@ export async function ensureDefaultProviderFromEnv() {
 export async function addProviderOrder(
   providers: ProviderRecord[],
   payload: { service: string; link: string; quantity: number },
+  timeoutOverrideMs?: number,
 ) {
   const errors: string[] = [];
   for (const provider of providers) {
@@ -206,7 +208,7 @@ export async function addProviderOrder(
       const result = await providerRequest<{ order?: string | number; error?: string }>(provider, {
         action: "add",
         ...payload,
-      });
+      }, timeoutOverrideMs);
       if (result.error) throw new Error(result.error);
       if (!result.order) throw new Error("Provider did not return an order id");
       return { provider, result };
@@ -296,29 +298,30 @@ export function providerStatusForOrder(value: unknown, orderId: string): Provide
 export async function getProviderStatuses(
   provider: ProviderRecord,
   orderIds: string[],
+  timeoutOverrideMs?: number,
 ) {
   if (orderIds.length === 0) return {};
   if (orderIds.length === 1) {
     const status = await providerRequest<ProviderStatus>(provider, {
       action: "status",
       order: orderIds[0],
-    });
+    }, timeoutOverrideMs);
     return { [orderIds[0]]: status };
   }
 
   const result = await providerRequest<Record<string, ProviderStatus | { error?: string }>>(provider, {
     action: "status",
     orders: orderIds.join(","),
-  });
+  }, timeoutOverrideMs);
 
   return result;
 }
 
-export async function cancelProviderOrder(provider: ProviderRecord, orderId: string) {
+export async function cancelProviderOrder(provider: ProviderRecord, orderId: string, timeoutOverrideMs?: number) {
   return providerRequest<{ cancel?: string | number; error?: string }>(provider, {
     action: "cancel",
     order: orderId,
-  });
+  }, timeoutOverrideMs);
 }
 
 function providerCancellationAccepted(value: unknown): boolean {
@@ -340,9 +343,10 @@ function providerCancellationAccepted(value: unknown): boolean {
 export async function tryCancelProviderOrder(
   provider: ProviderRecord,
   orderId: string,
+  timeoutOverrideMs?: number,
 ): Promise<ProviderCancellationAttempt> {
   try {
-    const response = await cancelProviderOrder(provider, orderId);
+    const response = await cancelProviderOrder(provider, orderId, timeoutOverrideMs);
     const accepted = providerCancellationAccepted(response);
     if (accepted) return { attempted: true, accepted: true, response };
 
@@ -370,18 +374,18 @@ export async function tryCancelProviderOrder(
   }
 }
 
-export async function requestProviderRefill(provider: ProviderRecord, orderId: string) {
+export async function requestProviderRefill(provider: ProviderRecord, orderId: string, timeoutOverrideMs?: number) {
   return providerRequest<{ refill?: string | number; error?: string }>(provider, {
     action: "refill",
     order: orderId,
-  });
+  }, timeoutOverrideMs);
 }
 
-export async function getProviderRefillStatus(provider: ProviderRecord, refillId: string) {
+export async function getProviderRefillStatus(provider: ProviderRecord, refillId: string, timeoutOverrideMs?: number) {
   return providerRequest<{ status?: string; error?: string }>(provider, {
     action: "refill_status",
     refill: refillId,
-  });
+  }, timeoutOverrideMs);
 }
 
 export async function getProviderBalance(provider: ProviderRecord) {

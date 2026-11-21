@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { addProviderOrder, logProviderEvent } from "@/lib/provider";
-import { Order, OrderQueue, User, WalletTransaction } from "@/models";
+import { getSettings, Order, OrderQueue, User, WalletTransaction } from "@/models";
 
 const ACTIVE_STATUSES = ["Pending", "Processing", "In Progress"];
 const TERMINAL_STATUSES = ["Completed", "Partial", "Canceled", "Failed"];
@@ -191,11 +191,14 @@ export async function drainOrderQueueLocked(queue: Awaited<ReturnType<typeof acq
         throw new Error("The order's provider or service is unavailable.");
       }
 
+      const apiTimeoutMs = nextOrder.source === "api"
+        ? (await getSettings()).api.providerTimeoutMs
+        : undefined;
       const providerResult = await addProviderOrder([nextOrder.provider], {
         service: nextOrder.service.providerServiceId,
         link: nextOrder.link,
         quantity: nextOrder.quantity,
-      });
+      }, apiTimeoutMs);
       nextOrder.provider = providerResult.provider._id;
       nextOrder.providerOrderId = String(providerResult.result.order);
       nextOrder.status = "Pending";

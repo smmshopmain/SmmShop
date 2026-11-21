@@ -192,6 +192,50 @@ npm run start
 - `/api/health` checks MongoDB connectivity.
 - `/api/keep-alive` is available for Render/free-tier keep-alive monitors.
 
+### Reseller API
+
+The reseller API is disabled by default. Enable it from **Admin > Settings > Global API controls**. Turning it off hides the API links in user and admin navigation, rejects key-management and reseller requests server-side, and skips API service-sync jobs. It does not disable the website's own provider integration, website orders, payments, or catalog sync.
+
+Users can create and revoke keys from **Dashboard > API Access**. Keys are stored as SHA-256 hashes; the full secret is shown only once. Send custom REST credentials using `Authorization: Bearer <key>` or `x-api-key`; the Standard SMM endpoint accepts its key in the POST body.
+
+Custom REST endpoints:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/v1/services` | List active services and API purchase prices; supports `?category=` |
+| GET | `/api/v1/services/{id}` | Read one available service |
+| GET | `/api/v1/categories` | List categories containing available services |
+| POST | `/api/v1/services/import` | Import all, selected, or category services into the account mapping |
+| POST | `/api/v1/services/sync` | Refresh existing service availability mappings |
+| GET | `/api/v1/account` | Read the authenticated API account and key prefix |
+| GET | `/api/v1/balance` | Read the API account's website wallet balance |
+| GET | `/api/v1/usage` | Read request, response-time, and API order usage statistics |
+| POST | `/api/v1/orders` | Create an API order; requires an `Idempotency-Key` header |
+| GET | `/api/v1/orders/{id}` | Read a fresh, rate-limited status for the account's own order |
+| POST | `/api/v1/orders/status` | Read up to 100 authorized order statuses |
+| GET | `/api/v1/orders?limit=50&offset=0` | List this account's API-created orders |
+
+Custom REST responses use `{ "success": true, "data": {}, "message": "..." }` or a structured error. Standard SMM compatibility is available at `POST /api/v1/standard` with `services`, `balance`, `add`, `status`, `multi_status`, `refill`, `refill_status`, or `cancel` actions. Add requests require an `Idempotency-Key` header. Cancellation follows the existing website cancellation rules and does not issue a refund.
+
+#### Request details
+
+- Send REST keys in `Authorization: Bearer <key>` or `x-api-key`; never put a key in a URL. Use JSON for REST POST requests. If version-header enforcement is enabled, include `X-API-Version: 1`.
+- The Standard SMM endpoint accepts JSON or `application/x-www-form-urlencoded`; its key is sent as the `key` form/body field (or the same Authorization header).
+- `GET /api/v1/services` supports `category`, `limit` (1–500), and `offset`. `GET /api/v1/orders` supports `limit` (1–100) and `offset`. Both return `total` and `nextOffset`.
+- Service imports accept `{"all":true}`, `{"category":"Instagram"}`, or `{"serviceIds":["<service-id>"]}`. Import pages accept `limit` (1–500) and `offset`; continue with the returned `nextOffset` until it is `null`. Mapping IDs are stable and based on the website service ID. `POST /api/v1/services/sync` refreshes availability for existing mappings.
+- API order input is `{"serviceId":"<service-id>","link":"https://example.com/post","quantity":100}`. The service must be active, quantity must be in range, and the URL must be HTTP(S). Include a unique `Idempotency-Key` on every create request; reusing the key with a different payload returns `409 IDEMPOTENCY_CONFLICT`. A duplicate of the same request returns its original order when available.
+- `POST /api/v1/orders/status` accepts `{"orderIds":["<order-id>"]}` (up to 100 IDs) and only returns orders owned by the authenticated account. `GET /api/v1/orders/{id}` refreshes one non-terminal provider status at most once per 60 seconds.
+- Standard `add` uses `service`, `link`, and `quantity`; `status` uses `order`; `multi_status` uses comma-separated `orders`; `cancel` uses `order`; `refill` uses `order`; and `refill_status` uses the returned local `refill` ID. Standard service and balance responses follow the SMM panel response format; REST responses use the success/error envelope above.
+- Common HTTP errors include `401 INVALID_API_KEY`, `403 API_ACCESS_DISABLED`/`IP_NOT_ALLOWED`, `409` for duplicate/conflicting operations, `429 RATE_LIMIT_EXCEEDED`, and `503 API_DISABLED`/`API_MAINTENANCE`. Error responses include a stable `code` and a user-safe `message`.
+
+Admins can enable maintenance mode and configure its response message in Admin Settings. Optional IP enforcement uses per-user exact IPv4/IPv6 allowlists maintained in API Management; enable it only when the deployment proxy provides a trusted client IP header. Requests without a valid matching address are rejected.
+
+The REST API is versioned at `/api/v1`. Admins can optionally require `X-API-Version: 1` for REST requests; this does not change the Standard SMM protocol. The API provider timeout setting applies to reseller API provider calls and does not change normal website order timeouts.
+
+API administrators can review order history at `/admin/api/orders`, customer service mappings at `/admin/api/services`, and import/manual/automatic sync activity at `/admin/api/sync-history`. These pages and their data endpoints are unavailable while the global API switch is off.
+
+API discounts are calculated server-side and apply only to API orders. Normal website orders keep the existing pricing. API-created orders use the existing order and wallet transaction collections and preserve a pricing snapshot. API request logs exclude credentials and request bodies and are retained for 90 days. Service auto-sync requires the global setting, the user's opt-in, and the `smm-api-service-sync` Render cron service in `backend/render.yaml`; configure its `APP_BASE_URL` and `CRON_SECRET` values.
+
 ## Telegram Deposit Verification
 
 Set `TELEGRAM_BOT_TOKEN`, `TELEGRAM_ADMIN_ID`, and `APP_BASE_URL`. Set `TELEGRAM_CHAT_ID` to the notification destination (group or private chat); if it is omitted, notifications are sent to `TELEGRAM_ADMIN_ID` as a private-chat fallback.

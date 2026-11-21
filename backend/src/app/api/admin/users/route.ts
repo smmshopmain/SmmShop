@@ -5,6 +5,10 @@ import { fail, ok, requireAdmin } from "@/lib/api";
 import { dbConnect } from "@/lib/db";
 import {
   AuditLog,
+  ApiIdempotency,
+  ApiKey,
+  ApiRequestLog,
+  ApiServiceMapping,
   Deposit,
   EmailCampaign,
   Notification,
@@ -138,6 +142,10 @@ export async function DELETE(request: NextRequest) {
         const orderIdStrings = orderIds.map(String);
 
         await WalletTransaction.deleteMany({ user: userId }, { session });
+        await ApiKey.deleteMany({ user: userId }, { session });
+        await ApiServiceMapping.deleteMany({ user: userId }, { session });
+        await ApiIdempotency.deleteMany({ user: userId }, { session });
+        await ApiRequestLog.deleteMany({ user: userId }, { session });
         await Deposit.deleteMany({ user: userId }, { session });
         await Order.deleteMany({ user: userId }, { session });
         await Refill.deleteMany({ $or: [{ user: userId }, { order: { $in: orderIds } }] }, { session });

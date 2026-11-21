@@ -8,12 +8,14 @@ export async function GET() {
     const settings = await getSettings();
     return ok({
       ...settings,
+      api: undefined,
       auth: {
         googleEnabled:
           settings.auth.googleEnabled &&
           Boolean(process.env.GOOGLE_CLIENT_ID?.trim()) &&
           Boolean(process.env.GOOGLE_CLIENT_SECRET?.trim()),
       },
+      apiEnabled: settings.api.enabled,
     });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load settings", 500);

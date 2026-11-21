@@ -6,6 +6,7 @@ import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { AnimationControls } from "@/components/animation-controls";
 import { AIAssistantSettings } from "@/components/ai-assistant-settings";
+import { ApiManagementSettings } from "@/components/api-management-settings";
 import { DeveloperCreditSettings } from "@/components/developer-credit-settings";
 import { SiteFooterSettings } from "@/components/site-footer-settings";
 import {
@@ -21,6 +22,24 @@ import {
 } from "@/components/motion-settings-provider";
 
 type PlatformSettings = {
+  api: {
+    enabled: boolean;
+    standardEnabled: boolean;
+    restEnabled: boolean;
+    maxKeysPerUser: number;
+    requestsPerMinute: number;
+    discountEnabled: boolean;
+    discountPercent: number;
+    allowUserDiscountOverrides: boolean;
+    manualSyncEnabled: boolean;
+    autoSyncEnabled: boolean;
+    minimumSyncIntervalMinutes: number;
+    maintenanceMode: boolean;
+    maintenanceMessage: string;
+    enforceIpAllowlist: boolean;
+    providerTimeoutMs: number;
+    requireVersionHeader: boolean;
+  };
   appearance: MotionSettings;
   deposits: {
     verificationMode: "manual" | "automatic";
@@ -54,6 +73,24 @@ type PlatformSettings = {
 };
 
 const DEFAULT_SETTINGS: PlatformSettings = {
+  api: {
+    enabled: false,
+    standardEnabled: true,
+    restEnabled: true,
+    maxKeysPerUser: 3,
+    requestsPerMinute: 60,
+    discountEnabled: false,
+    discountPercent: 0,
+    allowUserDiscountOverrides: false,
+    manualSyncEnabled: true,
+    autoSyncEnabled: false,
+    minimumSyncIntervalMinutes: 60,
+    maintenanceMode: false,
+    maintenanceMessage: "The reseller API is temporarily under maintenance. Please try again later.",
+    enforceIpAllowlist: false,
+    providerTimeoutMs: 15000,
+    requireVersionHeader: false,
+  },
   appearance: DEFAULT_MOTION_SETTINGS,
   deposits: {
     verificationMode: "manual",
@@ -98,6 +135,7 @@ export default function SettingsPage() {
         setSettings({
           ...DEFAULT_SETTINGS,
           ...nextSettings,
+          api: { ...DEFAULT_SETTINGS.api, ...(nextSettings.api ?? {}) },
           developerCredit: nextSettings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT,
           siteFooter: {
             ...DEFAULT_SITE_FOOTER,
@@ -144,6 +182,10 @@ export default function SettingsPage() {
       </div>
       <SiteFooterSettings initialSettings={settings.siteFooter} />
       <DeveloperCreditSettings initialSettings={settings.developerCredit ?? DEFAULT_DEVELOPER_CREDIT} />
+      <ApiManagementSettings
+        key={JSON.stringify(settings.api)}
+        initialSettings={settings.api}
+      />
       <AIAssistantSettings
         key={JSON.stringify(settings.ai)}
         initialEnabled={settings.ai.enabled}

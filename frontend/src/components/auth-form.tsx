@@ -3,7 +3,7 @@
 import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
 import { apiFetch, apiJson, apiUrl } from "@/lib/client-api";
 
 type RegistrationPayload = {
@@ -49,6 +49,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const [error, setError] = useState(() => googleAuthErrorMessage(searchParams.get("google_error")));
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [sendingWelcomeEmail, setSendingWelcomeEmail] = useState(false);
   const [pendingRegistration, setPendingRegistration] = useState<RegistrationPayload | null>(null);
   const [registrationComplete, setRegistrationComplete] = useState<{
@@ -359,18 +360,32 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
               />
             </label>
           )}
-          <label className="grid gap-2 text-sm font-semibold text-neutral-800">
-            Password
-            <input
-              name="password"
-              type="password"
-              minLength={8}
-              maxLength={128}
-              required
-              placeholder="Minimum 8 characters"
-              className="h-12 rounded-md border border-neutral-300 bg-white px-3 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
-            />
-          </label>
+          <div className="grid gap-2 text-sm font-semibold text-neutral-800">
+            <label htmlFor="auth-password">Password</label>
+            <div className="relative">
+              <input
+                id="auth-password"
+                name="password"
+                type={mode === "login" && showPassword ? "text" : "password"}
+                minLength={8}
+                maxLength={128}
+                required
+                placeholder="Minimum 8 characters"
+                className="h-12 w-full rounded-md border border-neutral-300 bg-white px-3 pr-12 text-sm text-neutral-950 shadow-sm transition placeholder:text-neutral-400 focus:border-teal-700 focus:ring-4 focus:ring-teal-700/10"
+              />
+              {mode === "login" && (
+                <button
+                  type="button"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  className="absolute inset-y-0 right-0 inline-flex w-12 items-center justify-center rounded-r-md text-neutral-500 transition hover:text-neutral-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-700"
+                >
+                  {showPassword ? <EyeOff aria-hidden="true" className="size-5" /> : <Eye aria-hidden="true" className="size-5" />}
+                </button>
+              )}
+            </div>
+          </div>
           {mode === "register" && referralEnabled && (
             <label className="grid gap-2 text-sm font-semibold text-neutral-800">
               Referral code <span className="text-xs font-medium text-neutral-500">Optional</span>

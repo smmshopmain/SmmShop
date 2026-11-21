@@ -9,13 +9,33 @@ import {
   DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
   DEFAULT_SITE_FOOTER,
   DEFAULT_SUPPORT_SETTINGS,
+  AuditLog,
   getSettings,
   Setting,
 } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter", "ai"]),
+  key: z.enum(["api", "appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter", "ai"]),
   value: z.record(z.string(), z.unknown()),
+});
+
+const apiSettingsSchema = z.object({
+  enabled: z.boolean(),
+  standardEnabled: z.boolean(),
+  restEnabled: z.boolean(),
+  maxKeysPerUser: z.number().int().min(1).max(20),
+  requestsPerMinute: z.number().int().min(1).max(10000),
+  discountEnabled: z.boolean(),
+  discountPercent: z.number().min(0).max(100),
+  allowUserDiscountOverrides: z.boolean(),
+  manualSyncEnabled: z.boolean(),
+  autoSyncEnabled: z.boolean(),
+  minimumSyncIntervalMinutes: z.number().int().min(5).max(10080),
+  maintenanceMode: z.boolean(),
+  maintenanceMessage: z.string().trim().min(1).max(300),
+  enforceIpAllowlist: z.boolean(),
+  providerTimeoutMs: z.number().int().min(1000).max(60000),
+  requireVersionHeader: z.boolean(),
 });
 
 const appearanceSchema = z.object({
@@ -196,6 +216,8 @@ function mergeSettingsValue(key: string, existingValue: unknown, nextValue: Reco
 }
 
 function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
+  if (key === "api") return apiSettingsSchema.parse(value);
+
   if (key === "auth") {
     if (
       value.googleEnabled === true &&
@@ -328,7 +350,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    await requireAdmin();
+    const { auth } = await requireAdmin();
     await dbConnect();
     const input = schema.parse(await request.json());
     const existing = await Setting.findOne({ key: input.key }).lean();
@@ -338,6 +360,18 @@ export async function PATCH(request: NextRequest) {
       { value },
       { upsert: true, new: true },
     );
+    if (input.key === "api") {
+      await AuditLog.create({
+        actor: auth.id,
+        action: "api.settings.update",
+        entity: "Setting",
+        entityId: "api",
+        before: existing?.value ?? null,
+        after: value,
+        ip: request.headers.get("x-forwarded-for")?.split(",")[0]?.trim(),
+        userAgent: request.headers.get("user-agent") ?? undefined,
+      });
+    }
     if (input.key === "deposits") {
       revalidatePath("/api/payment-details");
     }

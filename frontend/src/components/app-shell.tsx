@@ -6,6 +6,7 @@ import {
   BadgeIndianRupee,
   ClipboardList,
   CircleHelp,
+  Code2,
   CalendarDays,
   Gauge,
   History,
@@ -70,6 +71,7 @@ const userLinks: NavItem[] = [
   { href: "/dashboard/notifications", label: "Updates", icon: Bell },
   { href: "/dashboard/assistant" as Route, label: "AI Assistant", icon: Sparkles },
   { href: "/dashboard/profile", label: "My account", icon: UserRound },
+  { href: "/dashboard/api" as Route, label: "API Access", icon: Code2 },
 ];
 
 const adminLinks: NavItem[] = [
@@ -94,6 +96,10 @@ const adminLinks: NavItem[] = [
   { href: "/admin/marketing-calendar" as Route, label: "Marketing Calendar", icon: CalendarDays },
   { href: "/admin/assistant" as Route, label: "AI Assistant", icon: Sparkles },
   { href: "/admin/settings", label: "Settings", icon: Settings },
+  { href: "/admin/api" as Route, label: "API Management", icon: Code2 },
+  { href: "/admin/api/orders" as Route, label: "API Orders", icon: History },
+  { href: "/admin/api/services" as Route, label: "API Services", icon: Layers3 },
+  { href: "/admin/api/sync-history" as Route, label: "API Sync History", icon: RefreshCcw },
 ];
 
 export function AppShell({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
@@ -108,6 +114,8 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
   } | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiEnabled, setAiEnabled] = useState(false);
+  const [apiEnabled, setApiEnabled] = useState(false);
+  const [apiStatusLoaded, setApiStatusLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [workspaceHealth, setWorkspaceHealth] = useState<WorkspaceHealth>({
     state: "checking",
@@ -266,6 +274,34 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
     };
   }, [user]);
 
+  useEffect(() => {
+    let active = true;
+    const refreshApiStatus = async () => {
+      try {
+        const result = await apiJson("/api/settings", { cache: "no-store" });
+        if (active) setApiEnabled(result?.apiEnabled === true);
+      } catch {
+        if (active) setApiEnabled(false);
+      } finally {
+        if (active) setApiStatusLoaded(true);
+      }
+    };
+    void refreshApiStatus();
+    const timer = window.setInterval(refreshApiStatus, 30_000);
+    window.addEventListener("api-settings-updated", refreshApiStatus);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("api-settings-updated", refreshApiStatus);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!apiStatusLoaded || apiEnabled) return;
+    if (pathname.startsWith("/admin/api")) router.replace("/admin");
+    if (pathname.startsWith("/dashboard/api")) router.replace("/dashboard");
+  }, [apiEnabled, apiStatusLoaded, pathname, router]);
+
   if (loading) {
     return (
       <main className="grid min-h-screen place-items-center px-4">
@@ -277,7 +313,9 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
   if (!user) return null;
 
   const links = (isAdmin ? adminLinks : userLinks).filter(
-    (item) => aiEnabled || !["/admin/assistant", "/dashboard/assistant"].includes(String(item.href)),
+    (item) =>
+      (apiEnabled || (!String(item.href).startsWith("/admin/api") && !String(item.href).startsWith("/dashboard/api"))) &&
+      (aiEnabled || !["/admin/assistant", "/dashboard/assistant"].includes(String(item.href))),
   );
   const navigationGroups = isAdmin
     ? [{ label: "Workspace", items: links }]
@@ -310,6 +348,17 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       // ignore failure and still redirect to login
     }
     router.push("/login");
+  }
+
+  if (
+    (pathname.startsWith("/admin/api") || pathname.startsWith("/dashboard/api")) &&
+    (!apiStatusLoaded || !apiEnabled)
+  ) {
+    return (
+      <main className="grid min-h-screen place-items-center px-4">
+        <ContentLoading label="Checking API availability..." />
+      </main>
+    );
   }
 
   return (

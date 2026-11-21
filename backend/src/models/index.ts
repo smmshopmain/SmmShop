@@ -26,6 +26,13 @@ const UserSchema = new Schema(
     referralEarnings: money,
     isBanned: { type: Boolean, default: false },
     walletFrozen: { type: Boolean, default: false },
+    apiAccessEnabled: { type: Boolean, default: true, index: true },
+    apiDiscountPercent: { type: Number, min: 0, max: 100 },
+    apiAllowedIps: { type: [String], default: [] },
+    apiAutoSyncEnabled: { type: Boolean, default: false },
+    apiSyncIntervalMinutes: { type: Number, default: 60, min: 5, max: 10080 },
+    apiLastSyncAt: Date,
+    apiSyncLockUntil: Date,
     lastLoginAt: Date,
     activeSessionId: String,
     loginHistory: [
@@ -188,15 +195,25 @@ const OrderSchema = new Schema(
     remains: Number,
     warningAcceptedAt: { type: Date, required: true },
     lastStatusSyncAt: Date,
+    apiStatusAttemptAt: Date,
     adminCompletedAt: Date,
     adminReverifiedAt: Date,
     providerResponse: Schema.Types.Mixed,
+    source: { type: String, enum: ["website", "api"], default: "website", index: true },
+    apiKey: { type: Schema.Types.ObjectId, ref: "ApiKey" },
+    apiPricingSnapshot: {
+      baseRate: Number,
+      discountPercent: Number,
+      finalRate: Number,
+      quantity: Number,
+    },
   },
   { timestamps: true },
 );
 OrderSchema.index({ queueKey: 1, status: 1, createdAt: 1 });
 OrderSchema.index({ user: 1, createdAt: -1 });
 OrderSchema.index({ user: 1, status: 1, createdAt: -1 });
+OrderSchema.index({ user: 1, source: 1, createdAt: -1 });
 
 const OrderQueueSchema = new Schema(
   {
@@ -494,6 +511,64 @@ const RateLimitSchema = new Schema(
 );
 RateLimitSchema.index({ resetAt: 1 }, { expireAfterSeconds: 0 });
 
+const ApiKeySchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    name: { type: String, required: true, trim: true, maxlength: 60 },
+    prefix: { type: String, required: true, index: true },
+    secretHash: { type: String, required: true, unique: true },
+    revokedAt: { type: Date, default: null, index: true },
+    lastUsedAt: Date,
+    lastUsedIp: String,
+  },
+  { timestamps: true },
+);
+ApiKeySchema.index({ user: 1, createdAt: -1 });
+
+const ApiRequestLogSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", index: true },
+    apiKey: { type: Schema.Types.ObjectId, ref: "ApiKey", index: true },
+    endpoint: { type: String, required: true, maxlength: 160 },
+    action: { type: String, maxlength: 60 },
+    success: { type: Boolean, required: true, index: true },
+    statusCode: { type: Number, required: true },
+    errorCode: { type: String, maxlength: 60 },
+    durationMs: { type: Number, required: true, min: 0 },
+    ip: { type: String, maxlength: 64 },
+  },
+  { timestamps: true },
+);
+ApiRequestLogSchema.index({ createdAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 90 });
+ApiRequestLogSchema.index({ user: 1, createdAt: -1 });
+
+const ApiServiceMappingSchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    service: { type: Schema.Types.ObjectId, ref: "Service", required: true },
+    externalId: { type: String, required: true, trim: true, maxlength: 80 },
+    status: { type: String, enum: ["active", "unavailable"], default: "active", index: true },
+    importedAt: { type: Date, required: true, default: Date.now },
+    lastSyncedAt: Date,
+  },
+  { timestamps: true },
+);
+ApiServiceMappingSchema.index({ user: 1, service: 1 }, { unique: true });
+ApiServiceMappingSchema.index({ user: 1, externalId: 1 }, { unique: true });
+
+const ApiIdempotencySchema = new Schema(
+  {
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    key: { type: String, required: true, maxlength: 120 },
+    requestHash: { type: String, required: true },
+    status: { type: String, enum: ["processing", "completed", "failed"], default: "processing", index: true },
+    order: { type: Schema.Types.ObjectId, ref: "Order" },
+    expiresAt: { type: Date, required: true, index: { expires: 0 } },
+  },
+  { timestamps: true },
+);
+ApiIdempotencySchema.index({ user: 1, key: 1 }, { unique: true });
+
 const AIAssistantActionSchema = new Schema(
   {
     owner: { type: String, required: true, index: true },
@@ -582,12 +657,34 @@ export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSch
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
+export const ApiKey = models.ApiKey || model("ApiKey", ApiKeySchema);
+export const ApiRequestLog = models.ApiRequestLog || model("ApiRequestLog", ApiRequestLogSchema);
+export const ApiServiceMapping = models.ApiServiceMapping || model("ApiServiceMapping", ApiServiceMappingSchema);
+export const ApiIdempotency = models.ApiIdempotency || model("ApiIdempotency", ApiIdempotencySchema);
 export const AIAssistantAction = models.AIAssistantAction || model("AIAssistantAction", AIAssistantActionSchema);
 export const AIAssistantConversation =
   models.AIAssistantConversation || model("AIAssistantConversation", AIAssistantConversationSchema);
 export const AIAssistantChat = models.AIAssistantChat || model("AIAssistantChat", AIAssistantChatSchema);
 
 export type PlatformSettings = {
+  api: {
+    enabled: boolean;
+    standardEnabled: boolean;
+    restEnabled: boolean;
+    maxKeysPerUser: number;
+    requestsPerMinute: number;
+    discountEnabled: boolean;
+    discountPercent: number;
+    allowUserDiscountOverrides: boolean;
+    manualSyncEnabled: boolean;
+    autoSyncEnabled: boolean;
+    minimumSyncIntervalMinutes: number;
+    maintenanceMode: boolean;
+    maintenanceMessage: string;
+    enforceIpAllowlist: boolean;
+    providerTimeoutMs: number;
+    requireVersionHeader: boolean;
+  };
   appearance: {
     designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight";
     animationsEnabled: boolean;
@@ -741,6 +838,24 @@ export const DEFAULT_SITE_FOOTER: PlatformSettings["siteFooter"] = {
 export async function getSettings() {
   const records = await Setting.find().lean();
   const settings: PlatformSettings = {
+    api: {
+      enabled: false,
+      standardEnabled: true,
+      restEnabled: true,
+      maxKeysPerUser: 3,
+      requestsPerMinute: 60,
+      discountEnabled: false,
+      discountPercent: 0,
+      allowUserDiscountOverrides: false,
+      manualSyncEnabled: true,
+      autoSyncEnabled: false,
+      minimumSyncIntervalMinutes: 60,
+      maintenanceMode: false,
+      maintenanceMessage: "The reseller API is temporarily under maintenance. Please try again later.",
+      enforceIpAllowlist: false,
+      providerTimeoutMs: 15000,
+      requireVersionHeader: false,
+    },
     appearance: {
       designPreset: "default",
       animationsEnabled: true,
@@ -785,6 +900,9 @@ export async function getSettings() {
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
+    if (record.key === "api" && record.value && typeof record.value === "object" && !Array.isArray(record.value)) {
+      settings.api = { ...settings.api, ...(record.value as Partial<PlatformSettings["api"]>) };
+    }
     if (record.key === "appearance" && record.value && typeof record.value === "object" && !Array.isArray(record.value)) {
       const value = record.value as Partial<PlatformSettings["appearance"]>;
       settings.appearance = {
