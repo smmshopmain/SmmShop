@@ -383,6 +383,98 @@ html[data-motion-entrance="on"] .page-enter > * {
     0 22px 42px -30px rgb(15 23 42 / 22%);
 }
 
+.app-shell-user {
+  --api-code-bg: #f3f8f7;
+  --api-code-toolbar-bg: #eaf3f1;
+  --api-code-border: #d5e5e2;
+  --api-code-ink: #183b38;
+  --api-code-accent: #0f766e;
+  --api-code-badge-bg: #dceeea;
+}
+
+.api-code-example {
+  border-color: var(--api-code-border);
+  background: var(--api-code-bg);
+  color: var(--api-code-ink);
+  box-shadow: inset 0 1px rgb(255 255 255 / 55%);
+}
+
+.api-code-toolbar {
+  border-color: var(--api-code-border);
+  background: var(--api-code-toolbar-bg);
+}
+
+.api-code-title,
+.api-code-badge {
+  color: var(--api-code-accent);
+}
+
+.api-code-badge {
+  background: var(--api-code-badge-bg);
+}
+
+.api-code-copy {
+  border-color: var(--api-code-border);
+  background: var(--api-code-bg);
+  color: var(--api-code-accent);
+}
+
+.api-code-copy:hover {
+  background: var(--api-code-badge-bg);
+}
+
+.api-code-example pre {
+  color: var(--api-code-ink);
+  overflow-wrap: anywhere;
+  scrollbar-color: var(--api-code-border) transparent;
+  white-space: pre-wrap;
+}
+
+html[data-design="studio"] .app-shell-user {
+  --api-code-bg: #f1f8f8;
+  --api-code-toolbar-bg: #e6f1f1;
+  --api-code-border: #d1e2e3;
+  --api-code-ink: #17333c;
+  --api-code-accent: #0f8a82;
+  --api-code-badge-bg: #d8eeeb;
+}
+
+html[data-design="orbit"] .app-shell-user {
+  --api-code-bg: #f7f5ff;
+  --api-code-toolbar-bg: #efecff;
+  --api-code-border: #e2dcfa;
+  --api-code-ink: #292342;
+  --api-code-accent: #6244d3;
+  --api-code-badge-bg: #e4defc;
+}
+
+html[data-design="atelier"] .app-shell-user {
+  --api-code-bg: #fbf5eb;
+  --api-code-toolbar-bg: #f4e9d8;
+  --api-code-border: #ead9c2;
+  --api-code-ink: #3b2b21;
+  --api-code-accent: #9f452f;
+  --api-code-badge-bg: #eedcc5;
+}
+
+html[data-design="pulse"] .app-shell-user {
+  --api-code-bg: #142126;
+  --api-code-toolbar-bg: #1b2b30;
+  --api-code-border: #33474d;
+  --api-code-ink: #dcece8;
+  --api-code-accent: #67e8d0;
+  --api-code-badge-bg: #243c3e;
+}
+
+html[data-design="midnight"] .app-shell-user {
+  --api-code-bg: #151d30;
+  --api-code-toolbar-bg: #1b263b;
+  --api-code-border: #34415d;
+  --api-code-ink: #e0e7f2;
+  --api-code-accent: #a5b4fc;
+  --api-code-badge-bg: #2a3450;
+}
+
 .brand-mark {
   background: linear-gradient(145deg, #14b8a6 0%, #0f766e 48%, #164e63 100%);
   box-shadow: 0 7px 18px rgb(15 118 110 / 24%);

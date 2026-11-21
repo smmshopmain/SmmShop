@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { apiFetch } from "@/lib/client-api";
 
 type ApiKeyItem = {
@@ -39,6 +40,7 @@ export function ResellerApiKeys() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<ApiUsage | null>(null);
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
 
   const refresh = useCallback(async () => {
     const [keysResponse, usageResponse] = await Promise.all([
@@ -151,6 +153,34 @@ export function ResellerApiKeys() {
   }
 
   const activeCount = keys.filter((key) => !key.revokedAt).length;
+  const apiReference = `Base URL: ${baseUrl || "Configure APP_BASE_URL on backend"}
+Authorization: Bearer YOUR_API_KEY
+
+GET  /api/v1/services
+GET  /api/v1/services/{serviceId}
+GET  /api/v1/categories
+GET  /api/v1/balance
+POST /api/v1/services/import
+POST /api/v1/services/sync
+POST /api/v1/orders
+POST /api/v1/orders/status
+GET  /api/v1/orders/{orderId}
+GET  /api/v1/orders?limit=50
+
+POST /api/v1/orders
+Idempotency-Key: unique-request-id
+Content-Type: application/json
+{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}`;
+
+  async function copyApiReference() {
+    try {
+      await navigator.clipboard.writeText(apiReference);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
+  }
+
   return (
     <div className="grid gap-5">
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
@@ -195,24 +225,31 @@ export function ResellerApiKeys() {
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
         <h2 className="text-lg font-bold text-neutral-950">API quick start</h2>
         <p className="mt-1 text-sm text-neutral-600">Use your backend base URL and send the key in the Authorization header. Do not put keys in URLs or browser code.</p>
-        <pre className="mt-3 overflow-x-auto rounded-xl bg-neutral-950 p-4 text-xs leading-6 text-neutral-100">{`Base URL: ${baseUrl || "Configure APP_BASE_URL on backend"}
-Authorization: Bearer YOUR_API_KEY
-
-GET  /api/v1/services
-GET  /api/v1/services/{serviceId}
-GET  /api/v1/categories
-GET  /api/v1/balance
-POST /api/v1/services/import
-POST /api/v1/services/sync
-POST /api/v1/orders
-POST /api/v1/orders/status
-GET  /api/v1/orders/{orderId}
-GET  /api/v1/orders?limit=50
-
-POST /api/v1/orders
-Idempotency-Key: unique-request-id
-Content-Type: application/json
-{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}`}</pre>
+        <div className="api-code-example mt-3 overflow-hidden rounded-xl border">
+          <div className="api-code-toolbar flex items-center justify-between gap-3 border-b px-4 py-2.5">
+            <span className="api-code-title text-[11px] font-bold uppercase tracking-[0.12em]">API reference</span>
+            <div className="flex items-center gap-2">
+              <span className="api-code-badge rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide">REST · v1</span>
+              <button
+                type="button"
+                onClick={() => void copyApiReference()}
+                className="api-code-copy inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition"
+                aria-label={copyState === "copied" ? "API reference copied" : "Copy API reference"}
+              >
+                {copyState === "copied" ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
+                {copyState === "copied" ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+          <pre className="overflow-x-auto px-4 py-4 font-mono text-xs leading-6">{apiReference}</pre>
+        </div>
+        {copyState !== "idle" && (
+          <p role="status" className="mt-2 text-xs text-neutral-600">
+            {copyState === "copied"
+              ? "API reference copied to clipboard."
+              : "Clipboard access failed. Select the code and copy it manually."}
+          </p>
+        )}
         <p className="mt-3 text-xs leading-5 text-neutral-500">Order charges are calculated server-side from the live service price and configured API discount. Idempotency keys prevent duplicate charges for 24 hours. Order history contains only API-created orders; status endpoints are restricted to your account and provider status requests are cached for 60 seconds.</p>
         <p className="mt-3 text-xs leading-5 text-neutral-500">Standard SMM endpoint: POST /api/v1/standard with action=services, balance, add, status, multi_status, refill, refill_status, or cancel. Add requests require an Idempotency-Key header. Cancellation follows website rules and does not issue a refund.</p>
       </section>

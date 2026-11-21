@@ -427,7 +427,9 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
                       }`}
                     >
                       <item.icon className="size-[17px]" strokeWidth={1.8} />
-                      <span className="app-nav-label">{item.label}</span>
+                      <span className={item.href === "/dashboard/api" ? "text-[9px] leading-none" : "app-nav-label"}>
+                        {item.href === "/dashboard/api" ? "API" : item.label}
+                      </span>
                       {item.href === "/dashboard/services" && (
                         <span className="app-nav-badge ml-auto rounded-full bg-teal-100 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-teal-800">New</span>
                       )}
