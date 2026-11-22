@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { fail, requireAdmin } from "@/lib/api";
-import { Order } from "@/models";
+import { analyticsDateFilter, InvalidAnalyticsDateRangeError } from "@/lib/analytics";
+import { dbConnect } from "@/lib/db";
+import { Order, WalletTransaction } from "@/models";
 
 function csvCell(value: unknown) {
   return `"${String(value ?? "").replaceAll('"', '""')}"`;
@@ -9,28 +11,25 @@ function csvCell(value: unknown) {
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin();
+    await dbConnect();
     const { searchParams } = new URL(request.url);
-    const from = searchParams.get("from");
-    const to = searchParams.get("to");
-    const match: Record<string, unknown> = {};
-    const createdAt: Record<string, Date> = {};
-    if (from) createdAt.$gte = new Date(from);
-    if (to) {
-      const end = new Date(to);
-      end.setHours(23, 59, 59, 999);
-      createdAt.$lte = end;
-    }
-    if (Object.keys(createdAt).length) match.createdAt = createdAt;
-
-    const orders = await Order.find(match)
+    const orders = await Order.find(analyticsDateFilter(
+      searchParams.get("from") ?? undefined,
+      searchParams.get("to") ?? undefined,
+    ))
       .populate("user", "email")
       .populate("service", "name category")
       .sort({ createdAt: -1 })
       .limit(5000)
       .lean();
+    const refundedReferences = await WalletTransaction.distinct("reference", {
+      type: "refund",
+      reference: { $in: orders.map((order) => String(order._id)) },
+    });
+    const refundedOrderIds = new Set(refundedReferences);
 
     const header = ["date", "order_id", "user", "service", "status", "quantity", "revenue", "profit"];
-    const rows = orders.map((order) => [
+    const rows = orders.filter((order) => !refundedOrderIds.has(String(order._id))).map((order) => [
       new Date(order.createdAt).toISOString(),
       order._id,
       order.user?.email,
@@ -49,6 +48,10 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
-    return fail(error instanceof Error ? error.message : "Unable to export analytics", 403);
+    if (error instanceof InvalidAnalyticsDateRangeError) return fail(error.message, 400);
+    if (error instanceof Error && error.message === "Unauthorized") return fail(error.message, 401);
+    if (error instanceof Error && error.message === "Forbidden") return fail(error.message, 403);
+    console.error("Admin analytics export failed.", error);
+    return fail("Unable to export analytics", 500);
   }
 }

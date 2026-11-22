@@ -59,6 +59,8 @@ const WalletTransactionSchema = new Schema(
   },
   { timestamps: true },
 );
+WalletTransactionSchema.index({ reference: 1, type: 1 });
+WalletTransactionSchema.index({ reference: 1, type: 1 });
 
 const DepositSchema = new Schema(
   {
@@ -160,6 +162,7 @@ const OrderSchema = new Schema(
   },
   { timestamps: true },
 );
+OrderSchema.index({ createdAt: -1 });
 
 const RefillSchema = new Schema(
   {
