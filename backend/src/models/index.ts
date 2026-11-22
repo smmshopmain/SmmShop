@@ -687,7 +687,7 @@ export type PlatformSettings = {
     requireVersionHeader: boolean;
   };
   appearance: {
-    designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight";
+    designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight" | "meridian" | "sage" | "ledger";
     animationsEnabled: boolean;
     entranceEnabled: boolean;
     floatingEnabled: boolean;

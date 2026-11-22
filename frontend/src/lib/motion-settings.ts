@@ -1,7 +1,7 @@
 import { DEFAULT_ENABLED_LOADING_ANIMATIONS, LOADING_ANIMATIONS } from "@/lib/loading-animations";
 
 export type MotionSettings = {
-  designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight";
+  designPreset: "default" | "studio" | "orbit" | "atelier" | "pulse" | "midnight" | "meridian" | "sage" | "ledger";
   animationsEnabled: boolean;
   entranceEnabled: boolean;
   floatingEnabled: boolean;
@@ -21,6 +21,9 @@ export const DESIGN_MOTION_COLORS: Record<MotionSettings["designPreset"], string
   atelier: "#b94e35",
   pulse: "#67e8d0",
   midnight: "#818cf8",
+  meridian: "#315f86",
+  sage: "#55715a",
+  ledger: "#8a3d46",
 };
 
 export const DEFAULT_MOTION_SETTINGS: MotionSettings = {

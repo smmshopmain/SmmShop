@@ -86,7 +86,7 @@ const popupInputSchema = z.object({
 });
 
 const appearanceInputSchema = z.object({
-  designPreset: z.enum(["default", "studio", "orbit", "atelier", "pulse", "midnight"]).optional(),
+  designPreset: z.enum(["default", "studio", "orbit", "atelier", "pulse", "midnight", "meridian", "sage", "ledger"]).optional(),
   animationsEnabled: z.boolean().optional(),
   animationSpeed: z.number().min(0.5).max(2).optional(),
 }).superRefine((input, context) => {
@@ -1106,7 +1106,7 @@ const adminTools = [
       parameters: {
         type: "object",
         properties: {
-          designPreset: { type: "string", enum: ["default", "studio", "orbit", "atelier", "pulse", "midnight"] },
+          designPreset: { type: "string", enum: ["default", "studio", "orbit", "atelier", "pulse", "midnight", "meridian", "sage", "ledger"] },
           animationsEnabled: { type: "boolean" },
           animationSpeed: { type: "number", minimum: 0.5, maximum: 2 },
         },

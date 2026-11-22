@@ -42,6 +42,9 @@ export function buildAssistantWebsiteKnowledge(settings: PlatformSettings, admin
     atelier: "Atelier",
     pulse: "Pulse",
     midnight: "Midnight Studio",
+    meridian: "Meridian Executive",
+    sage: "Sage Workspace",
+    ledger: "Ledger Editorial",
   };
   const publicFacts = [
     `Product identity: ${brandName} is a social-media marketing (SMM) reseller workspace. It brings a social-service catalog, customer orders, wallet, referrals, notifications, and support into one account.`,

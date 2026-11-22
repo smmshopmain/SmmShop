@@ -39,7 +39,7 @@ const apiSettingsSchema = z.object({
 });
 
 const appearanceSchema = z.object({
-  designPreset: z.enum(["default", "studio", "orbit", "atelier", "pulse", "midnight"]).default("default"),
+  designPreset: z.enum(["default", "studio", "orbit", "atelier", "pulse", "midnight", "meridian", "sage", "ledger"]).default("default"),
   animationsEnabled: z.boolean(),
   entranceEnabled: z.boolean(),
   floatingEnabled: z.boolean(),

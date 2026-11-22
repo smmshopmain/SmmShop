@@ -3304,6 +3304,39 @@ html[data-design="midnight"] {
   --public-border: #303b55;
 }
 
+html[data-design="meridian"] {
+  --public-accent: #315f86;
+  --public-accent-strong: #264966;
+  --public-accent-soft: #dce7f0;
+  --public-page: #f1f4f7;
+  --public-ink: #202b36;
+  --public-muted: #647383;
+  --public-panel: #ffffff;
+  --public-border: #d8e1e9;
+}
+
+html[data-design="sage"] {
+  --public-accent: #55715a;
+  --public-accent-strong: #405944;
+  --public-accent-soft: #e0e9dd;
+  --public-page: #f2f3ed;
+  --public-ink: #29332b;
+  --public-muted: #687365;
+  --public-panel: #fffefa;
+  --public-border: #dce1d5;
+}
+
+html[data-design="ledger"] {
+  --public-accent: #8a3d46;
+  --public-accent-strong: #6f3039;
+  --public-accent-soft: #f1e0df;
+  --public-page: #f3eee7;
+  --public-ink: #302a27;
+  --public-muted: #756b64;
+  --public-panel: #fffdf9;
+  --public-border: #e3d9ce;
+}
+
 html[data-design] .public-landing,
 html[data-design] .public-login {
   color: var(--public-ink);
@@ -4558,4 +4591,228 @@ html[data-design="midnight"] .ai-assistant-shell {
 
 html[data-motion-entrance="on"] .ai-assistant-window:not(.hidden) {
   animation: rise-in var(--motion-menu-duration) cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+html[data-design="meridian"] {
+  --background: #f1f4f7;
+  --foreground: #202b36;
+  --brand: #315f86;
+  --brand-deep: #264966;
+  --surface: #ffffff;
+  --muted: #647383;
+  --theme-border: #d8e1e9;
+  --theme-soft: #e8eff5;
+  --theme-hero: #263f56;
+  --theme-surface-muted: #f5f7f9;
+  --theme-card-radius: 0.9rem;
+}
+
+html[data-design="sage"] {
+  --background: #f2f3ed;
+  --foreground: #29332b;
+  --brand: #55715a;
+  --brand-deep: #405944;
+  --surface: #fffefa;
+  --muted: #687365;
+  --theme-border: #dce1d5;
+  --theme-soft: #e8ede4;
+  --theme-hero: #344b3a;
+  --theme-surface-muted: #f7f7f1;
+  --theme-card-radius: 1.15rem;
+}
+
+html[data-design="ledger"] {
+  --background: #f3eee7;
+  --foreground: #302a27;
+  --brand: #8a3d46;
+  --brand-deep: #6f3039;
+  --surface: #fffdf9;
+  --muted: #756b64;
+  --theme-border: #e3d9ce;
+  --theme-soft: #f1e7df;
+  --theme-hero: #433139;
+  --theme-surface-muted: #f8f4ee;
+  --theme-card-radius: 0.65rem;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body::before {
+  display: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .app-shell {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .auth-page {
+  background: var(--background);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .app-shell .app-sidebar,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .app-shell .app-header {
+  border-color: var(--theme-border);
+  background: var(--surface);
+  box-shadow: 0 2px 8px rgb(26 36 45 / 5%);
+  backdrop-filter: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .surface-card,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .auth-card {
+  border-color: var(--theme-border);
+  border-radius: var(--theme-card-radius);
+  background: var(--surface);
+  color: var(--foreground);
+  box-shadow: 0 2px 8px rgb(26 36 45 / 5%);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .surface-card:hover {
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--theme-border));
+  box-shadow: 0 6px 16px rgb(26 36 45 / 7%);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .brand-mark {
+  background: var(--brand);
+  box-shadow: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .app-shell-admin .brand-mark,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-landing .landing-brand .brand-mark,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-login .login-brand .brand-mark {
+  background: var(--brand);
+  box-shadow: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .workspace-hero,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .dashboard-launch-card {
+  background: var(--theme-hero);
+  box-shadow: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .workspace-hero::after,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body .auth-visual::before {
+  display: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-landing .landing-title > span {
+  background-image: none;
+  background-clip: border-box;
+  color: var(--brand);
+  -webkit-background-clip: border-box;
+  -webkit-text-fill-color: var(--brand);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-landing .home-preview {
+  background: var(--theme-hero);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-landing .landing-actions a:first-child,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .public-login .login-panel form button[type="submit"] {
+  box-shadow: none;
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-teal-700"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-teal-600"] {
+  background-color: var(--brand);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="hover:bg-teal-800"]:hover {
+  background-color: var(--brand-deep);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-teal-50"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-teal-50/70"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-teal-100"] {
+  background-color: var(--theme-soft);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-teal-900"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-teal-800"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-teal-700"] {
+  color: var(--brand);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="border-teal-300"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="border-teal-600"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="focus:border-teal-700"]:focus {
+  border-color: var(--brand);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="ring-teal-600/15"] {
+  --tw-ring-color: color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-slate-950"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-slate-900"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-neutral-950"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-gray-900"] {
+  color: var(--foreground);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-slate-600"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-slate-500"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-neutral-600"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="text-gray-500"] {
+  color: var(--muted);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="border-slate-200"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="border-neutral-200"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="border-gray-200"] {
+  border-color: var(--theme-border);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-slate-50"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-neutral-50"],
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body [class~="bg-gray-50"] {
+  background-color: var(--theme-surface-muted);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body input:focus,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body select:focus,
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) body textarea:focus {
+  border-color: var(--brand);
+  --tw-ring-color: color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+html:is([data-design="meridian"], [data-design="sage"], [data-design="ledger"]) .app-shell nav a[class~="bg-teal-50"] {
+  background: var(--theme-soft);
+  color: var(--brand);
+}
+
+html[data-design="meridian"] .app-shell-user {
+  --api-code-bg: #f1f5f8;
+  --api-code-toolbar-bg: #e7eef4;
+  --api-code-border: #d6e0e9;
+  --api-code-ink: #263746;
+  --api-code-accent: #315f86;
+  --api-code-badge-bg: #dce8f1;
+}
+
+html[data-design="sage"] .app-shell-user {
+  --api-code-bg: #f3f5ef;
+  --api-code-toolbar-bg: #e8ede4;
+  --api-code-border: #d9e0d4;
+  --api-code-ink: #2f3d30;
+  --api-code-accent: #55715a;
+  --api-code-badge-bg: #dfe8dc;
+}
+
+html[data-design="ledger"] .app-shell-user {
+  --api-code-bg: #f8f3ed;
+  --api-code-toolbar-bg: #efe5dc;
+  --api-code-border: #e2d5c9;
+  --api-code-ink: #3a302d;
+  --api-code-accent: #8a3d46;
+  --api-code-badge-bg: #efdfd9;
+}
+
+html[data-design="ledger"] body h1,
+html[data-design="ledger"] body h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  letter-spacing: -0.02em;
 }

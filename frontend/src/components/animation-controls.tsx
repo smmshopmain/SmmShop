@@ -156,6 +156,24 @@ export function AnimationControls({ initialSettings }: { initialSettings: Motion
                 description: "A premium dark workspace with blue-violet highlights.",
                 swatches: ["#0b1020", "#172033", "#818cf8"],
               },
+              {
+                id: "meridian",
+                title: "Meridian · Executive",
+                description: "A precise enterprise look with cool stone surfaces and restrained navy accents.",
+                swatches: ["#f1f4f7", "#ffffff", "#315f86"],
+              },
+              {
+                id: "sage",
+                title: "Sage · Workspace",
+                description: "A calm, natural palette of warm ivory, muted sage, and forest green.",
+                swatches: ["#f2f3ed", "#fffefa", "#55715a"],
+              },
+              {
+                id: "ledger",
+                title: "Ledger · Editorial",
+                description: "Warm paper, ink, and deep wine accents with understated editorial typography.",
+                swatches: ["#f3eee7", "#fffdf9", "#8a3d46"],
+              },
             ] as const).map((design) => {
               const selected = settings.designPreset === design.id;
               return (
