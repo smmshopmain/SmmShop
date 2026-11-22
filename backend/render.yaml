@@ -42,6 +42,8 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: API_KEY_ENCRYPTION_SECRET
+        sync: false
       - key: CRON_SECRET
         sync: false
       - key: APP_BASE_URL

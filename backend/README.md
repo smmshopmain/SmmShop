@@ -17,6 +17,7 @@ Notes:
 - Exposes API under `/api/*` (health, cron jobs, auth, orders, deposits, providers).
 - Configure Render cron jobs to call `/api/cron/*` endpoints.
 - A GitHub Actions workflow calls `/api/keep-alive` every 5 minutes to reduce free-tier cold starts and run a MongoDB ping. Set the repository Actions variable `BACKEND_URL` to the deployed backend origin and the Actions secret `CRON_SECRET` to match the backend's `CRON_SECRET`. Email campaigns are processed separately every 10 minutes.
+- Set a stable `API_KEY_ENCRYPTION_SECRET` for AES-256-GCM encryption of reseller API keys. `JWT_SECRET` is used as a fallback; do not rotate the active encryption secret unless users are prepared to regenerate their API keys.
 - `middleware.ts` has been moved to `backend/middleware.ts` and should be used by the backend service.
 - Configure `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and optional `ADMIN_NAME` in the backend environment to manage main-admin access. Do not put these values in frontend environment variables.
 - To disable old MongoDB-backed main-admin accounts once, run `npm run migrate-admin-auth -- --apply` from this directory. This disables those accounts without deleting their related records.

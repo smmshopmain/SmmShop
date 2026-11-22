@@ -41,13 +41,22 @@ export async function GET() {
     const enabledProviderIds = new Set(
       providers.filter((provider) => provider.enabled).map((provider) => String(provider._id)),
     );
+    const hasUserDiscountOverride = settings.api.allowUserDiscountOverrides &&
+      typeof dbUser.apiDiscountPercent === "number";
     const discount = settings.api.discountEnabled
-      ? settings.api.allowUserDiscountOverrides && typeof dbUser.apiDiscountPercent === "number"
+      ? hasUserDiscountOverride
         ? Math.max(0, Math.min(100, dbUser.apiDiscountPercent))
         : Math.max(0, Math.min(100, settings.api.discountPercent))
       : 0;
     return ok({
       usage: { requests: requestCount, failedRequests, orders: orderCount },
+      pricing: {
+        discountEnabled: settings.api.discountEnabled,
+        discountPercent: discount,
+        discountSource: settings.api.discountEnabled
+          ? hasUserDiscountOverride ? "account" : "platform"
+          : "none",
+      },
       security: {
         allowlistEnforced: settings.api.enforceIpAllowlist,
         allowedIps: dbUser.apiAllowedIps ?? [],

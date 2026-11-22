@@ -517,6 +517,7 @@ const ApiKeySchema = new Schema(
     name: { type: String, required: true, trim: true, maxlength: 60 },
     prefix: { type: String, required: true, index: true },
     secretHash: { type: String, required: true, unique: true },
+    encryptedSecret: String,
     revokedAt: { type: Date, default: null, index: true },
     lastUsedAt: Date,
     lastUsedIp: String,

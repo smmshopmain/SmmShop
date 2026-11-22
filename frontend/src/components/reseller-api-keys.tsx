@@ -8,6 +8,7 @@ type ApiKeyItem = {
   _id: string;
   name: string;
   prefix: string;
+  hasStoredSecret: boolean;
   revokedAt?: string | null;
   lastUsedAt?: string | null;
   createdAt: string;
@@ -15,6 +16,7 @@ type ApiKeyItem = {
 
 type ApiUsage = {
   usage: { requests: number; failedRequests: number; orders: number };
+  pricing?: { discountEnabled: boolean; discountPercent: number; discountSource: "account" | "platform" | "none" };
   security: { allowlistEnforced: boolean; allowedIps: string[] };
   sync: {
     available: boolean;
@@ -37,10 +39,13 @@ export function ResellerApiKeys() {
   const [maxKeys, setMaxKeys] = useState(3);
   const [baseUrl, setBaseUrl] = useState(process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "");
   const [revealedSecret, setRevealedSecret] = useState("");
+  const [revealedSecretKeyId, setRevealedSecretKeyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<ApiUsage | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [copyingKeyId, setCopyingKeyId] = useState<string | null>(null);
+  const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const [keysResponse, usageResponse] = await Promise.all([
@@ -58,13 +63,16 @@ export function ResellerApiKeys() {
 
   useEffect(() => {
     let active = true;
-    void Promise.resolve()
-      .then(refresh)
-      .catch((error: unknown) => {
+    const load = () => {
+      void refresh().catch((error: unknown) => {
         if (active) setMessage(error instanceof Error ? error.message : "Unable to load API keys.");
       });
+    };
+    load();
+    const timer = window.setInterval(load, 30_000);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, [refresh]);
 
@@ -72,6 +80,7 @@ export function ResellerApiKeys() {
     setBusy(true);
     setMessage("");
     setRevealedSecret("");
+    setRevealedSecretKeyId(null);
     try {
       const response = await apiFetch("/api/account/api-keys", {
         method: "POST",
@@ -81,12 +90,55 @@ export function ResellerApiKeys() {
       const result = await response.json();
       if (!response.ok || !result?.ok) throw new Error(result?.message ?? "Unable to create API key.");
       setRevealedSecret(result.data.secret);
-      setMessage(replaceKeyId ? "API key regenerated. Copy the new secret now; it will not be shown again." : "API key created. Copy the secret now; it will not be shown again.");
+      setRevealedSecretKeyId(result.data.key?._id ?? null);
+      setMessage(replaceKeyId
+        ? "API key regenerated. Copy it now or use Copy key on this active key later."
+        : "API key created. Copy it now or use Copy key on this active key later.");
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create API key.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function copyExistingKey(id: string) {
+    setCopyingKeyId(id);
+    setMessage("");
+    let secret = "";
+    try {
+      const response = await apiFetch(`/api/account/api-keys/${encodeURIComponent(id)}/secret`, { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || !result?.ok) throw new Error(result?.message ?? "Unable to retrieve API key.");
+      secret = result.data.secret;
+      setRevealedSecret(secret);
+      setRevealedSecretKeyId(id);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Unable to retrieve API key.");
+      setCopyingKeyId(null);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(secret);
+    } catch {
+      setMessage("Clipboard access failed. Select the key shown above and copy it manually.");
+      setCopyingKeyId(null);
+      return;
+    }
+    setCopiedKeyId(id);
+    setMessage("API key copied to clipboard. Keep it private.");
+    setCopyingKeyId(null);
+  }
+
+  async function copyRevealedKey() {
+    if (!revealedSecret) return;
+    try {
+      await navigator.clipboard.writeText(revealedSecret);
+      setCopiedKeyId(revealedSecretKeyId ?? "new");
+      setMessage("API key copied to clipboard. Keep it private.");
+    } catch {
+      setMessage("Clipboard access failed. Select the key above and copy it manually.");
     }
   }
 
@@ -153,6 +205,12 @@ export function ResellerApiKeys() {
   }
 
   const activeCount = keys.filter((key) => !key.revokedAt).length;
+  const pricing = usage?.pricing;
+  const discountPercent = pricing?.discountPercent ?? 0;
+  const estimatedSaving = (1000 * discountPercent / 100).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
   const apiReference = `Base URL: ${baseUrl || "Configure APP_BASE_URL on backend"}
 Authorization: Bearer YOUR_API_KEY
 
@@ -187,7 +245,7 @@ Content-Type: application/json
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-lg font-bold text-neutral-950">API keys</h2>
-            <p className="mt-1 text-sm text-neutral-600">Active keys: {activeCount} / {maxKeys}. Full secrets are shown only once.</p>
+            <p className="mt-1 text-sm text-neutral-600">Active keys: {activeCount} / {maxKeys}. Copy active keys again whenever you need them.</p>
           </div>
           <button type="button" onClick={() => void createKey()} disabled={busy || activeCount >= maxKeys} className="rounded-xl bg-teal-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
             {busy ? "Working..." : "Generate API key"}
@@ -195,9 +253,21 @@ Content-Type: application/json
         </div>
         {revealedSecret && (
           <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-            <p className="text-sm font-bold text-amber-950">Copy this secret now</p>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-bold text-amber-950">Your API key</p>
+              <button
+                type="button"
+                onClick={() => void copyRevealedKey()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-white px-3 py-2 text-xs font-semibold text-amber-950 transition hover:bg-amber-100"
+              >
+                {copiedKeyId === (revealedSecretKeyId ?? "new")
+                  ? <Check aria-hidden="true" className="size-3.5" />
+                  : <Copy aria-hidden="true" className="size-3.5" />}
+                {copiedKeyId === (revealedSecretKeyId ?? "new") ? "Copied" : "Copy key"}
+              </button>
+            </div>
             <code className="mt-2 block break-all rounded-lg bg-white p-3 text-xs text-neutral-900">{revealedSecret}</code>
-            <p className="mt-2 text-xs text-amber-900">It is stored as a hash and cannot be recovered after leaving this page.</p>
+            <p className="mt-2 text-xs text-amber-900">This key is encrypted when stored. You can copy it again from the active key list while signed in. Never share it or put it in public code.</p>
           </div>
         )}
         {message && <p role="status" className="mt-3 text-sm text-neutral-600">{message}</p>}
@@ -209,9 +279,22 @@ Content-Type: application/json
                 <p className="text-xs text-neutral-500">
                   Created {new Date(key.createdAt).toLocaleString()} · Last used {key.lastUsedAt ? new Date(key.lastUsedAt).toLocaleString() : "Never"} · {key.revokedAt ? "Revoked" : "Active"}
                 </p>
+                {!key.revokedAt && !key.hasStoredSecret && (
+                  <p className="mt-1 text-xs text-amber-700">Older key: regenerate it once to enable secure copy.</p>
+                )}
               </div>
               {!key.revokedAt && (
                 <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={busy || copyingKeyId !== null || !key.hasStoredSecret}
+                    onClick={() => void copyExistingKey(key._id)}
+                    title={key.hasStoredSecret ? "Copy this API key" : "Regenerate this older key once to enable copying"}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {copiedKeyId === key._id ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
+                    {copyingKeyId === key._id ? "Loading..." : copiedKeyId === key._id ? "Copied" : "Copy key"}
+                  </button>
                   <button type="button" disabled={busy} onClick={() => void createKey(key._id, key.name)} className="rounded-lg border border-neutral-300 px-3 py-2 text-xs font-semibold disabled:opacity-50">Regenerate</button>
                   <button type="button" disabled={busy} onClick={() => void revoke(key._id)} className="rounded-lg border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-700 disabled:opacity-50">Revoke</button>
                 </div>
@@ -220,6 +303,32 @@ Content-Type: application/json
           ))}
           {keys.length === 0 && <p className="py-4 text-sm text-neutral-500">No API keys have been created.</p>}
         </div>
+      </section>
+
+      <section className="api-benefits-panel rounded-2xl border p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="api-code-title text-xs font-bold uppercase tracking-[0.14em]">Live API pricing</p>
+            <h2 className="mt-1 text-lg font-bold">Your API benefits</h2>
+          </div>
+          <span className="api-code-badge rounded-lg px-3 py-1.5 text-sm font-bold">
+            {pricing?.discountEnabled ? `${discountPercent}% discount` : "No active discount"}
+          </span>
+        </div>
+        <p className="mt-3 text-sm leading-6">
+          {pricing?.discountEnabled
+            ? `Your current ${pricing.discountSource === "account" ? "account-specific" : "platform"} discount saves about ₹${estimatedSaving} for every ₹1,000 of listed API service rates.`
+            : "API access still lets you discover services, automate orders, and check balances and order status using your website wallet."}
+        </p>
+        <ul className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          <li>• Use one API key for service lookup, order placement, and status checks.</li>
+          <li>• API orders are charged from your existing website wallet.</li>
+          <li>• Idempotency keys help prevent duplicate orders when retrying requests.</li>
+          <li>• The API discount applies to API prices and does not change website-order prices.</li>
+        </ul>
+        <p className="mt-3 text-xs leading-5 opacity-80">
+          Admin pricing changes are picked up automatically (this page refreshes every 30 seconds). Each new API request uses the latest discount; fetch the service list again to see updated rates. Existing orders keep their original price.
+        </p>
       </section>
 
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
@@ -252,6 +361,50 @@ Content-Type: application/json
         )}
         <p className="mt-3 text-xs leading-5 text-neutral-500">Order charges are calculated server-side from the live service price and configured API discount. Idempotency keys prevent duplicate charges for 24 hours. Order history contains only API-created orders; status endpoints are restricted to your account and provider status requests are cached for 60 seconds.</p>
         <p className="mt-3 text-xs leading-5 text-neutral-500">Standard SMM endpoint: POST /api/v1/standard with action=services, balance, add, status, multi_status, refill, refill_status, or cancel. Add requests require an Idempotency-Key header. Cancellation follows website rules and does not issue a refund.</p>
+      </section>
+
+      <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
+        <h2 className="text-lg font-bold text-neutral-950">How to use your API key</h2>
+        <ol className="mt-4 grid gap-4">
+          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
+            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">1</span>
+            <div>
+              <h3 className="font-semibold text-neutral-900">Copy and protect your key</h3>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">Use Copy key beside an active key whenever you need it again. Send it only from your private server; never include it in a URL, browser JavaScript, screenshots, or a public repository. Regenerate a key immediately if it may have been exposed.</p>
+            </div>
+          </li>
+          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
+            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">2</span>
+            <div>
+              <h3 className="font-semibold text-neutral-900">Read the service list and current prices</h3>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">Call this endpoint first. Choose a service ID from its response; the returned rate already includes your current API discount.</p>
+              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl "${baseUrl || "https://your-backend.example"}/api/v1/services" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
+            </div>
+          </li>
+          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
+            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">3</span>
+            <div>
+              <h3 className="font-semibold text-neutral-900">Place an order from your server</h3>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">Replace the service ID, link, and quantity with valid values. Use a fresh Idempotency-Key for each new order; reuse the same value only when retrying that exact request.</p>
+              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl --request POST "${baseUrl || "https://your-backend.example"}/api/v1/orders" \\
+  --header "Authorization: Bearer YOUR_API_KEY" \\
+  --header "Idempotency-Key: UNIQUE_VALUE_FOR_THIS_ORDER" \\
+  --header "Content-Type: application/json" \\
+  --data '{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}'`}</pre>
+            </div>
+          </li>
+          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
+            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">4</span>
+            <div>
+              <h3 className="font-semibold text-neutral-900">Check balance and order status</h3>
+              <p className="mt-1 text-sm leading-6 text-neutral-600">Use GET /api/v1/balance and GET /api/v1/orders/{`{orderId}`} with the same Authorization header. Orders use your existing website wallet; always check the API response for errors and the final charge.</p>
+            </div>
+          </li>
+        </ol>
+        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+          API discounts are applied to new API requests using the latest admin settings. No key regeneration is needed when the discount changes; fetch services again for the current rates. Existing orders are not repriced.
+        </p>
       </section>
 
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">

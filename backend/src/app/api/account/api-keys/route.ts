@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import mongoose from "mongoose";
 import { z } from "zod";
 import { fail, ok, parseBody, requireUser } from "@/lib/api";
+import { encryptApiKey } from "@/lib/api-key-crypto";
 import { generateResellerApiKey } from "@/lib/reseller-api";
 import { ApiKey, getSettings } from "@/models";
 
@@ -17,17 +18,20 @@ export async function GET() {
     const settings = await getSettings();
     if (!settings.api.enabled) return fail("Reseller API is currently disabled.", 503);
     if (dbUser.apiAccessEnabled === false) return fail("API access is disabled for this account.", 403);
-    const keys = await ApiKey.find({ user: auth.id })
-      .select("name prefix revokedAt lastUsedAt createdAt")
+    const storedKeys = await ApiKey.find({ user: auth.id })
+      .select("name prefix encryptedSecret revokedAt lastUsedAt createdAt")
       .sort({ createdAt: -1 })
       .lean();
     return ok({
-      keys,
+      keys: storedKeys.map(({ encryptedSecret, ...key }) => ({
+        ...key,
+        hasStoredSecret: Boolean(encryptedSecret),
+      })),
       enabled: true,
       maxKeys: settings.api.maxKeysPerUser,
-      activeCount: keys.filter((key) => !key.revokedAt).length,
+      activeCount: storedKeys.filter((key) => !key.revokedAt).length,
       baseUrl: process.env.APP_BASE_URL?.replace(/\/+$/, "") ?? "",
-    });
+    }, { headers: { "cache-control": "no-store, private" } });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load API keys", 401);
   }
@@ -73,6 +77,7 @@ export async function POST(request: NextRequest) {
         name: input.name,
         prefix: generated.prefix,
         secretHash: generated.secretHash,
+        encryptedSecret: encryptApiKey(generated.secret),
       }], { session: transactionSession });
       newKey = {
         _id: created._id,
@@ -83,7 +88,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (!newKey) return fail("Unable to create API key.", 500);
-    return ok({ key: newKey, secret: generated.secret }, { status: 201 });
+    return ok({ key: newKey, secret: generated.secret }, {
+      status: 201,
+      headers: { "cache-control": "no-store, private" },
+    });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to create API key");
   } finally {

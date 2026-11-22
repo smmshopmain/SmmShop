@@ -196,7 +196,7 @@ npm run start
 
 The reseller API is disabled by default. Enable it from **Admin > Settings > Global API controls**. Turning it off hides the API links in user and admin navigation, rejects key-management and reseller requests server-side, and skips API service-sync jobs. It does not disable the website's own provider integration, website orders, payments, or catalog sync.
 
-Users can create and revoke keys from **Dashboard > API Access**. Keys are stored as SHA-256 hashes; the full secret is shown only once. Send custom REST credentials using `Authorization: Bearer <key>` or `x-api-key`; the Standard SMM endpoint accepts its key in the POST body.
+Users can create, copy, regenerate, and revoke keys from **Dashboard > API Access**. API keys are verified using SHA-256 hashes and encrypted with AES-256-GCM for later copying; the encrypted value is never returned by the key-list endpoint. Copying or retrieving a key requires the signed-in owner account. Configure a stable `API_KEY_ENCRYPTION_SECRET` in the backend environment (or `JWT_SECRET` is used as a fallback). Existing keys created before encrypted storage was added must be regenerated once before they can be copied again. Send custom REST credentials using `Authorization: Bearer <key>` or `x-api-key`; the Standard SMM endpoint accepts its key in the POST body.
 
 Custom REST endpoints:
 
@@ -234,7 +234,7 @@ The REST API is versioned at `/api/v1`. Admins can optionally require `X-API-Ver
 
 API administrators can review order history at `/admin/api/orders`, customer service mappings at `/admin/api/services`, and import/manual/automatic sync activity at `/admin/api/sync-history`. These pages and their data endpoints are unavailable while the global API switch is off.
 
-API discounts are calculated server-side and apply only to API orders. Normal website orders keep the existing pricing. API-created orders use the existing order and wallet transaction collections and preserve a pricing snapshot. API request logs exclude credentials and request bodies and are retained for 90 days. Service auto-sync requires the global setting, the user's opt-in, and the `smm-api-service-sync` Render cron service in `backend/render.yaml`; configure its `APP_BASE_URL` and `CRON_SECRET` values.
+API discounts are calculated server-side from the current admin settings and apply only to API orders. Normal website orders keep the existing pricing. A changed discount applies to subsequent API requests without rotating keys; fetch the service list again to read the new rates. Orders already placed retain their original price snapshot. The user API page displays the effective discount and refreshes it periodically. API-created orders use the existing order and wallet transaction collections. API request logs exclude credentials and request bodies and are retained for 90 days. Service auto-sync requires the global setting, the user's opt-in, and the `smm-api-service-sync` Render cron service in `backend/render.yaml`; configure its `APP_BASE_URL` and `CRON_SECRET` values.
 
 ## Telegram Deposit Verification
 

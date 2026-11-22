@@ -399,6 +399,12 @@ html[data-motion-entrance="on"] .page-enter > * {
   box-shadow: inset 0 1px rgb(255 255 255 / 55%);
 }
 
+.api-benefits-panel {
+  border-color: var(--api-code-border);
+  background: var(--api-code-bg);
+  color: var(--api-code-ink);
+}
+
 .api-code-toolbar {
   border-color: var(--api-code-border);
   background: var(--api-code-toolbar-bg);
