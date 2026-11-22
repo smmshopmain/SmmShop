@@ -1962,8 +1962,6 @@ html[data-design="orbit"] .app-shell-user main .order-list-panel {
 }
 
 html[data-design="orbit"] .app-shell-user main .order-list-row {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
   margin: 0.55rem 0;
   padding: 1rem;
   border: 1px solid #edeaf3;
@@ -1971,13 +1969,8 @@ html[data-design="orbit"] .app-shell-user main .order-list-row {
   background: #fff;
 }
 
-html[data-design="orbit"] .app-shell-user main .order-list-row > div:first-child,
-html[data-design="orbit"] .app-shell-user main .order-list-row > div:last-child {
-  grid-column: 1 / -1;
-}
-
 html[data-design="orbit"] .app-shell-user main .order-list-row > div:not(:first-child):not(:last-child) {
-  padding: 0.65rem;
+  padding-block: 0.65rem;
   border-radius: 0.75rem;
   background: #f8f7fb;
 }
@@ -2165,15 +2158,6 @@ html[data-design="orbit"] .app-shell-user main button[class*="bg-teal-600"]:hove
   html[data-design="orbit"] .app-shell-user main .wallet-workspace,
   html[data-design="orbit"] .app-shell-user main .profile-workspace {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  html[data-design="orbit"] .app-shell-user main .order-list-row {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  html[data-design="orbit"] .app-shell-user main .order-list-row > div:first-child,
-  html[data-design="orbit"] .app-shell-user main .order-list-row > div:last-child {
-    grid-column: 1 / -1;
   }
 }
 

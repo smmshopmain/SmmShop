@@ -204,7 +204,7 @@ export function OrderLiveList({
           {visibleOrders.map((order) => (
             <div
               key={String(order._id)}
-              className="order-list-row grid gap-4 p-4 text-sm xl:grid-cols-[minmax(200px,1fr)_100px_115px_100px_100px_80px_145px_170px] xl:items-start"
+              className="order-list-row grid gap-4 p-4 text-sm xl:gap-x-0 xl:grid-cols-[minmax(200px,1fr)_100px_115px_100px_100px_80px_145px_170px] xl:items-start"
             >
               <div className="min-w-0">
                 <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
