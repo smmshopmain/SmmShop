@@ -155,7 +155,22 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
-    return ok({ orders, syncedAt: new Date().toISOString() });
+    return ok({
+      orders: orders.map((order) => ({
+        _id: order._id,
+        link: order.link,
+        quantity: order.quantity,
+        status: order.status,
+        sellingPrice: order.sellingPrice,
+        startCount: order.startCount,
+        remains: order.remains,
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt,
+        lastStatusSyncAt: order.lastStatusSyncAt,
+        service: order.service,
+      })),
+      syncedAt: new Date().toISOString(),
+    });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load orders", 401);
   }
@@ -169,7 +184,7 @@ export async function POST(request: NextRequest) {
 
     const service = await Service.findById(input.serviceId).populate("provider").lean();
     if (!service || !service.active) return fail("Service is unavailable", 404);
-    if (!service.provider?.enabled) return fail("Provider is disabled for this service", 503);
+    if (!service.provider?.enabled) return fail("This service is temporarily unavailable.", 503);
     if (!isValidOrderLink(input.link)) return fail("Enter a valid public http/https link");
     if (input.quantity < service.min || input.quantity > service.max) {
       return fail(`Quantity must be between ${service.min} and ${service.max}`);
@@ -304,7 +319,16 @@ export async function POST(request: NextRequest) {
       `Amount: ${sellingPrice}`,
     ]);
 
-    return ok({ order });
+    return ok({
+      order: {
+        _id: order._id,
+        link: order.link,
+        quantity: order.quantity,
+        status: order.status,
+        sellingPrice: order.sellingPrice,
+        createdAt: order.createdAt,
+      },
+    });
   } catch (error) {
     await logProviderEvent({
       level: "error",
@@ -312,7 +336,7 @@ export async function POST(request: NextRequest) {
       action: "orders.post",
       message: error instanceof Error ? error.message : "Unable to place order",
     });
-    return fail(error instanceof Error ? error.message : "Unable to place order");
+    return fail("Unable to place the order right now. Please try again.");
   }
 }
 
@@ -328,7 +352,7 @@ export async function PATCH(request: NextRequest) {
       return fail("Only active orders can be canceled");
     }
     if (!order.service?.cancel) return fail("This service does not support cancellation");
-    if (!order.providerOrderId) return fail("Provider order id is missing");
+    if (!order.providerOrderId) return fail("This order cannot be canceled right now.");
 
     const result = await cancelProviderOrder(order.provider, order.providerOrderId);
 
@@ -364,7 +388,7 @@ export async function PATCH(request: NextRequest) {
       body: `Order ${order._id} was canceled and refunded.`,
     });
 
-    return ok({ order });
+    return ok({ order: { _id: order._id, status: order.status } });
   } catch (error) {
     await logProviderEvent({
       level: "error",
@@ -372,6 +396,6 @@ export async function PATCH(request: NextRequest) {
       action: "orders.patch",
       message: error instanceof Error ? error.message : "Unable to cancel order",
     });
-    return fail(error instanceof Error ? error.message : "Unable to cancel order");
+    return fail("Unable to cancel the order right now. Please try again.");
   }
 }

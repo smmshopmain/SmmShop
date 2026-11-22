@@ -359,7 +359,7 @@ Content-Type: application/json
               : "Clipboard access failed. Select the code and copy it manually."}
           </p>
         )}
-        <p className="mt-3 text-xs leading-5 text-neutral-500">Order charges are calculated server-side from the live service price and configured API discount. Idempotency keys prevent duplicate charges for 24 hours. Order history contains only API-created orders; status endpoints are restricted to your account and provider status requests are cached for 60 seconds.</p>
+        <p className="mt-3 text-xs leading-5 text-neutral-500">Order charges are calculated server-side from the live service price and configured API discount. Idempotency keys prevent duplicate charges for 24 hours. Order history contains only API-created orders; status endpoints are restricted to your account and order status requests are cached for 60 seconds.</p>
         <p className="mt-3 text-xs leading-5 text-neutral-500">Standard SMM endpoint: POST /api/v1/standard with action=services, balance, add, status, multi_status, refill, refill_status, or cancel. Add requests require an Idempotency-Key header. Cancellation follows website rules and does not issue a refund.</p>
       </section>
 

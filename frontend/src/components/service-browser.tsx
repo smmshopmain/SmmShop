@@ -329,7 +329,7 @@ export function ServiceBrowser() {
                 setQuery(event.target.value);
                 resetSelection();
               }}
-              placeholder="Search service name, provider ID, category or keywords..."
+              placeholder="Search service name, service ID, category or keywords..."
               className="h-12 w-full rounded-2xl border border-neutral-200 bg-neutral-50/80 pl-11 pr-4 text-sm shadow-none focus:bg-white"
             />
             <span className="pointer-events-none absolute right-3 top-1/2 hidden -translate-y-1/2 rounded-lg border border-neutral-200 bg-white px-2 py-1 text-[10px] font-medium text-neutral-400 sm:block">

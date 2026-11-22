@@ -7,16 +7,15 @@ import { RefreshCcw } from "lucide-react";
 export default async function RefillsPage() {
   let refills: Array<{
     _id: string;
-    providerRefillId?: string;
     status: string;
     createdAt: Date;
-    order?: { providerOrderId?: string; link?: string; status?: string };
+    order?: { _id?: string; link?: string; status?: string };
   }> = [];
 
   try {
     const { auth } = await requireUser();
     refills = (await Refill.find({ user: auth.id })
-      .populate("order", "providerOrderId link status")
+    .populate("order", "link status")
       .sort({ createdAt: -1 })
       .limit(100)
       .lean()) as typeof refills;
@@ -30,7 +29,7 @@ export default async function RefillsPage() {
         <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Refill tracking</p>
         <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Refills</h1>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-          Track refill requests for eligible completed orders. Status updates appear when the provider returns a refill ID.
+          Track refill requests for eligible completed orders. Updates appear as your requests are processed.
         </p>
       </div>
       <section className="overflow-hidden rounded-md border border-neutral-200 bg-white shadow-sm">
@@ -44,11 +43,11 @@ export default async function RefillsPage() {
           {refills.map((refill) => (
             <div key={String(refill._id)} className="grid gap-3 p-4 text-sm md:grid-cols-[minmax(0,1fr)_140px_140px_170px] md:items-center">
               <div className="min-w-0">
-                <p className="font-medium">Order {refill.order?.providerOrderId ?? "-"}</p>
+                <p className="font-medium">Order {refill.order?._id ?? "-"}</p>
                 <p className="truncate text-neutral-500">{refill.order?.link ?? "Link unavailable"}</p>
               </div>
               <StatusBadge status={refill.status} />
-              <span className="font-medium text-neutral-700">{refill.providerRefillId ?? "Queued"}</span>
+              <span className="font-medium text-neutral-700">{refill._id}</span>
               <span className="text-neutral-500">{new Date(refill.createdAt).toLocaleString()}</span>
             </div>
           ))}

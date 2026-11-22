@@ -6,13 +6,6 @@ import { ActionButton } from "@/components/admin-controls";
 import { StatusBadge } from "@/components/status-badge";
 import { apiFetch } from "@/lib/client-api";
 
-type ProviderStatusPayload = {
-  status?: string;
-  start_count?: string | number;
-  remains?: string | number;
-  charge?: string | number;
-};
-
 export type LiveOrder = {
   _id: string;
   link: string;
@@ -24,14 +17,8 @@ export type LiveOrder = {
   createdAt: string;
   updatedAt: string;
   lastStatusSyncAt?: string;
-  providerOrderId?: string;
-  providerResponse?: { lastStatus?: ProviderStatusPayload };
   service?: { name?: string; refill?: boolean; cancel?: boolean };
 };
-
-function providerRawStatus(order: LiveOrder) {
-  return order.providerResponse?.lastStatus?.status ? String(order.providerResponse.lastStatus.status) : order.status;
-}
 
 function formatDate(value?: string) {
   if (!value) return "-";
@@ -39,7 +26,7 @@ function formatDate(value?: string) {
 }
 
 function completionText(order: LiveOrder) {
-  if (typeof order.remains !== "number") return "Waiting for provider";
+  if (typeof order.remains !== "number") return "Waiting for updates";
   const done = Math.max(0, order.quantity - order.remains);
   const percent = order.quantity > 0 ? Math.min(100, Math.round((done / order.quantity) * 100)) : 0;
   return `${done}/${order.quantity} completed (${percent}%)`;
@@ -98,10 +85,9 @@ export function OrderLiveList({
       const matchesSearch = search
         ? [
             order.link,
-            order.providerOrderId ?? "",
             order._id,
             order.service?.name ?? "",
-            providerRawStatus(order),
+            order.status,
           ]
             .join(" ")
             .toLowerCase()
@@ -116,7 +102,7 @@ export function OrderLiveList({
       <div className="flex flex-col gap-3 border-b border-neutral-200 bg-neutral-50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 text-sm text-neutral-600">
           <Wifi className="size-4 text-teal-700" />
-          <span className="font-semibold text-neutral-800">Live provider status</span>
+          <span className="font-semibold text-neutral-800">Live order status</span>
           <span className="hidden sm:inline">Auto refresh every 15s</span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -136,12 +122,12 @@ export function OrderLiveList({
 
       <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px]">
         <span>Service</span>
-        <span>App status</span>
-        <span>Provider status</span>
+        <span>Status</span>
+        <span>Order Status</span>
         <span>Completed</span>
         <span>Remaining</span>
         <span>Charge</span>
-        <span>Provider sync</span>
+        <span>Last updated</span>
         <span className="text-right">Actions</span>
       </div>
 
@@ -155,38 +141,37 @@ export function OrderLiveList({
               <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
               <p className="truncate text-neutral-500">{order.link}</p>
               <p className="mt-1 text-xs text-neutral-500">Order ID: {String(order._id)}</p>
-              <p className="text-xs text-neutral-500">Provider Order ID: {order.providerOrderId ?? "-"}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">App status</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Status</p>
               <StatusBadge status={order.status} />
               {order.status === "Partial" && <p className="mt-1 text-xs font-semibold text-amber-700">Incomplete / Partial</p>}
             </div>
 
             <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Provider status</p>
-              <p className="font-semibold text-neutral-800">{providerRawStatus(order)}</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Order Status</p>
+              <p className="font-semibold text-neutral-800">{order.status}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Completed</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Completed</p>
               <p className="font-medium">{completionText(order)}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Remaining</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Remaining</p>
               <p className="font-semibold">{typeof order.remains === "number" ? order.remains : "-"}</p>
               <p className="text-xs text-neutral-500">Start: {typeof order.startCount === "number" ? order.startCount : "-"}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Charge</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Charge</p>
               <p className="font-semibold">Rs.{order.sellingPrice}</p>
             </div>
 
             <div>
-              <p className="text-xs font-medium uppercase text-neutral-400">Provider sync</p>
+              <p className="text-xs font-medium uppercase text-neutral-400 xl:hidden">Last updated</p>
               <p className="text-neutral-600">{formatDate(order.lastStatusSyncAt)}</p>
               <p className="text-xs text-neutral-500">Created: {formatDate(order.createdAt)}</p>
             </div>

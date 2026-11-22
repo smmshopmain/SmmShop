@@ -63,6 +63,54 @@ type SyncableOrder = {
   save: () => Promise<unknown>;
 };
 
+function getCancellationStatus(providerResponse: unknown): "accepted" | "unconfirmed" | "not-submitted" | undefined {
+  if (!providerResponse || typeof providerResponse !== "object" || !("cancellationAttempt" in providerResponse)) {
+    return undefined;
+  }
+  const attempt = providerResponse.cancellationAttempt;
+  if (!attempt || typeof attempt !== "object" || !("attempted" in attempt)) return undefined;
+  if (attempt.attempted === false) return "not-submitted";
+  if (attempt.attempted !== true) return undefined;
+  return "accepted" in attempt && attempt.accepted === true ? "accepted" : "unconfirmed";
+}
+
+function toUserOrder(order: {
+  _id: unknown;
+  link: string;
+  quantity: number;
+  status: string;
+  sellingPrice: number;
+  startCount?: number;
+  remains?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  lastStatusSyncAt?: Date;
+  adminCompletedAt?: Date;
+  providerResponse?: unknown;
+  service?: {
+    _id?: unknown;
+    name?: string;
+    refill?: boolean;
+    cancel?: boolean;
+  } | null;
+}) {
+  return {
+    _id: order._id,
+    link: order.link,
+    quantity: order.quantity,
+    status: order.status,
+    sellingPrice: order.sellingPrice,
+    startCount: order.startCount,
+    remains: order.remains,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    lastStatusSyncAt: order.lastStatusSyncAt,
+    adminCompletedAt: order.adminCompletedAt,
+    cancellationStatus: getCancellationStatus(order.providerResponse),
+    service: order.service,
+  };
+}
+
 function isValidOrderLink(value: string) {
   try {
     const url = new URL(value);
@@ -184,7 +232,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(100)
       .lean();
-    return ok({ orders, syncedAt: new Date().toISOString() });
+    return ok({ orders: orders.map(toUserOrder), syncedAt: new Date().toISOString() });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load orders", 401);
   }
@@ -198,7 +246,7 @@ export async function POST(request: NextRequest) {
 
     const service = await Service.findById(input.serviceId).populate("provider").lean();
     if (!service || !service.active) return fail("Service is unavailable", 404);
-    if (!service.provider?.enabled) return fail("Provider is disabled for this service", 503);
+    if (!service.provider?.enabled) return fail("This service is temporarily unavailable.", 503);
     if (!isValidOrderLink(input.link)) return fail("Enter a valid public http/https link");
     if (input.quantity < service.min || input.quantity > service.max) {
       return fail(`Quantity must be between ${service.min} and ${service.max}`);
@@ -279,12 +327,7 @@ export async function POST(request: NextRequest) {
     await processOrderQueue(auth.id, input.link);
     const currentOrder = await Order.findById(order._id).lean();
     if (currentOrder?.status === "Failed") {
-      const errorMessage = currentOrder.providerResponse &&
-        typeof currentOrder.providerResponse === "object" &&
-        "submissionError" in currentOrder.providerResponse
-        ? String(currentOrder.providerResponse.submissionError)
-        : "Order could not be submitted. The amount was refunded.";
-      return fail(errorMessage, 502);
+      return fail("Order could not be submitted. The amount was refunded.", 502);
     }
 
     await notifyInApp({
@@ -301,7 +344,7 @@ export async function POST(request: NextRequest) {
       `Amount: ${sellingPrice}`,
     ]);
 
-    return ok({ order: currentOrder });
+    return ok({ order: currentOrder ? toUserOrder(currentOrder) : null });
   } catch (error) {
     await logProviderEvent({
       level: "error",
@@ -309,7 +352,7 @@ export async function POST(request: NextRequest) {
       action: "orders.post",
       message: error instanceof Error ? error.message : "Unable to place order",
     });
-    return fail(error instanceof Error ? error.message : "Unable to place order");
+    return fail("Unable to place the order right now. Please try again.");
   }
 }
 
@@ -368,9 +411,9 @@ export async function PATCH(request: NextRequest) {
 
     const message = canceledOrder.cancellationAttempt.attempted
       ? canceledOrder.cancellationAttempt.accepted
-        ? "Provider accepted cancellation. The order was canceled on the website."
-        : "The order was canceled on the website, but the provider did not confirm cancellation and may continue work."
-      : "The order was canceled before it was submitted to the provider.";
+        ? "Cancellation request accepted. The order was canceled on the website."
+        : "The order was canceled on the website, but cancellation could not be confirmed. The service may continue."
+      : "The order was canceled before processing started.";
 
     await notifyInApp({
       user: auth.id,
@@ -378,7 +421,16 @@ export async function PATCH(request: NextRequest) {
       body: `Order ${canceledOrder.order._id} was canceled. ${message} No refund was issued.`,
     });
 
-    return ok({ order: canceledOrder.order, message: `${message} No refund was issued.` });
+    return ok({
+      order: {
+        _id: canceledOrder.order._id,
+        status: canceledOrder.order.status,
+        cancellationStatus: canceledOrder.cancellationAttempt.attempted
+          ? canceledOrder.cancellationAttempt.accepted ? "accepted" : "unconfirmed"
+          : "not-submitted",
+      },
+      message: `${message} No refund was issued.`,
+    });
   } catch (error) {
     if (error instanceof OrderQueueBusyError) return fail(error.message, 409);
     await logProviderEvent({
@@ -387,6 +439,11 @@ export async function PATCH(request: NextRequest) {
       action: "orders.patch",
       message: error instanceof Error ? error.message : "Unable to cancel order",
     });
-    return fail(error instanceof Error ? error.message : "Unable to cancel order");
+    const message = error instanceof Error ? error.message : "";
+    return fail(
+      ["Order not found", "Only active or scheduled orders can be canceled"].includes(message)
+        ? message
+        : "Unable to cancel order right now. Please try again.",
+    );
   }
 }

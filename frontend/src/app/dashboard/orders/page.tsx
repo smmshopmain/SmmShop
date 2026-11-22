@@ -19,8 +19,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     updatedAt: string;
     lastStatusSyncAt?: string;
     adminCompletedAt?: string;
-    providerOrderId?: string;
-    providerResponse?: { lastStatus?: { status?: string; start_count?: string | number; remains?: string | number; charge?: string | number } };
+    cancellationStatus?: "accepted" | "unconfirmed" | "not-submitted";
     service?: { _id?: string; name?: string; refill?: boolean; cancel?: boolean };
   }> = [];
 
@@ -43,19 +42,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     updatedAt: new Date(order.updatedAt).toISOString(),
     lastStatusSyncAt: order.lastStatusSyncAt ? new Date(order.lastStatusSyncAt).toISOString() : undefined,
     adminCompletedAt: order.adminCompletedAt ? new Date(order.adminCompletedAt).toISOString() : undefined,
-    providerOrderId: order.providerOrderId,
-    providerResponse: order.providerResponse
-      ? {
-          lastStatus: order.providerResponse.lastStatus
-            ? {
-                status: order.providerResponse.lastStatus.status ?? undefined,
-                start_count: order.providerResponse.lastStatus.start_count,
-                remains: order.providerResponse.lastStatus.remains,
-                charge: order.providerResponse.lastStatus.charge,
-              }
-            : undefined,
-        }
-      : undefined,
+    cancellationStatus: order.cancellationStatus,
     service: order.service
       ? {
           _id: String(order.service._id),
@@ -76,7 +63,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
             </p>
             <h1 className="mt-3 text-2xl font-extrabold tracking-tight text-neutral-950 sm:text-3xl">Order activity</h1>
             <p className="mt-2 max-w-md text-sm leading-6 text-neutral-600">
-              Follow delivery progress, check provider updates, and manage eligible orders from one place.
+              Follow delivery progress and manage eligible orders from one place.
             </p>
             <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-xs font-semibold text-teal-900">
               <span className="workspace-live-dot size-2 rounded-full" />

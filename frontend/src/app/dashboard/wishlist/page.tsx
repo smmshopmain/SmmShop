@@ -167,7 +167,7 @@ export default function WishlistPage() {
                     </Link>
                   ) : (
                     <p className="rounded-xl bg-neutral-50 px-3 py-2.5 text-center text-xs font-medium text-neutral-500">
-                      This provider service is not currently available.
+                      This service is not currently available.
                     </p>
                   )}
                 </article>

@@ -3,6 +3,7 @@ import { OrderLiveList, type LiveOrder } from "@/components/order-live-list";
 import { requireUser } from "@/lib/auth";
 import { Order } from "@/models";
 import { Search, SlidersHorizontal } from "lucide-react";
+import mongoose from "mongoose";
 
 function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -23,8 +24,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     createdAt: Date;
     updatedAt: Date;
     lastStatusSyncAt?: Date;
-    providerOrderId?: string;
-    providerResponse?: { lastStatus?: { status?: string; start_count?: string | number; remains?: string | number; charge?: string | number } };
+
     service?: { name?: string; refill?: boolean; cancel?: boolean };
   }> = [];
 
@@ -32,7 +32,13 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     const { auth } = await requireUser();
     const filter: Record<string, unknown> = { user: auth.id };
     if (status) filter.status = status;
-    if (q) filter.$or = [{ link: new RegExp(escapeRegExp(q), "i") }, { providerOrderId: new RegExp(escapeRegExp(q), "i") }];
+    if (q) {
+      const searchConditions: Array<Record<string, unknown>> = [
+        { link: new RegExp(escapeRegExp(q), "i") },
+      ];
+      if (mongoose.isValidObjectId(q)) searchConditions.push({ _id: q });
+      filter.$or = searchConditions;
+    }
     orders = (await Order.find(filter)
       .populate("service", "name refill cancel")
       .sort({ createdAt: -1 })
@@ -52,19 +58,6 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
     createdAt: new Date(order.createdAt).toISOString(),
     updatedAt: new Date(order.updatedAt).toISOString(),
     lastStatusSyncAt: order.lastStatusSyncAt ? new Date(order.lastStatusSyncAt).toISOString() : undefined,
-    providerOrderId: order.providerOrderId,
-    providerResponse: order.providerResponse
-      ? {
-          lastStatus: order.providerResponse.lastStatus
-            ? {
-                status: order.providerResponse.lastStatus.status ?? undefined,
-                start_count: order.providerResponse.lastStatus.start_count,
-                remains: order.providerResponse.lastStatus.remains,
-                charge: order.providerResponse.lastStatus.charge,
-              }
-            : undefined,
-        }
-      : undefined,
     service: order.service
       ? {
           name: order.service.name,
@@ -82,7 +75,7 @@ export default async function OrdersPage({ searchParams }: { searchParams?: Prom
             <p className="text-xs font-bold uppercase tracking-wide text-teal-700">Order center</p>
             <h1 className="mt-2 text-2xl font-bold text-neutral-950 sm:text-3xl">Order history</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">
-              Link, provider order ID, quantity, status, and refill/cancel actions in one clean view.
+              Link, order ID, quantity, status, and refill/cancel actions in one clean view.
             </p>
         </div>
           <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_170px_auto]" action="/dashboard/orders">

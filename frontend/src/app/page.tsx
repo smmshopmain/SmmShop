@@ -29,7 +29,7 @@ const features = [
   {
     icon: ShieldCheck,
     title: "Tools for your whole team",
-    text: "Manage providers, pricing, users, and support from the admin console.",
+    text: "Manage services, pricing, users, and support from the admin console.",
   },
 ];
 

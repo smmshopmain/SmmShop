@@ -10,10 +10,22 @@ const schema = z.object({ orderId: z.string().min(1) });
 export async function GET() {
   try {
     const { auth } = await requireUser();
-    const refills = await Refill.find({ user: auth.id })
-      .populate("order", "providerOrderId link status")
+    const records = await Refill.find({ user: auth.id })
+      .populate("order", "link status")
       .sort({ createdAt: -1 })
       .lean();
+    const refills = records.map((refill) => ({
+      _id: refill._id,
+      status: refill.status,
+      createdAt: refill.createdAt,
+      order: refill.order && typeof refill.order === "object" && "_id" in refill.order
+        ? {
+            _id: refill.order._id,
+            link: "link" in refill.order ? refill.order.link : undefined,
+            status: "status" in refill.order ? refill.order.status : undefined,
+          }
+        : undefined,
+    }));
     return ok({ refills });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to load refills", 401);
@@ -29,7 +41,7 @@ export async function POST(request: NextRequest) {
       .populate("service");
     if (!order) return fail("Order not found", 404);
     if (!order.service.refill) return fail("This service does not support refill");
-    if (!order.providerOrderId) return fail("Provider order id is missing");
+    if (!order.providerOrderId) return fail("This order is not available for a refill request.");
 
     const result = await requestProviderRefill(order.provider, order.providerOrderId);
 
@@ -41,7 +53,14 @@ export async function POST(request: NextRequest) {
       providerResponse: result,
     });
     await notifyTelegram("Refill Request", [`User: ${auth.email}`, `Order: ${order._id}`]);
-    return ok({ refill });
+    return ok({
+      refill: {
+        _id: refill._id,
+        status: refill.status,
+        createdAt: refill.createdAt,
+        order: order._id,
+      },
+    });
   } catch (error) {
     await logProviderEvent({
       level: "error",
@@ -49,6 +68,6 @@ export async function POST(request: NextRequest) {
       action: "refills.post",
       message: error instanceof Error ? error.message : "Unable to request refill",
     });
-    return fail(error instanceof Error ? error.message : "Unable to request refill");
+    return fail("Unable to process the refill request. Please try again later.");
   }
 }

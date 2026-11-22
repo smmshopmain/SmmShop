@@ -71,7 +71,7 @@ export default function Home() {
               { icon: Layers3, title: "Browse services", text: "Platform filters, categories, search, and order form ready." },
               { icon: WalletCards, title: "Wallet and deposits", text: "Clear balance, deposits, and transaction history." },
               { icon: BarChart3, title: "Order tracking", text: "Quick overview of pending, active, and completed orders." },
-              { icon: ShieldCheck, title: "Admin controls", text: "Providers, pricing, users and support management." },
+              { icon: ShieldCheck, title: "Admin controls", text: "Services, pricing, users and support management." },
             ].map((item) => (
               <div key={item.title} className="rounded-md border border-neutral-200 p-4 transition hover:border-teal-200 hover:bg-teal-50">
                 <item.icon className="size-5 text-teal-700" />

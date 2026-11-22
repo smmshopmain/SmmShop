@@ -150,7 +150,7 @@ export function ServiceDetailsModal({
         </header>
 
         <div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6">
-          <ServiceDetail label="Provider service ID">
+          <ServiceDetail label="Service ID">
             <code className="select-text break-all font-mono text-sm" data-copy-allowed>
               {service.providerServiceId || "Unavailable"}
             </code>
