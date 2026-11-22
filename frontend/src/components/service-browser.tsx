@@ -99,12 +99,18 @@ export function ServiceBrowser() {
   const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [serviceLoading, setServiceLoading] = useState(true);
+  const [loadedServiceKey, setLoadedServiceKey] = useState<string | null>(null);
   const [wishlistIds, setWishlistIds] = useState<Set<string>>(new Set());
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
   const [wishlistBusyIds, setWishlistBusyIds] = useState<Set<string>>(new Set());
   const [wishlistMessage, setWishlistMessage] = useState("");
   const activePlatform = PLATFORM_OPTIONS.find((item) => item.id === platform) ?? PLATFORM_OPTIONS[0];
+  const serviceQueryParams = new URLSearchParams();
+  if (query.trim()) serviceQueryParams.set("q", query.trim());
+  if (category) serviceQueryParams.set("category", category);
+  if (platform) serviceQueryParams.set("platform", platform);
+  const serviceQueryKey = serviceQueryParams.toString();
+  const serviceLoading = loadedServiceKey !== serviceQueryKey;
 
   useEffect(() => {
     let active = true;
@@ -131,13 +137,8 @@ export function ServiceBrowser() {
 
   useEffect(() => {
     let active = true;
-    setServiceLoading(true);
     const timeoutId = window.setTimeout(() => {
-      const params = new URLSearchParams();
-      if (query.trim()) params.set("q", query.trim());
-      if (category) params.set("category", category);
-      if (platform) params.set("platform", platform);
-      apiFetch(`/api/services?${params}`)
+      apiFetch(`/api/services?${serviceQueryKey}`)
         .then((response) => response.json())
         .then((result) => {
           if (!active) return;
@@ -150,14 +151,14 @@ export function ServiceBrowser() {
           setMessage("Unable to load services. Showing cached results if available.");
         })
         .finally(() => {
-          if (active) setServiceLoading(false);
+          if (active) setLoadedServiceKey(serviceQueryKey);
         });
     }, 250);
     return () => {
       active = false;
       window.clearTimeout(timeoutId);
     };
-  }, [query, category, platform]);
+  }, [serviceQueryKey]);
 
   useEffect(() => {
     const serviceId = new URLSearchParams(window.location.search).get("serviceId");

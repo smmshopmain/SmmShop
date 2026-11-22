@@ -255,6 +255,8 @@ export default function EmailManagementPage() {
     const bannerPresetId = CAMPAIGN_BANNER_PRESETS.find(({ id }) => id === query.get("bannerPresetId"))?.id ?? null;
     const bannerImageUrl = query.get("bannerImageUrl") ?? "";
     const calendarEventKey = query.get("calendarEventKey") ?? "";
+    // The calendar handoff seeds this editor from validated URL data on first mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCampaignForm((current) => ({
       ...current,
       title: (query.get("campaignTitle") || `${calendarTitle} campaign`).slice(0, 120),

@@ -9,9 +9,10 @@ type PopupMediaProps = {
   width?: number;
   height?: number;
   fill?: boolean;
+  loading?: "eager" | "lazy";
 };
 
-export function PopupMedia({ url, alt, className, sizes, width, height, fill = false }: PopupMediaProps) {
+export function PopupMedia({ url, alt, className, sizes, width, height, fill = false, loading }: PopupMediaProps) {
   const media = resolvePopupMedia(url);
   if (!media) return null;
 
@@ -40,7 +41,41 @@ export function PopupMedia({ url, alt, className, sizes, width, height, fill = f
       fill={fill}
       sizes={sizes}
       unoptimized
+      loading={loading}
       className={className}
     />
+  );
+}
+
+export function ResponsivePopupImage({
+  mobileUrl,
+  desktopUrl,
+  alt,
+  className,
+  sizes,
+}: {
+  mobileUrl: string;
+  desktopUrl: string;
+  alt: string;
+  className?: string;
+  sizes?: string;
+}) {
+  const mobile = resolvePopupMedia(mobileUrl);
+  const desktop = resolvePopupMedia(desktopUrl);
+  if (mobile?.type !== "image" || desktop?.type !== "image") return null;
+
+  return (
+    <picture className="absolute inset-0 block">
+      {mobile.src !== desktop.src && <source media="(max-width: 767px)" srcSet={mobile.src} />}
+      <Image
+        src={desktop.src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        unoptimized
+        loading="eager"
+        className={className}
+      />
+    </picture>
   );
 }

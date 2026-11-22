@@ -60,7 +60,11 @@ export async function GET(request: NextRequest) {
     if (platformFilter) Object.assign(filter, platformFilter);
 
     const [services, categories] = await Promise.all([
-      Service.find(filter).sort({ sellingRate: 1, category: 1, name: 1 }).limit(250).lean(),
+      Service.find(filter)
+        .select("providerServiceId name category sellingRate min max refill")
+        .sort({ sellingRate: 1, category: 1, name: 1 })
+        .limit(250)
+        .lean(),
       platformFilter
         ? Service.distinct("category", {
             active: true,

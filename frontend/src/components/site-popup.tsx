@@ -4,8 +4,8 @@ import { ArrowRight, Megaphone, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { apiJson } from "@/lib/client-api";
-import { PopupMedia } from "@/components/popup-media";
-import { popupMediaForDevices } from "@/lib/popup-media";
+import { PopupMedia, ResponsivePopupImage } from "@/components/popup-media";
+import { popupMediaForDevices, resolvePopupMedia } from "@/lib/popup-media";
 
 type SitePopupItem = {
   _id: string;
@@ -186,29 +186,45 @@ export function SitePopup() {
 
   const popupMedia = popupMediaForDevices(currentPopup);
   const hasImage = Boolean(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl);
+  const mobileMediaType = resolvePopupMedia(popupMedia.mobileImageUrl)?.type;
+  const desktopMediaType = resolvePopupMedia(popupMedia.desktopImageUrl)?.type;
+  const hasResponsiveImages = mobileMediaType === "image" && desktopMediaType === "image";
+  const popupAlt = currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement");
   const hasTitle = Boolean(currentPopup.title?.trim());
   const hasMessage = Boolean(currentPopup.message?.trim());
   const imageOnly = hasImage && !hasTitle && !hasMessage;
   const PopupContent = (
     <>
       {(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl) && (
-        imageOnly ? (
+        hasResponsiveImages ? (
+          <div className={`relative ${imageOnly ? "h-dvh w-screen" : "mb-5 h-[min(60dvh,520px)] w-full"}`}>
+            <ResponsivePopupImage
+              mobileUrl={popupMedia.mobileImageUrl}
+              desktopUrl={popupMedia.desktopImageUrl}
+              alt={popupAlt}
+              sizes={imageOnly ? "100vw" : "(max-width: 768px) 100vw, 768px"}
+              className={`h-full w-full ${imageOnly ? "" : "rounded-xl"} object-contain`}
+            />
+          </div>
+        ) : imageOnly ? (
           <>
             <div className="relative h-dvh w-screen md:hidden">
               <PopupMedia
                 url={popupMedia.mobileImageUrl}
-                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                alt={popupAlt}
                 fill
                 sizes="100vw"
+                loading={mobileMediaType === "image" ? "eager" : undefined}
                 className="h-full w-full object-contain"
               />
             </div>
             <div className="relative hidden h-dvh w-screen md:block">
               <PopupMedia
                 url={popupMedia.desktopImageUrl}
-                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                alt={popupAlt}
                 fill
                 sizes="100vw"
+                loading={desktopMediaType === "image" ? "eager" : undefined}
                 className="h-full w-full object-contain"
               />
             </div>
@@ -218,18 +234,20 @@ export function SitePopup() {
             <div className="relative mb-5 h-[min(60dvh,520px)] w-full md:hidden">
               <PopupMedia
                 url={popupMedia.mobileImageUrl}
-                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                alt={popupAlt}
                 fill
                 sizes="100vw"
+                loading={mobileMediaType === "image" ? "eager" : undefined}
                 className="h-full w-full rounded-xl object-contain"
               />
             </div>
             <div className="relative mb-5 hidden h-[min(60dvh,520px)] w-full md:block">
               <PopupMedia
                 url={popupMedia.desktopImageUrl}
-                alt={currentPopup.title || (currentPopup.kind === "advertisement" ? "Advertisement" : "Announcement")}
+                alt={popupAlt}
                 fill
                 sizes="(max-width: 768px) 100vw, 768px"
+                loading={desktopMediaType === "image" ? "eager" : undefined}
                 className="h-full w-full rounded-xl object-contain"
               />
             </div>

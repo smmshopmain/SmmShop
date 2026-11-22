@@ -14,6 +14,8 @@ import {
   type SiteFooterSettings,
 } from "@/components/developer-credit-footer";
 
+export const dynamic = "force-dynamic";
+
 async function loadDashboardFooterSettings(): Promise<{
   siteFooter: SiteFooterSettings;
   developerCredit: DeveloperCreditSettings;

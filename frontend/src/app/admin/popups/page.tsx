@@ -170,7 +170,8 @@ export default function PopupManagementPage() {
     const startsAt = new Date(year, month - 1, day, 10);
     if (startsAt.getTime() <= Date.now()) startsAt.setTime(Date.now() + 60 * 60 * 1000);
     const expiresAt = new Date(year, month - 1, day + 1, 23, 59);
-    setEditingId("");
+    // The calendar handoff seeds this editor from validated URL data on first mount.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm((current) => ({
       ...current,
       title: (query.get("popupTitle") || calendarTitle).slice(0, 120),

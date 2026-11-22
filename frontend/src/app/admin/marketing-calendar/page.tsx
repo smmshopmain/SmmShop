@@ -186,11 +186,12 @@ export default function MarketingCalendarPage() {
   const [scheduleInstructions, setScheduleInstructions] = useState("");
   const [generateBanner, setGenerateBanner] = useState(false);
   const [activeScheduleRun, setActiveScheduleRun] = useState<ScheduleRun | null>(null);
+  const activeScheduleRunId = activeScheduleRun?.id;
+  const activeScheduleRunStatus = activeScheduleRun?.status;
 
   useEffect(() => {
     let active = true;
     const monthValue = `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, "0")}`;
-    setLoading(true);
     Promise.all([
       apiJson(`/api/admin/marketing-calendar?month=${monthValue}`) as Promise<CalendarResponse>,
       apiJson("/api/admin/settings") as Promise<SettingsResponse>,
@@ -234,8 +235,8 @@ export default function MarketingCalendarPage() {
   }, []);
 
   useEffect(() => {
-    if (!activeScheduleRun || !["queued", "processing"].includes(activeScheduleRun.status)) return;
-    const runId = activeScheduleRun.id;
+    if (!activeScheduleRunId || !activeScheduleRunStatus || !["queued", "processing"].includes(activeScheduleRunStatus)) return;
+    const runId = activeScheduleRunId;
     let active = true;
     const refreshProgress = async () => {
       try {
@@ -244,7 +245,7 @@ export default function MarketingCalendarPage() {
         if (active) {
           setActiveScheduleRun(result.run ?? null);
           if (result.run && !["queued", "processing"].includes(result.run.status)) {
-            setMonth((current) => new Date(current));
+            changeSelectedMonth((current) => new Date(current));
           }
         }
       } catch (cause) {
@@ -256,7 +257,7 @@ export default function MarketingCalendarPage() {
       active = false;
       window.clearInterval(timer);
     };
-  }, [activeScheduleRun?.id, activeScheduleRun?.status]);
+  }, [activeScheduleRunId, activeScheduleRunStatus]);
 
   const eventsByDate = useMemo(() => {
     const grouped = new Map<string, CalendarEvent[]>();
@@ -299,11 +300,16 @@ export default function MarketingCalendarPage() {
   const selectedEventCount = selectableRangeEvents
     .filter((event) => selectedEventKeys.has(calendarEventKey(event))).length;
 
+  function changeSelectedMonth(nextMonth: Date | ((current: Date) => Date)) {
+    setLoading(true);
+    setMonth(nextMonth);
+  }
+
   function changeMonth(amount: number) {
     const nextMonth = new Date(month.getFullYear(), month.getMonth() + amount, 1);
     const day = Math.min(Number(selectedDate.slice(-2)), new Date(nextMonth.getFullYear(), nextMonth.getMonth() + 1, 0).getDate());
     const nextSelectedDate = dateKey(new Date(nextMonth.getFullYear(), nextMonth.getMonth(), day));
-    setMonth(nextMonth);
+    changeSelectedMonth(nextMonth);
     setSelectedDate(nextSelectedDate);
     setForm((current) => ({ ...current, date: nextSelectedDate }));
     setDraft(null);
@@ -313,7 +319,7 @@ export default function MarketingCalendarPage() {
   function selectDate(date: Date) {
     const value = dateKey(date);
     if (date.getMonth() !== month.getMonth() || date.getFullYear() !== month.getFullYear()) {
-      setMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+      changeSelectedMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     }
     setSelectedDate(value);
     setForm((current) => ({ ...current, date: value }));
@@ -354,7 +360,7 @@ export default function MarketingCalendarPage() {
       setEditingId("");
       setForm(emptyForm(selectedDate));
       setMessage(editingId ? "Calendar event updated." : "Calendar event added.");
-      setMonth((current) => new Date(current));
+      changeSelectedMonth((current) => new Date(current));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to save calendar event.");
     } finally {
@@ -374,7 +380,7 @@ export default function MarketingCalendarPage() {
       if (!result?.ok) throw new Error(result?.message ?? "Unable to delete calendar event.");
       if (editingId === event.id) cancelEdit();
       setMessage("Calendar event deleted.");
-      setMonth((current) => new Date(current));
+      changeSelectedMonth((current) => new Date(current));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Unable to delete calendar event.");
     }
@@ -712,7 +718,7 @@ export default function MarketingCalendarPage() {
               <button type="button" onClick={() => changeMonth(-1)} aria-label="Previous month" className="grid size-9 place-items-center rounded-lg border border-neutral-200 hover:bg-neutral-50"><ArrowLeft className="size-4" /></button>
               <button type="button" onClick={() => {
                 const today = new Date();
-                setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+                changeSelectedMonth(new Date(today.getFullYear(), today.getMonth(), 1));
                 selectDate(today);
               }} className="rounded-lg border border-neutral-200 px-3 py-2 text-xs font-semibold hover:bg-neutral-50">Today</button>
               <button type="button" onClick={() => changeMonth(1)} aria-label="Next month" className="grid size-9 place-items-center rounded-lg border border-neutral-200 hover:bg-neutral-50"><ArrowRight className="size-4" /></button>
@@ -935,7 +941,7 @@ export default function MarketingCalendarPage() {
                     setForm({ ...form, date: value });
                     setSelectedDate(value);
                     const [year, month] = value.split("-").map(Number);
-                    setMonth(new Date(year, month - 1, 1));
+                    changeSelectedMonth(new Date(year, month - 1, 1));
                   }} className="mt-1 w-full rounded-xl border border-neutral-300 bg-white px-3 py-2 text-sm" />
                 </label>
                 <label className="text-sm font-semibold text-neutral-800">
