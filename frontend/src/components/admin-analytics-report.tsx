@@ -77,6 +77,9 @@ export function AdminAnalyticsReport({ from, to }: { from: string; to: string })
           {topServices.map((service) => (
             <div key={String(service._id)} className="border-b border-neutral-100 p-4 text-sm">
               <span className="block font-medium">{service.name ?? "Service"}</span>
+              <span className="block select-text font-mono text-xs text-neutral-500" data-copy-allowed>
+                Service ID: {service._id}
+              </span>
               <span className="mt-2 block h-2 rounded-full bg-neutral-100">
                 <span className="block h-2 rounded-full bg-teal-700" style={{ width: `${Math.min(100, (service.orders / maxServiceOrders) * 100)}%` }} />
               </span>
