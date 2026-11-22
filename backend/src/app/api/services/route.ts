@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
 
     const [services, categories] = await Promise.all([
       Service.find(filter)
-        .select("providerServiceId name category sellingRate min max refill")
+        .select("providerServiceId name category type sellingRate min max refill cancel")
         .sort({ sellingRate: 1, category: 1, name: 1 })
         .limit(250)
         .lean(),

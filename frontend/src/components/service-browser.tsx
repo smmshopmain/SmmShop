@@ -1,9 +1,10 @@
 "use client";
 
 import { BadgeCheck, Filter, Info, Search, ShoppingCart, Sparkles, Star, TrendingUp } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { IconType } from "react-icons";
 import { apiFetch } from "@/lib/client-api";
+import { ServiceDetailsModal, type ServiceDetailsItem } from "@/components/service-details-modal";
 import {
   FaApple,
   FaBars,
@@ -29,15 +30,8 @@ import { WARNING_EN, WARNING_HI } from "@/lib/constants";
 import { SERVICE_PLATFORMS, type ServicePlatformId } from "@/lib/service-platforms";
 import { ContentLoading } from "@/components/content-loading";
 
-type ServiceItem = {
+type ServiceItem = ServiceDetailsItem & {
   _id: string;
-  providerServiceId: string;
-  name: string;
-  category: string;
-  sellingRate: number;
-  min: number;
-  max: number;
-  refill: boolean;
 };
 
 type PromoPreview = {
@@ -94,6 +88,7 @@ export function ServiceBrowser() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("");
   const [selected, setSelected] = useState<ServiceItem | null>(null);
+  const [detailsService, setDetailsService] = useState<ServiceItem | null>(null);
   const [quantity, setQuantity] = useState(0);
   const [promoCode, setPromoCode] = useState("");
   const [promoPreview, setPromoPreview] = useState<PromoPreview | null>(null);
@@ -104,6 +99,7 @@ export function ServiceBrowser() {
   const [wishlistLoaded, setWishlistLoaded] = useState(false);
   const [wishlistBusyIds, setWishlistBusyIds] = useState<Set<string>>(new Set());
   const [wishlistMessage, setWishlistMessage] = useState("");
+  const closeServiceDetails = useCallback(() => setDetailsService(null), []);
   const activePlatform = PLATFORM_OPTIONS.find((item) => item.id === platform) ?? PLATFORM_OPTIONS[0];
   const serviceQueryParams = new URLSearchParams();
   if (query.trim()) serviceQueryParams.set("q", query.trim());
@@ -289,6 +285,22 @@ export function ServiceBrowser() {
     setMessage("");
   }
 
+  function selectService(service: ServiceItem) {
+    setSelected(service);
+    setQuantity(service.min);
+    setPromoPreview(null);
+    setMessage("");
+  }
+
+  function createOrderFromDetails() {
+    if (!detailsService) return;
+    selectService(detailsService);
+    closeServiceDetails();
+    window.requestAnimationFrame(() => {
+      document.querySelector(".order-builder")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   return (
     <div className="service-studio grid min-w-0 items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_390px]">
       <section className="service-catalog min-w-0 overflow-hidden rounded-[1.75rem] border border-neutral-200 bg-white shadow-sm">
@@ -393,7 +405,6 @@ export function ServiceBrowser() {
         <div className="service-list max-h-[min(66vh,720px)] divide-y divide-neutral-100 overflow-y-auto">
           {services.slice(0, 80).map((service) => {
             const active = selected?._id === service._id;
-            const PlatformIcon = activePlatform.Icon;
             return (
               <div
                 key={service._id}
@@ -404,17 +415,20 @@ export function ServiceBrowser() {
                 <span className="flex min-w-0 items-center gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelected(service);
-                      setQuantity(service.min);
-                      setPromoPreview(null);
-                      setMessage("");
-                    }}
+                    onClick={() => setDetailsService(service)}
+                    aria-label={`View details for ${service.name}`}
+                    aria-haspopup="dialog"
+                    aria-expanded={detailsService?._id === service._id}
+                    title="View service details"
+                    className={`grid size-10 shrink-0 place-items-center rounded-xl transition ${active ? "bg-teal-700 text-white" : "bg-neutral-100"}`}
+                  >
+                    <FaBars className={active ? "text-lg text-white" : "text-lg text-indigo-900"} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => selectService(service)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${active ? "bg-teal-700 text-white" : "bg-neutral-100"}`}>
-                      <PlatformIcon className={active ? "text-lg text-white" : `text-lg ${activePlatform.color}`} />
-                    </span>
                     <span className="min-w-0">
                       <span className="block truncate text-[13px] font-bold text-neutral-900">{service.name}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-neutral-500">
@@ -563,6 +577,13 @@ export function ServiceBrowser() {
           <p className="text-center text-[10px] text-neutral-400">Your order will appear in order history as soon as it is placed.</p>
         </form>
       </aside>
+      {detailsService && (
+        <ServiceDetailsModal
+          service={detailsService}
+          onClose={closeServiceDetails}
+          onCreateOrder={createOrderFromDetails}
+        />
+      )}
     </div>
   );
 }
