@@ -140,6 +140,7 @@ function isSafeFooterHref(value: string) {
 const siteFooterSchema = z.object({
   enabled: z.boolean(),
   brandName: z.string().trim().min(1).max(80),
+  brandLogoUrl: z.string().regex(/^$|^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i),
   tagline: z.string().trim().max(160),
   description: z.string().trim().max(500),
   quickLinksTitle: z.string().trim().min(1).max(40),

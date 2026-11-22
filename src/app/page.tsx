@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, CheckCircle2, Layers3, ShieldCheck, WalletCards } from "lucide-react";
+import { BrandMark, BrandName, BrandTagline } from "@/components/site-brand";
 
 export default function Home() {
   return (
@@ -7,17 +8,17 @@ export default function Home() {
       <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_500px] lg:px-8">
         <div className="py-8">
           <div className="mb-10 flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white shadow-sm">SP</span>
+            <BrandMark sizeClass="size-11" className="shadow-sm" />
             <span>
-              <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
-              <span className="block text-sm text-neutral-600">Reseller platform</span>
+              <BrandName className="block text-lg font-bold text-neutral-950" />
+              <BrandTagline className="block text-sm text-neutral-600" />
             </span>
           </div>
           <p className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wide text-teal-800">
             <CheckCircle2 className="size-3.5" /> Mobile ready workspace
           </p>
           <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight text-neutral-950 sm:text-6xl">
-            SMM Panel Platform
+            <BrandName /> Platform
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-neutral-700">
             Browse services, manage your wallet, track orders, and handle support tickets in one clean user-friendly panel.

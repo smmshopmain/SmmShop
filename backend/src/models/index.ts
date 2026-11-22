@@ -735,6 +735,7 @@ export type PlatformSettings = {
   siteFooter: {
     enabled: boolean;
     brandName: string;
+    brandLogoUrl: string;
     tagline: string;
     description: string;
     quickLinksTitle: string;
@@ -779,19 +780,19 @@ export const DEFAULT_EMAIL_MANAGEMENT_SETTINGS: EmailManagementSettings = {
   accentColor: "#087e78",
   templates: {
     registrationOtp: {
-      subject: "Verify your SMM Panel email",
+      subject: "Verify your {{brandName}} email",
       body: "Enter this OTP to finish creating your account.\nMobile number entered for registration: {{phone}}\nThis OTP expires in {{expiryMinutes}} minutes. If you did not create an account, ignore this email.",
     },
     forgotPasswordOtp: {
-      subject: "SMM Panel password reset OTP",
+      subject: "{{brandName}} password reset OTP",
       body: "Your password reset OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
     },
     verificationOtp: {
-      subject: "SMM Panel verification code",
+      subject: "{{brandName}} verification code",
       body: "Your account verification OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
     },
     welcome: {
-      subject: "Welcome to SMM Panel — your growth workspace is ready",
+      subject: "Welcome to {{brandName}} — your growth workspace is ready",
       headline: "Welcome aboard, {{name}}!",
       body: "Your account is ready. Explore social growth services, manage your wallet, track orders, and get support from one workspace.",
     },
@@ -799,8 +800,8 @@ export const DEFAULT_EMAIL_MANAGEMENT_SETTINGS: EmailManagementSettings = {
 };
 
 export const DEFAULT_SUPPORT_SETTINGS: PlatformSettings["support"] = {
-  welcomeMessage: "Hello {{name}}, thank you for contacting support. We have received your request and will help you shortly.",
-  closeMessage: "Your support conversation has been closed. If you need more help, please create a new support request.",
+  welcomeMessage: "Hello {{name}}, thank you for contacting {{brandName}} support. We have received your request and will help you shortly.",
+  closeMessage: "Your {{brandName}} support conversation has been closed. If you need more help, please create a new support request.",
 };
 
 export const DEFAULT_DEVELOPER_CREDIT: PlatformSettings["developerCredit"] = {
@@ -813,6 +814,7 @@ export const DEFAULT_DEVELOPER_CREDIT: PlatformSettings["developerCredit"] = {
 export const DEFAULT_SITE_FOOTER: PlatformSettings["siteFooter"] = {
   enabled: true,
   brandName: "SMM Panel",
+  brandLogoUrl: "",
   tagline: "Your social growth workspace",
   description: "Manage services, orders, wallet, and support from one simple place.",
   quickLinksTitle: "Quick links",
@@ -961,6 +963,7 @@ export async function getSettings() {
     if (record.key === "ai") settings.ai = { ...settings.ai, ...(record.value as Partial<PlatformSettings["ai"]>) };
   }
 
+  settings.email.brandName = settings.siteFooter.brandName;
   return settings;
 }
 

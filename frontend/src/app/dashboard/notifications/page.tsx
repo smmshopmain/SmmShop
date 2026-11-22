@@ -1,5 +1,6 @@
 import { ActionButton } from "@/components/admin-controls";
 import { AppShell } from "@/components/app-shell";
+import { BrandMark, BrandName } from "@/components/site-brand";
 import { serverApiJson } from "@/lib/server-api";
 import { Bell, CheckCircle2 } from "lucide-react";
 
@@ -24,7 +25,7 @@ export default async function NotificationsPage() {
       <section className="notifications-command mb-6 grid gap-5 overflow-hidden rounded-[1.7rem] border border-neutral-200 bg-white p-5 shadow-sm sm:p-7 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div>
           <p className="inline-flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-teal-800">
-            <Bell className="size-3.5" /> Workspace updates
+            <BrandMark sizeClass="size-6" className="text-[9px]" /> <BrandName /> updates
           </p>
           <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-neutral-950">Your notifications</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-neutral-600">Order, deposit, ticket, and account updates appear here.</p>

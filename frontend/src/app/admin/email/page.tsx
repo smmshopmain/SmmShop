@@ -83,6 +83,7 @@ type Campaign = {
 };
 type SettingsResponse = {
   email?: EmailSettings;
+  siteFooter?: { brandName: string; brandLogoUrl: string };
   auth?: { googleEnabled: boolean; googleConfigured: boolean };
 };
 
@@ -92,19 +93,19 @@ const DEFAULT_EMAIL: EmailSettings = {
   accentColor: "#087e78",
   templates: {
     registrationOtp: {
-      subject: "Verify your SMM Panel email",
+      subject: "Verify your {{brandName}} email",
       body: "Enter this OTP to finish creating your account.\nMobile number entered for registration: {{phone}}\nThis OTP expires in {{expiryMinutes}} minutes. If you did not create an account, ignore this email.",
     },
     forgotPasswordOtp: {
-      subject: "SMM Panel password reset OTP",
+      subject: "{{brandName}} password reset OTP",
       body: "Your password reset OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
     },
     verificationOtp: {
-      subject: "SMM Panel verification code",
+      subject: "{{brandName}} verification code",
       body: "Your account verification OTP is below. It expires in {{expiryMinutes}} minutes. If you did not request this, ignore this email.",
     },
     welcome: {
-      subject: "Welcome to SMM Panel — your growth workspace is ready",
+      subject: "Welcome to {{brandName}} — your growth workspace is ready",
       headline: "Welcome aboard, {{name}}!",
       body: "Your account is ready. Explore social growth services, manage your wallet, track orders, and get support from one workspace.",
     },
@@ -183,6 +184,7 @@ function Field({
 
 export default function EmailManagementPage() {
   const [email, setEmail] = useState(DEFAULT_EMAIL);
+  const [brandLogoUrl, setBrandLogoUrl] = useState("");
   const [google, setGoogle] = useState({ googleEnabled: false, googleConfigured: false });
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [serviceResults, setServiceResults] = useState<CampaignService[]>([]);
@@ -228,6 +230,7 @@ export default function EmailManagementPage() {
         if (!settings.email) throw new Error("Email settings are missing from the server response.");
         if (!active) return;
         setEmail(settings.email);
+        setBrandLogoUrl(settings.siteFooter?.brandLogoUrl ?? "");
         setGoogle(settings.auth ?? { googleEnabled: false, googleConfigured: false });
         setCampaigns(campaignData.campaigns ?? []);
       })
@@ -619,7 +622,11 @@ export default function EmailManagementPage() {
           <AdminSection title="Email branding and transactional templates" description="OTP values and expiry notices remain present even when you customize the explanatory copy.">
             <form onSubmit={saveTemplates} className="grid gap-6 p-4 sm:p-6">
               <div className="grid gap-4 md:grid-cols-3">
-                <Field label="Brand name" value={email.brandName} onChange={(value) => setEmail({ ...email, brandName: value })} />
+                <label className="block text-sm font-semibold text-neutral-800">
+                  Brand name
+                  <input aria-label="Brand name" readOnly value={email.brandName} className="mt-1 w-full rounded-xl border border-neutral-300 bg-neutral-100 px-3 py-2 text-sm text-neutral-700" />
+                  <span className="mt-1 block text-xs font-normal text-neutral-500">Managed in Admin &gt; Settings &gt; Brand information.</span>
+                </label>
                 <label className="text-sm font-semibold text-neutral-800">Primary color<input aria-label="Primary color" type="color" className="mt-1 block h-10 w-full rounded-lg" value={email.primaryColor} onChange={(event) => setEmail({ ...email, primaryColor: event.target.value })} /></label>
                 <label className="text-sm font-semibold text-neutral-800">Accent color<input aria-label="Accent color" type="color" className="mt-1 block h-10 w-full rounded-lg" value={email.accentColor} onChange={(event) => setEmail({ ...email, accentColor: event.target.value })} /></label>
               </div>
@@ -633,7 +640,7 @@ export default function EmailManagementPage() {
                   <h3 className="font-bold text-neutral-900">{title}</h3>
                   <Field label="Subject" value={email.templates[key].subject} onChange={(value) => updateTemplate(key, "subject", value)} />
                   <Field label="Message" multiline value={email.templates[key].body} onChange={(value) => updateTemplate(key, "body", value)} />
-                  <p className="text-xs text-neutral-500">Available placeholders: {help}</p>
+                  <p className="text-xs text-neutral-500">Available placeholders: {help}, {"{{brandName}}"}</p>
                 </div>
               ))}
 
@@ -642,7 +649,7 @@ export default function EmailManagementPage() {
                 <Field label="Subject" value={email.templates.welcome.subject} onChange={(value) => updateTemplate("welcome", "subject", value)} />
                 <Field label="Headline" value={email.templates.welcome.headline} onChange={(value) => updateTemplate("welcome", "headline", value)} />
                 <Field label="Message" multiline value={email.templates.welcome.body} onChange={(value) => updateTemplate("welcome", "body", value)} />
-                <p className="text-xs text-neutral-500">Available placeholders: {"{{name}}, {{email}}, {{phone}}, {{websiteUrl}}"}. Passwords are never included in email.</p>
+                <p className="text-xs text-neutral-500">Available placeholders: {"{{name}}, {{email}}, {{phone}}, {{websiteUrl}}, {{brandName}}"}. Passwords are never included in email.</p>
               </div>
               <div className="flex flex-wrap gap-3">
                 <button type="submit" disabled={saving} className="w-fit rounded-xl bg-teal-700 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60">{saving ? "Saving…" : "Save email templates"}</button>
@@ -1030,7 +1037,19 @@ export default function EmailManagementPage() {
                       className="px-5 py-5 text-white sm:px-7"
                       style={{ backgroundColor: previewPrimary }}
                     >
-                      <p className="text-xs font-bold uppercase tracking-[0.16em]">{email.brandName}</p>
+                      <div className="flex items-center gap-3 text-xs font-bold uppercase tracking-[0.16em]">
+                        {brandLogoUrl && (
+                          <Image
+                            src={normalizePublicImageUrl(backendAssetUrl(brandLogoUrl))}
+                            alt=""
+                            width={40}
+                            height={40}
+                            unoptimized
+                            className="size-10 rounded-full object-cover"
+                          />
+                        )}
+                        <span>{email.brandName}</span>
+                      </div>
                       <h3 className="mt-2 text-xl font-bold">{campaignForm.subject || "Email subject preview"}</h3>
                     </div>
                     <div aria-hidden="true" className="h-1.5" style={{ backgroundColor: previewAccent }} />

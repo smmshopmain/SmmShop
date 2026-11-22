@@ -79,6 +79,7 @@ export function buildCampaignEmail(input: {
     max: number;
   }>;
   brandName: string;
+  brandLogoUrl?: string;
   primaryColor: string;
   accentColor: string;
   siteUrl: string;
@@ -97,7 +98,8 @@ export function buildCampaignEmail(input: {
     brandName: input.brandName,
   };
   const personalize = (value: string) =>
-    value.replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) => values[key] ?? token);
+    value.replaceAll("SMM Panel", input.brandName)
+      .replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) => values[key] ?? token);
   const greeting = personalize(input.greeting ?? "Hello {{name}},");
   const body = personalize(input.body);
   const safeGreeting = escapeHtml(greeting).replace(/\r?\n/g, "<br>");
@@ -122,6 +124,12 @@ export function buildCampaignEmail(input: {
   const bannerImageUrl = input.banner?.imageUrl
     ? safeHttpUrl(normalizePublicImageUrl(new URL(input.banner.imageUrl, input.backendUrl).toString()))
     : "";
+  const brandLogoPath = input.brandLogoUrl && /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(input.brandLogoUrl)
+    ? input.brandLogoUrl
+    : "";
+  const brandLogoUrl = brandLogoPath
+    ? safeHttpUrl(normalizePublicImageUrl(new URL(brandLogoPath, input.backendUrl).toString()))
+    : "";
   const emailBackgroundImageUrl = input.banner?.backgroundImageUrl
     ? safeHttpUrl(normalizePublicImageUrl(new URL(input.banner.backgroundImageUrl, input.backendUrl).toString()))
     : "";
@@ -131,6 +139,7 @@ export function buildCampaignEmail(input: {
   const bannerImageSource = bannerImageIsUploaded ? "cid:campaign-banner" : bannerImageUrl;
   const backgroundImageSource = backgroundImageIsUploaded ? "cid:campaign-background" : emailBackgroundImageUrl;
   const inlineImages = [
+    ...(brandLogoUrl ? [{ cid: "brand-logo", url: brandLogoUrl }] : []),
     ...(bannerImageUrl && bannerImageIsUploaded ? [{ cid: "campaign-banner", url: bannerImageUrl }] : []),
     ...(emailBackgroundImageUrl && backgroundImageIsUploaded ? [{ cid: "campaign-background", url: emailBackgroundImageUrl }] : []),
   ];
@@ -172,7 +181,7 @@ export function buildCampaignEmail(input: {
           <table role="presentation" cellpadding="0" cellspacing="0" width="640" bgcolor="${cardBackground}" style="width:100%;max-width:640px;border:1px solid ${tintColor(themePrimary, 0.82)};border-collapse:collapse;background-color:${cardBackground};color:#243b53">
             <tbody>
               <tr><td bgcolor="${themePrimary}" style="padding:26px 30px;background-color:${themePrimary};color:#ffffff;font-family:Arial,Helvetica,sans-serif">
-                <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${safeBrand}</div>
+                <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase">${brandLogoUrl ? `<img src="cid:brand-logo" alt="" width="44" height="44" style="display:block;width:44px;height:44px;margin-bottom:12px;border-radius:50%;object-fit:cover">` : ""}${safeBrand}</div>
                 <h1 style="margin:14px 0 0;font-size:25px;line-height:1.3">${safeSubject}</h1>
               </td></tr>
               <tr><td height="6" bgcolor="${themeAccent}" style="height:6px;padding:0;background-color:${themeAccent};font-size:0;line-height:0">&nbsp;</td></tr>

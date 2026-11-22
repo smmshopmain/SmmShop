@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const after = request.nextUrl.searchParams.get("after");
     const excludedIds = after?.split(",").filter((id) => /^[a-f\d]{24}$/i.test(id)) ?? [];
-    const [popups, slideshowSetting] = await Promise.all([
+    const [popups, slideshowSetting, brandSetting] = await Promise.all([
       SitePopup.find({
         active: true,
         startsAt: { $lte: now },
@@ -22,7 +22,12 @@ export async function GET(request: NextRequest) {
         .select("title kind message emoji imageUrl mobileImageUrl desktopImageUrl linkType linkHref linkLabel startsAt expiresAt autoCloseAfterSeconds slideshowGroupId showOnEveryRefresh")
         .lean(),
       Setting.findOne({ key: "popupSlideshow" }).select("value").lean(),
+      Setting.findOne({ key: "siteFooter" }).select("value").lean(),
     ]);
+    const brandValue = brandSetting?.value as { brandName?: unknown } | undefined;
+    const brandName = typeof brandValue?.brandName === "string" && brandValue.brandName.trim()
+      ? brandValue.brandName.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 80)
+      : "SMM Panel";
     const storedDuration = (slideshowSetting?.value as { durationSeconds?: unknown } | undefined)?.durationSeconds;
     const slideshowDurationSeconds = typeof storedDuration === "number"
       && Number.isInteger(storedDuration)
@@ -59,16 +64,21 @@ export async function GET(request: NextRequest) {
     const popupsWithDisplayTime = orderedPopups.map((popup) => {
       const popupId = String(popup._id);
       const groupId = popup.slideshowGroupId || (groupIds.has(popupId) ? popupId : "");
+      const personalizedPopup = {
+        ...popup,
+        title: popup.title.replaceAll("SMM Panel", brandName).replaceAll("{{brandName}}", brandName),
+        message: popup.message.replaceAll("SMM Panel", brandName).replaceAll("{{brandName}}", brandName),
+      };
       if (groupId) {
         const groupDuration = baseDurationById.get(groupId) || slideshowDurationSeconds;
         return {
-          ...popup,
+          ...personalizedPopup,
           displayDurationSeconds: groupDuration / Math.max(groupSizeById.get(groupId) ?? 1, 1),
         };
       }
       const customDuration = popup.autoCloseAfterSeconds ?? 0;
       return {
-        ...popup,
+        ...personalizedPopup,
         displayDurationSeconds: customDuration > 0
           ? customDuration
           : slideshowDurationSeconds / Math.max(standaloneCount, 1),

@@ -8,6 +8,11 @@ type MailInput = {
   inlineImages?: Array<{ cid: string; url: string }>;
 };
 
+type RuntimeEmailSettings = EmailManagementSettings & {
+  brandLogoUrl: string;
+  legacyBrandName: string;
+};
+
 type MailResult = {
   provider: "smtp";
   messageId?: string;
@@ -19,12 +24,23 @@ type MailResult = {
 const REQUEST_TIMEOUT_MS = 45000;
 const OTP_EXPIRY_MINUTES = 10;
 
-async function emailSettings(): Promise<EmailManagementSettings> {
-  const record = await Setting.findOne({ key: "email" }).lean();
-  if (!record?.value || typeof record.value !== "object" || Array.isArray(record.value)) {
-    return DEFAULT_EMAIL_MANAGEMENT_SETTINGS;
-  }
-  const value = record.value as Partial<EmailManagementSettings>;
+async function emailSettings(): Promise<RuntimeEmailSettings> {
+  const [record, brandRecord] = await Promise.all([
+    Setting.findOne({ key: "email" }).lean(),
+    Setting.findOne({ key: "siteFooter" }).lean(),
+  ]);
+  const value: Partial<EmailManagementSettings> = record?.value && typeof record.value === "object" && !Array.isArray(record.value)
+    ? record.value as Partial<EmailManagementSettings>
+    : {};
+  const brandValue = brandRecord?.value && typeof brandRecord.value === "object" && !Array.isArray(brandRecord.value)
+    ? brandRecord.value as { brandName?: unknown; brandLogoUrl?: unknown }
+    : {};
+  const brandName = typeof brandValue.brandName === "string" && brandValue.brandName.trim()
+    ? brandValue.brandName.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 80)
+    : DEFAULT_EMAIL_MANAGEMENT_SETTINGS.brandName;
+  const legacyBrandName = typeof value.brandName === "string"
+    ? value.brandName.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 80)
+    : "";
   const templates = value.templates && typeof value.templates === "object" && !Array.isArray(value.templates)
     ? value.templates as Record<string, unknown>
     : {};
@@ -42,10 +58,12 @@ async function emailSettings(): Promise<EmailManagementSettings> {
   return {
     ...DEFAULT_EMAIL_MANAGEMENT_SETTINGS,
     ...value,
-    brandName:
-      typeof value.brandName === "string" && value.brandName.trim()
-        ? value.brandName.trim().slice(0, 60)
-        : DEFAULT_EMAIL_MANAGEMENT_SETTINGS.brandName,
+    brandName,
+    legacyBrandName,
+    brandLogoUrl: typeof brandValue.brandLogoUrl === "string"
+      && /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(brandValue.brandLogoUrl)
+      ? brandValue.brandLogoUrl
+      : "",
     primaryColor: isColor(value.primaryColor, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.primaryColor),
     accentColor: isColor(value.accentColor, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.accentColor),
     templates: {
@@ -55,6 +73,16 @@ async function emailSettings(): Promise<EmailManagementSettings> {
       welcome: isTemplate(templates.welcome, DEFAULT_EMAIL_MANAGEMENT_SETTINGS.templates.welcome),
     },
   };
+}
+
+function emailBrandLogo(settings: RuntimeEmailSettings) {
+  if (!settings.brandLogoUrl) return null;
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!apiBase) throw new Error("NEXT_PUBLIC_API_URL is required to include the uploaded brand logo in email.");
+  const baseUrl = new URL(apiBase);
+  const url = new URL(settings.brandLogoUrl, baseUrl);
+  if (url.origin !== baseUrl.origin) throw new Error("Brand logo URL must use the configured API host.");
+  return { cid: "brand-logo", url: url.toString() };
 }
 
 function escapeHtml(value: string) {
@@ -78,8 +106,17 @@ function safeHttpUrl(value: string) {
   return escapeHtml(url.toString().replace(/\/$/, ""));
 }
 
-function interpolate(template: string, values: Record<string, string>) {
-  return template.replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) => values[key] ?? token);
+function interpolate(template: string, values: Record<string, string>, legacyBrandName: string) {
+  let brandedTemplate = template;
+  if (values.brandName) {
+    const oldNames = [...new Set(["SMM Panel", legacyBrandName])]
+      .filter((name) => name && name !== values.brandName)
+      .sort((first, second) => second.length - first.length);
+    for (const oldName of oldNames) {
+      brandedTemplate = brandedTemplate.replaceAll(oldName, values.brandName);
+    }
+  }
+  return brandedTemplate.replace(/\{\{([a-zA-Z]+)\}\}/g, (token, key: string) => values[key] ?? token);
 }
 
 function asHtmlParagraphs(value: string) {
@@ -220,15 +257,16 @@ async function buildOtpEmail(
   heading: string,
 ) {
   const settings = await emailSettings();
+  const logo = emailBrandLogo(settings);
   const template = settings.templates[templateKey];
-  const variables = { ...values, otp, expiryMinutes: String(OTP_EXPIRY_MINUTES) };
-  const body = interpolate(template.body, variables);
-  const subject = interpolate(template.subject, variables);
+  const variables = { ...values, brandName: settings.brandName, otp, expiryMinutes: String(OTP_EXPIRY_MINUTES) };
+  const body = interpolate(template.body, variables, settings.legacyBrandName);
+  const subject = interpolate(template.subject, variables, settings.legacyBrandName);
   const html = `
     <div style="margin:0;padding:32px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243b53">
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #e5edf3;border-radius:18px;overflow:hidden">
         <div style="padding:28px 30px;background-color:${settings.primaryColor};background-image:linear-gradient(125deg,${settings.primaryColor} 0%,${settings.accentColor} 100%);color:#ffffff">
-          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${escapeHtml(settings.brandName)}</div>
+          <div style="display:flex;align-items:center;gap:12px;font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${logo ? `<img src="cid:${logo.cid}" alt="" width="42" height="42" style="display:inline-block;width:42px;height:42px;border-radius:50%;object-fit:cover;vertical-align:middle">` : ""}<span>${escapeHtml(settings.brandName)}</span></div>
           <h1 style="margin:16px 0 8px;font-size:26px;line-height:1.25;color:#ffffff">${escapeHtml(heading)}</h1>
         </div>
         <div style="padding:28px 30px">
@@ -240,7 +278,12 @@ async function buildOtpEmail(
       </div>
     </div>
   `;
-  return { subject, text: `${body}\n\nOTP: ${otp}\nExpires in ${OTP_EXPIRY_MINUTES} minutes.`, html };
+  return {
+    subject,
+    text: `${body}\n\nOTP: ${otp}\nExpires in ${OTP_EXPIRY_MINUTES} minutes.`,
+    html,
+    ...(logo ? { inlineImages: [logo] } : {}),
+  };
 }
 
 export function buildPasswordOtpEmail(otp: string) {
@@ -275,11 +318,18 @@ export async function buildWelcomeEmail({
   services,
 }: WelcomeEmailInput) {
   const settings = await emailSettings();
-  const values = { name, email, phone: phone?.trim() || "Not added yet", websiteUrl: siteUrl };
+  const logo = emailBrandLogo(settings);
+  const values = {
+    name,
+    email,
+    phone: phone?.trim() || "Not added yet",
+    websiteUrl: siteUrl,
+    brandName: settings.brandName,
+  };
   const template = settings.templates.welcome;
-  const subject = interpolate(template.subject, values);
-  const headline = interpolate(template.headline, values);
-  const welcomeBody = interpolate(template.body, values);
+  const subject = interpolate(template.subject, values, settings.legacyBrandName);
+  const headline = interpolate(template.headline, values, settings.legacyBrandName);
+  const welcomeBody = interpolate(template.body, values, settings.legacyBrandName);
   const safeName = escapeHtml(name);
   const safeEmail = escapeHtml(email);
   const safePhone = escapeHtml(values.phone);
@@ -290,7 +340,7 @@ export async function buildWelcomeEmail({
       )
     : ["No active services are listed right now. Visit the catalog again soon."];
   const text = [
-    interpolate(template.headline, values),
+    interpolate(template.headline, values, settings.legacyBrandName),
     "",
     welcomeBody,
     "",
@@ -333,7 +383,7 @@ export async function buildWelcomeEmail({
     <div style="margin:0;padding:32px 12px;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#243b53">
       <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5edf3;border-radius:20px;overflow:hidden;box-shadow:0 18px 50px rgba(15,35,55,.12)">
         <div style="padding:36px 34px;background-color:${settings.primaryColor};background-image:linear-gradient(125deg,${settings.primaryColor} 0%,${settings.accentColor} 100%);color:#ffffff">
-          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${escapeHtml(settings.brandName)} · YOUR GROWTH WORKSPACE</div>
+          <div style="font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#b6f2e9">${logo ? `<img src="cid:${logo.cid}" alt="" width="46" height="46" style="display:block;width:46px;height:46px;margin-bottom:12px;border-radius:50%;object-fit:cover">` : ""}${escapeHtml(settings.brandName)} · YOUR GROWTH WORKSPACE</div>
           <h1 style="margin:18px 0 10px;font-size:30px;line-height:1.2;color:#ffffff">${escapeHtml(headline)}</h1>
           <p style="margin:0;max-width:460px;font-size:15px;line-height:1.7;color:#d8f5f0">${asHtmlParagraphs(welcomeBody)}</p>
           <a href="${safeSiteUrl}/dashboard/services" style="display:inline-block;margin-top:24px;padding:13px 20px;border-radius:10px;background:#ffffff;color:${settings.accentColor};text-decoration:none;font-size:14px;font-weight:700">Explore services&nbsp; →</a>
@@ -371,7 +421,12 @@ export async function buildWelcomeEmail({
     </div>
   `;
 
-  return { subject, text, html };
+  return {
+    subject,
+    text,
+    html,
+    ...(logo ? { inlineImages: [logo] } : {}),
+  };
 }
 
 export function buildEmailChangeOtpEmail(otp: string) {

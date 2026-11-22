@@ -36,10 +36,13 @@ function priorityForCategory(category: z.infer<typeof schema>["category"]) {
   return "Medium" as const;
 }
 
-function renderSupportMessage(template: string, name: string, subject: string) {
+function renderSupportMessage(template: string, name: string, subject: string, brandName: string) {
   return template
     .replaceAll("{{name}}", name)
-    .replaceAll("{{subject}}", subject);
+    .replaceAll("{{subject}}", subject)
+    .replaceAll("{{brandName}}", brandName)
+    .replaceAll("contacting support", `contacting ${brandName} support`)
+    .replaceAll("Your support conversation", `Your ${brandName} support conversation`);
 }
 
 export async function POST(request: NextRequest) {
@@ -115,6 +118,7 @@ export async function PATCH(request: NextRequest) {
           settings.support.welcomeMessage || DEFAULT_SUPPORT_SETTINGS.welcomeMessage,
           user?.name ?? "there",
           ticket.subject,
+          settings.siteFooter.brandName,
         ),
         isAdmin: true,
       });
@@ -142,6 +146,7 @@ export async function PATCH(request: NextRequest) {
             settings.support.closeMessage || DEFAULT_SUPPORT_SETTINGS.closeMessage,
             user?.name ?? "there",
             ticket.subject,
+            settings.siteFooter.brandName,
           ),
           isAdmin: true,
         });

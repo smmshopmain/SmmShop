@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { apiJson } from "@/lib/client-api";
 import { PopupMedia, ResponsivePopupImage } from "@/components/popup-media";
 import { popupMediaForDevices, resolvePopupMedia } from "@/lib/popup-media";
+import { BrandMark, BrandName } from "@/components/site-brand";
 
 type SitePopupItem = {
   _id: string;
@@ -195,6 +196,12 @@ export function SitePopup() {
   const imageOnly = hasImage && !hasTitle && !hasMessage;
   const PopupContent = (
     <>
+      {!imageOnly && (
+        <div className="mb-5 flex items-center gap-3">
+          <BrandMark sizeClass="size-9" />
+          <BrandName className="text-sm font-bold text-neutral-800" />
+        </div>
+      )}
       {(popupMedia.mobileImageUrl || popupMedia.desktopImageUrl) && (
         hasResponsiveImages ? (
           <div className={`relative ${imageOnly ? "h-dvh w-screen" : "mb-5 h-[min(60dvh,520px)] w-full"}`}>
@@ -317,6 +324,12 @@ export function SitePopup() {
           <X className="size-5" />
         </button>
         <div className={imageOnly ? "h-full w-full" : "px-6 pb-5 pt-8 sm:px-9 sm:pb-7 sm:pt-10"}>
+          {imageOnly && (
+            <div className="absolute left-4 top-4 z-20 flex items-center gap-2 rounded-full border border-white/25 bg-black/25 p-1.5 pr-3 text-white shadow-sm backdrop-blur-sm">
+              <BrandMark sizeClass="size-9" className="border border-white/30" />
+              <BrandName className="text-xs font-bold" />
+            </div>
+          )}
           {currentPopup.linkHref ? (
             <a
               href={currentPopup.linkHref}

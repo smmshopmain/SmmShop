@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { apiJson } from "@/lib/client-api";
 import {
@@ -8,6 +8,7 @@ import {
   normalizeMotionSettings,
   type MotionSettings,
 } from "@/lib/motion-settings";
+import { DEFAULT_SITE_BRAND, type SiteBrandSettings } from "@/lib/site-brand";
 
 export {
   DEFAULT_MOTION_SETTINGS,
@@ -24,8 +25,14 @@ const MotionSettingsContext = createContext<{
   setSettings: () => {},
 });
 
+const SiteBrandContext = createContext<SiteBrandSettings>(DEFAULT_SITE_BRAND);
+
 export function useMotionSettings() {
   return useContext(MotionSettingsContext);
+}
+
+export function useSiteBrand() {
+  return useContext(SiteBrandContext);
 }
 
 function applyMotionSettings(settings: MotionSettings) {
@@ -55,6 +62,8 @@ export function MotionSettingsProvider({
   initialSettings?: MotionSettings;
 }) {
   const [settings, setSettings] = useState(initialSettings);
+  const [siteBrand, setSiteBrand] = useState(DEFAULT_SITE_BRAND);
+  const previousBrandName = useRef(DEFAULT_SITE_BRAND.brandName);
 
   useEffect(() => {
     let mounted = true;
@@ -62,6 +71,19 @@ export function MotionSettingsProvider({
       .then((result) => {
         if (!mounted || !result?.appearance) return;
         setSettings(normalizeMotionSettings(result.appearance));
+        if (result.siteFooter && typeof result.siteFooter === "object") {
+          setSiteBrand({
+            brandName: typeof result.siteFooter.brandName === "string" && result.siteFooter.brandName.trim()
+              ? result.siteFooter.brandName.trim()
+              : DEFAULT_SITE_BRAND.brandName,
+            brandLogoUrl: typeof result.siteFooter.brandLogoUrl === "string"
+              ? result.siteFooter.brandLogoUrl
+              : "",
+            tagline: typeof result.siteFooter.tagline === "string"
+              ? result.siteFooter.tagline
+              : DEFAULT_SITE_BRAND.tagline,
+          });
+        }
       })
       .catch((error: unknown) => {
         console.error("Unable to refresh site appearance settings; keeping the server-rendered settings.", error);
@@ -76,9 +98,20 @@ export function MotionSettingsProvider({
     applyMotionSettings(settings);
   }, [settings]);
 
+  useEffect(() => {
+    const title = document.title;
+    const updatedTitle = title.replaceAll(previousBrandName.current, siteBrand.brandName);
+    document.title = updatedTitle === title
+      ? title.replaceAll("SMM Panel", siteBrand.brandName)
+      : updatedTitle;
+    previousBrandName.current = siteBrand.brandName;
+  }, [siteBrand.brandName]);
+
   return (
     <MotionSettingsContext.Provider value={{ settings, setSettings }}>
-      {children}
+      <SiteBrandContext.Provider value={siteBrand}>
+        {children}
+      </SiteBrandContext.Provider>
     </MotionSettingsContext.Provider>
   );
 }

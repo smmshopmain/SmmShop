@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
 import { currentUser } from "@/lib/auth";
+import { BrandMark, BrandName, BrandTagline } from "@/components/site-brand";
 
 export default async function LoginPage() {
   const user = await currentUser();
@@ -13,10 +14,10 @@ export default async function LoginPage() {
       <section className="login-layout page-enter mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
         <div className="login-story auth-visual hidden lg:block">
           <Link href="/" className="login-brand inline-flex items-center gap-3">
-            <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-bold text-white shadow-sm">SP</span>
+            <BrandMark sizeClass="size-11" className="shadow-sm" />
             <span>
-              <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
-              <span className="block text-sm text-neutral-600">Your social growth starts here</span>
+              <BrandName className="block text-lg font-bold text-neutral-950" />
+              <BrandTagline className="block text-sm text-neutral-600" />
             </span>
           </Link>
           <div className="mt-12 max-w-xl">
@@ -41,8 +42,8 @@ export default async function LoginPage() {
         <div className="login-panel auth-card w-full p-5 sm:p-8">
           <div className="mb-7 flex items-center justify-between gap-4">
             <Link href="/" className="login-brand flex items-center gap-3 lg:hidden">
-              <span className="brand-mark grid size-10 place-items-center rounded-2xl text-sm font-bold text-white">SP</span>
-              <span className="text-sm font-bold text-neutral-950">SMM Panel</span>
+              <BrandMark sizeClass="size-10" />
+              <BrandName className="text-sm font-bold text-neutral-950" />
             </Link>
             <span className="ml-auto grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
               <LockKeyhole className="size-5" />

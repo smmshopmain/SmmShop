@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { PasswordResetForm } from "@/components/password-reset-form";
+import { BrandMark, BrandName } from "@/components/site-brand";
 import { apiJson } from "@/lib/client-api";
 
 export default function ForgotPasswordPage() {
@@ -24,8 +25,8 @@ export default function ForgotPasswordPage() {
     <main className="auth-page grid min-h-screen place-items-center px-4 py-10">
       <section className="auth-card page-enter w-full max-w-md p-6 sm:p-8">
         <Link href="/" className="mb-7 inline-flex items-center gap-3">
-          <span className="brand-mark grid size-10 place-items-center rounded-xl text-xs font-bold text-white">SP</span>
-          <span className="text-sm font-bold text-slate-900">SMM Panel</span>
+          <BrandMark sizeClass="size-10" />
+          <BrandName className="text-sm font-bold text-slate-900" />
         </Link>
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-teal-700">Account recovery</p>
         <h1 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">Forgot password</h1>

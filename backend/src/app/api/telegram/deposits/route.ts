@@ -218,7 +218,9 @@ async function updateSupportTicket(
     const user = await User.findById(ticket.user).select("name").lean();
     const welcomeMessage = (settings.support.welcomeMessage || DEFAULT_SUPPORT_SETTINGS.welcomeMessage)
       .replaceAll("{{name}}", user?.name ?? "there")
-      .replaceAll("{{subject}}", ticket.subject);
+      .replaceAll("{{subject}}", ticket.subject)
+      .replaceAll("{{brandName}}", settings.siteFooter.brandName)
+      .replaceAll("contacting support", `contacting ${settings.siteFooter.brandName} support`);
     ticket.messages.push({ body: welcomeMessage, isAdmin: true });
     ticket.status = "Answered";
   } else if (action === "reply") {
@@ -234,7 +236,9 @@ async function updateSupportTicket(
     const user = await User.findById(ticket.user).select("name").lean();
     const closeMessage = (settings.support.closeMessage || DEFAULT_SUPPORT_SETTINGS.closeMessage)
       .replaceAll("{{name}}", user?.name ?? "there")
-      .replaceAll("{{subject}}", ticket.subject);
+      .replaceAll("{{subject}}", ticket.subject)
+      .replaceAll("{{brandName}}", settings.siteFooter.brandName)
+      .replaceAll("Your support conversation", `Your ${settings.siteFooter.brandName} support conversation`);
     ticket.messages.push({ body: closeMessage, isAdmin: true });
     ticket.status = "Closed";
   } else if (action === "reopen") {

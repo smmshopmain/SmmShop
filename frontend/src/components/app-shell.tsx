@@ -39,6 +39,8 @@ import { isAdminRole } from "@/lib/roles";
 import { ContentLoading } from "@/components/content-loading";
 import { RequiredGooglePhoneModal } from "@/components/required-google-phone-modal";
 import { FloatingAIAssistant } from "@/components/floating-ai-assistant";
+import { BrandMark } from "@/components/site-brand";
+import { useSiteBrand } from "@/components/motion-settings-provider";
 
 type NavItem = {
   href: Route;
@@ -105,6 +107,7 @@ const adminLinks: NavItem[] = [
 export function AppShell({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { brandName, tagline } = useSiteBrand();
   const [user, setUser] = useState<{
     email?: string;
     name?: string;
@@ -375,13 +378,11 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <div className="flex h-full flex-col">
           <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="app-brand flex items-center gap-3 px-2 py-1">
-            <span className="brand-mark grid size-11 place-items-center rounded-2xl text-sm font-extrabold tracking-tight text-white">
-              SP
-            </span>
+            <BrandMark sizeClass="size-11" />
             <span>
-              <span className="block text-sm font-bold tracking-tight">{isAdmin ? "Admin Panel" : "SMM Studio"}</span>
+              <span className="block text-sm font-bold tracking-tight">{isAdmin ? "Admin Panel" : brandName}</span>
               <span className="mt-0.5 block text-[11px] font-medium text-neutral-500">
-                {isAdmin ? "Operations console" : "Your growth workspace"}
+                {isAdmin ? "Operations console" : tagline}
               </span>
             </span>
           </Link>
@@ -449,7 +450,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
             </Link>
           )}
           <div className="border-t border-neutral-200 pt-3 text-[10px] font-medium text-neutral-400">
-            SMM Studio <span className="float-right">v1.0</span>
+            {brandName} <span className="float-right">v1.0</span>
           </div>
         </div>
       </aside>
@@ -459,8 +460,8 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
           <div className="mx-auto max-w-[1440px]">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
-                <span className="brand-mark grid size-9 shrink-0 place-items-center rounded-xl text-xs font-bold text-white">SP</span>
-                <span className="truncate">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
+                <BrandMark sizeClass="size-9" />
+                <span className="truncate">{isAdmin ? "Admin Panel" : brandName}</span>
               </Link>
               <div className="hidden min-w-0 items-center gap-2 text-xs font-medium text-neutral-500 lg:flex">
                 <span>Workspace</span>
@@ -546,7 +547,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
           <div className="mobile-menu-panel absolute inset-y-0 right-0 flex w-[min(24rem,92vw)] flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4">
               <div className="min-w-0">
-                <p className="font-semibold text-neutral-950">Your SMM Panel</p>
+                <p className="font-semibold text-neutral-950">{brandName}</p>
                 <p className="truncate text-xs text-neutral-500">{loading ? "Loading..." : user?.email ?? "Account"}</p>
               </div>
               <button

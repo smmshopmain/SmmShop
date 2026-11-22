@@ -28,6 +28,7 @@ import React, { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { apiJson, apiUrl } from "@/lib/client-api";
 import { isAdminRole } from "@/lib/roles";
+import { BrandMark, BrandName, BrandTagline } from "@/components/site-brand";
 
 type NavItem = {
   href: Route;
@@ -126,12 +127,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-[#f7f4ee]">
       <aside className="fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r border-neutral-200 bg-white px-4 py-5 shadow-sm lg:block">
         <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex items-center gap-3 px-2">
-          <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">
-            SP
-          </span>
+          <BrandMark sizeClass="size-10" />
           <span>
-            <span className="block text-sm font-semibold">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
-            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : "Reseller platform"}</span>
+            <span className="block text-sm font-semibold">{isAdmin ? "Admin Panel" : <BrandName />}</span>
+            <span className="block text-xs text-neutral-500">{isAdmin ? "Operations console" : <BrandTagline />}</span>
           </span>
         </Link>
         <nav className="mt-8 space-y-1 pb-6">
@@ -157,8 +156,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="mx-auto max-w-7xl">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
-                <span className="grid size-9 shrink-0 place-items-center rounded-md bg-teal-700 text-xs font-bold text-white">SP</span>
-                <span className="truncate">{isAdmin ? "Admin Panel" : "SMM Panel"}</span>
+                <BrandMark sizeClass="size-9" className="text-xs" />
+                <span className="truncate">{isAdmin ? "Admin Panel" : <BrandName />}</span>
               </Link>
               <div className="ml-auto flex min-w-0 items-center gap-2 text-sm sm:gap-3">
                 <span className="hidden max-w-72 truncate rounded-full bg-neutral-100 px-3 py-1.5 text-neutral-600 sm:block">
@@ -222,7 +221,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="absolute inset-y-0 right-0 flex w-[min(24rem,92vw)] flex-col bg-white shadow-2xl">
             <div className="flex items-center justify-between gap-3 border-b border-neutral-200 p-4">
               <div className="min-w-0">
-                <p className="font-semibold text-neutral-950">SMM Panel</p>
+                <p className="font-semibold text-neutral-950"><BrandName /></p>
                 <p className="truncate text-xs text-neutral-500">{loading ? "Loading..." : user?.email ?? "Account"}</p>
               </div>
               <button

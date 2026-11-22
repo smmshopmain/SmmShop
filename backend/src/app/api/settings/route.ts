@@ -8,6 +8,10 @@ export async function GET() {
     const settings = await getSettings();
     return ok({
       ...settings,
+      brand: {
+        name: settings.siteFooter.brandName,
+        logoUrl: settings.siteFooter.brandLogoUrl,
+      },
       api: undefined,
       auth: {
         googleEnabled:

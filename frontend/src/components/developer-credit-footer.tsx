@@ -1,5 +1,6 @@
 import { Clock3, Code2, ExternalLink, Mail, MapPin, Phone, Send } from "lucide-react";
 import Link from "next/link";
+import { BrandMark } from "@/components/site-brand";
 
 export type DeveloperCreditSettings = {
   enabled: boolean;
@@ -16,6 +17,7 @@ export type SiteFooterLink = {
 export type SiteFooterSettings = {
   enabled: boolean;
   brandName: string;
+  brandLogoUrl: string;
   tagline: string;
   description: string;
   quickLinksTitle: string;
@@ -41,6 +43,7 @@ export const DEFAULT_DEVELOPER_CREDIT: DeveloperCreditSettings = {
 export const DEFAULT_SITE_FOOTER: SiteFooterSettings = {
   enabled: true,
   brandName: "SMM Panel",
+  brandLogoUrl: "",
   tagline: "Your social growth workspace",
   description: "Manage services, orders, wallet, and support from one simple place.",
   quickLinksTitle: "Quick links",
@@ -97,9 +100,12 @@ export function DeveloperCreditFooter({
         <div className="grid gap-10 pb-10 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.8fr_1fr_1fr] lg:gap-12">
           <section className="max-w-sm">
             <Link href="/" className="inline-flex items-center gap-3">
-              <span className="site-footer-mark grid size-11 place-items-center rounded-2xl text-sm font-extrabold">
-                {settings.brandName.trim().slice(0, 2).toUpperCase()}
-              </span>
+              <BrandMark
+                sizeClass="size-11"
+                brandName={settings.brandName}
+                brandLogoUrl={settings.brandLogoUrl}
+                className="site-footer-mark"
+              />
               <span>
                 <span className="site-footer-heading block text-base font-bold">{settings.brandName}</span>
                 {settings.tagline && <span className="site-footer-muted mt-0.5 block text-xs">{settings.tagline}</span>}

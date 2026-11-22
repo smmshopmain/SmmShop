@@ -454,6 +454,7 @@ export default function PopupManagementPage() {
                 placeholder="e.g. Diwali special — save on your next order"
                 className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm"
               />
+              <span className="mt-1 block text-xs font-normal text-neutral-500">Use {"{{brandName}}"} to insert the current website brand.</span>
             </label>
             <label className="block text-sm font-semibold text-neutral-800">
               Message {hasPopupMedia && <span className="font-normal text-neutral-500">(optional with media)</span>}
@@ -467,6 +468,7 @@ export default function PopupManagementPage() {
                 placeholder="Share your greeting, offer details, and any useful information."
                 className="mt-1 block w-full rounded-xl border border-neutral-300 bg-white px-3 py-2.5 text-sm leading-6"
               />
+              <span className="mt-1 block text-xs font-normal text-neutral-500">Use {"{{brandName}}"} to insert the current website brand.</span>
               <span className="mt-1 block text-right text-xs font-normal text-neutral-500">{form.message.length}/2000</span>
             </label>
 

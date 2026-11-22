@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
               recipientEmail: recipient.email,
               services: campaign.services ?? [],
               brandName: settings.email.brandName,
+              brandLogoUrl: settings.siteFooter.brandLogoUrl,
               primaryColor: campaign.primaryColor ?? settings.email.primaryColor,
               accentColor: campaign.accentColor ?? settings.email.accentColor,
               siteUrl,

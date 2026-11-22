@@ -40,11 +40,11 @@ function isValidPayload(value: unknown): value is SendEmailPayload {
     && typeof candidate.text === "string"
     && (candidate.inlineImages === undefined || (
       Array.isArray(candidate.inlineImages)
-      && candidate.inlineImages.length <= 2
+      && candidate.inlineImages.length <= 3
       && candidate.inlineImages.every((image) =>
         image !== null
         && typeof image === "object"
-        && ["campaign-banner", "campaign-background"].includes(image.cid)
+        && ["brand-logo", "campaign-banner", "campaign-background"].includes(image.cid)
         && typeof image.url === "string",
       )
     ));
@@ -53,11 +53,14 @@ function isValidPayload(value: unknown): value is SendEmailPayload {
 async function fetchInlineImage(image: { cid: string; url: string }) {
   const apiBase = new URL(requireEnv("NEXT_PUBLIC_API_URL"));
   const url = new URL(image.url);
+  const imagePath = image.cid === "brand-logo"
+    ? /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i
+    : /^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i;
   if (
     url.origin !== apiBase.origin
-    || !/^\/api\/uploads\/file\/campaign-banners\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(url.pathname)
+    || !imagePath.test(url.pathname)
   ) {
-    throw new Error("Campaign email image URL is invalid.");
+    throw new Error("Email image URL is invalid.");
   }
 
   const response = await fetch(url, { signal: AbortSignal.timeout(15000) });
@@ -69,8 +72,9 @@ async function fetchInlineImage(image: { cid: string; url: string }) {
   }
 
   const data = Buffer.from(await response.arrayBuffer());
-  if (data.length === 0 || data.length > 10 * 1024 * 1024) {
-    throw new Error("Campaign email image must be between 1 byte and 10MB.");
+  const maximumSize = image.cid === "brand-logo" ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+  if (data.length === 0 || data.length > maximumSize) {
+    throw new Error(`Email image must be between 1 byte and ${image.cid === "brand-logo" ? "5MB" : "10MB"}.`);
   }
 
   return {

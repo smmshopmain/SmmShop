@@ -1,8 +1,11 @@
+import { Setting } from "@/models";
+
 type MailInput = {
   to: string;
   subject: string;
   text: string;
   html?: string;
+  inlineImages?: Array<{ cid: string; url: string }>;
 };
 
 type MailResult = {
@@ -21,7 +24,7 @@ function requireEnv(name: string) {
   return value;
 }
 
-async function sendViaWorker({ to, subject, text, html }: MailInput) {
+async function sendViaWorker({ to, subject, text, html, inlineImages }: MailInput) {
   const workerUrl = requireEnv("EMAIL_WORKER_URL");
   const workerSecret = requireEnv("EMAIL_WORKER_SECRET");
 
@@ -36,7 +39,7 @@ async function sendViaWorker({ to, subject, text, html }: MailInput) {
         "x-email-worker-secret": workerSecret,
       },
       signal: controller.signal,
-      body: JSON.stringify({ to, subject, text, html }),
+      body: JSON.stringify({ to, subject, text, html, inlineImages }),
     });
 
     let payload: { ok?: boolean; message?: string; messageId?: string } | null = null;
@@ -58,9 +61,9 @@ async function sendViaWorker({ to, subject, text, html }: MailInput) {
   }
 }
 
-export async function sendMail({ to, subject, text, html }: MailInput): Promise<MailResult> {
+export async function sendMail({ to, subject, text, html, inlineImages }: MailInput): Promise<MailResult> {
   try {
-    const workerResponse = await sendViaWorker({ to, subject, text, html });
+    const workerResponse = await sendViaWorker({ to, subject, text, html, inlineImages });
     const result: MailResult = {
       provider: "smtp",
       messageId: workerResponse.messageId,
@@ -87,86 +90,71 @@ export async function sendMail({ to, subject, text, html }: MailInput): Promise<
   }
 }
 
-export function buildPasswordOtpEmail(otp: string) {
-  const subject = "SMM Panel password reset OTP";
+async function siteBrand() {
+  const record = await Setting.findOne({ key: "siteFooter" }).select("value").lean();
+  const value = record?.value as { brandName?: unknown; brandLogoUrl?: unknown } | undefined;
+  const brandName = typeof value?.brandName === "string" && value.brandName.trim()
+    ? value.brandName.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 80)
+    : "SMM Panel";
+  const brandLogoUrl = typeof value?.brandLogoUrl === "string"
+    && /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i.test(value.brandLogoUrl)
+    ? value.brandLogoUrl
+    : "";
+  if (!brandLogoUrl) return { brandName, logo: null };
+  const apiBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (!apiBase) throw new Error("NEXT_PUBLIC_API_URL is required to include the uploaded brand logo in email.");
+  const baseUrl = new URL(apiBase);
+  const url = new URL(brandLogoUrl, baseUrl);
+  if (url.origin !== baseUrl.origin) throw new Error("Brand logo URL must use the configured API host.");
+  return { brandName, logo: { cid: "brand-logo", url: url.toString() } };
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  })[character] ?? character);
+}
+
+async function buildOtpEmail(otp: string, subjectLabel: string, heading: string) {
+  const { brandName, logo } = await siteBrand();
+  const safeBrand = escapeHtml(brandName);
+  const subject = `${brandName} ${subjectLabel}`;
   const text = [
-    "Your SMM Panel password reset OTP is:",
+    `Your ${brandName} ${subjectLabel} is:`,
     otp,
     "",
     "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
   ].join("\n");
   const html = `
     <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Password reset OTP</h2>
-      <p>Your SMM Panel password reset OTP is:</p>
+      <div style="display:flex;align-items:center;gap:12px">${logo ? `<img src="cid:${logo.cid}" alt="" width="42" height="42" style="width:42px;height:42px;border-radius:50%;object-fit:cover">` : ""}<strong>${safeBrand}</strong></div>
+      <h2 style="margin:16px 0 12px">${escapeHtml(heading)}</h2>
+      <p>Your ${safeBrand} ${escapeHtml(subjectLabel)} is:</p>
       <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
       <p>This OTP expires in 10 minutes.</p>
       <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
     </div>
   `;
 
-  return { subject, text, html };
+  return { subject, text, html, ...(logo ? { inlineImages: [logo] } : {}) };
+}
+
+export function buildPasswordOtpEmail(otp: string) {
+  return buildOtpEmail(otp, "password reset OTP", "Password reset OTP");
 }
 
 export function buildEmailChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel email change OTP";
-  const text = [
-    "Your SMM Panel email change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Email change OTP</h2>
-      <p>Your SMM Panel email change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildOtpEmail(otp, "email change OTP", "Email change OTP");
 }
 
 export function buildPhoneChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel phone change OTP";
-  const text = [
-    "Your SMM Panel phone change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Phone change OTP</h2>
-      <p>Your SMM Panel phone change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildOtpEmail(otp, "phone change OTP", "Phone change OTP");
 }
 
 export function buildPasswordChangeOtpEmail(otp: string) {
-  const subject = "SMM Panel password change OTP";
-  const text = [
-    "Your SMM Panel password change OTP is:",
-    otp,
-    "",
-    "This OTP expires in 10 minutes. If you did not request this, ignore this email.",
-  ].join("\n");
-  const html = `
-    <div style="font-family:Arial,sans-serif;color:#171717;line-height:1.5">
-      <h2 style="margin:0 0 12px">Password change OTP</h2>
-      <p>Your SMM Panel password change OTP is:</p>
-      <p style="font-size:28px;font-weight:700;letter-spacing:4px;margin:16px 0">${otp}</p>
-      <p>This OTP expires in 10 minutes.</p>
-      <p style="color:#525252;font-size:13px">If you did not request this, ignore this email.</p>
-    </div>
-  `;
-
-  return { subject, text, html };
+  return buildOtpEmail(otp, "password change OTP", "Password change OTP");
 }

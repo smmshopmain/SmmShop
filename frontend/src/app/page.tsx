@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BrandMark, BrandName, BrandTagline } from "@/components/site-brand";
 import {
   ArrowRight,
   BarChart3,
@@ -38,10 +39,10 @@ export default function Home() {
       <section className="landing-hero mx-auto grid min-h-screen max-w-7xl items-center gap-12 px-5 py-12 sm:px-8 lg:grid-cols-[minmax(0,1fr)_480px] lg:gap-16 lg:px-10">
         <div className="landing-copy relative z-10 py-4">
           <Link href="/" className="landing-brand mb-12 inline-flex items-center gap-3">
-            <span className="brand-mark grid size-12 place-items-center rounded-2xl text-sm font-bold text-white">SP</span>
+            <BrandMark sizeClass="size-12" />
             <span>
-              <span className="block text-lg font-bold tracking-tight text-slate-950">SMM Panel</span>
-              <span className="block text-sm text-slate-500">Your growth workspace</span>
+              <BrandName className="block text-lg font-bold tracking-tight text-slate-950" />
+              <BrandTagline className="block text-sm text-slate-500" />
             </span>
           </Link>
 

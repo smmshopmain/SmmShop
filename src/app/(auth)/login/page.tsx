@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, LockKeyhole, Sparkles } from "lucide-react";
 import { AuthForm } from "@/components/auth-form";
+import { BrandMark, BrandName } from "@/components/site-brand";
 import { currentUser } from "@/lib/auth";
 
 export default async function LoginPage() {
@@ -12,9 +13,9 @@ export default async function LoginPage() {
       <section className="mx-auto grid min-h-[calc(100vh-3rem)] max-w-6xl items-center gap-6 lg:grid-cols-[minmax(0,1fr)_440px]">
         <div className="hidden lg:block">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white shadow-sm">SP</span>
+            <BrandMark sizeClass="size-11" className="shadow-sm" />
             <span>
-              <span className="block text-lg font-bold text-neutral-950">SMM Panel</span>
+              <BrandName className="block text-lg font-bold text-neutral-950" />
               <span className="block text-sm text-neutral-600">Fast reseller workspace</span>
             </span>
           </Link>
@@ -40,8 +41,8 @@ export default async function LoginPage() {
         <div className="w-full rounded-lg border border-white bg-white p-5 shadow-xl shadow-neutral-900/10 sm:p-7">
           <div className="mb-7 flex items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-3 lg:hidden">
-              <span className="grid size-10 place-items-center rounded-md bg-teal-700 text-sm font-bold text-white">SP</span>
-              <span className="text-sm font-bold text-neutral-950">SMM Panel</span>
+              <BrandMark sizeClass="size-10" />
+              <BrandName className="text-sm font-bold text-neutral-950" />
             </Link>
             <span className="ml-auto grid size-10 place-items-center rounded-md bg-teal-50 text-teal-800">
               <LockKeyhole className="size-5" />

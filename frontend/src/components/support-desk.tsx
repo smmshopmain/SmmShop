@@ -77,8 +77,8 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
   const [creating, setCreating] = useState(false);
   const [showSupportSettings, setShowSupportSettings] = useState(false);
   const [supportSettings, setSupportSettings] = useState<SupportMessageSettings>({
-    welcomeMessage: "Hello {{name}}, thank you for contacting support. We have received your request and will help you shortly.",
-    closeMessage: "Your support conversation has been closed. If you need more help, please create a new support request.",
+    welcomeMessage: "Hello {{name}}, thank you for contacting {{brandName}} support. We have received your request and will help you shortly.",
+    closeMessage: "Your {{brandName}} support conversation has been closed. If you need more help, please create a new support request.",
   });
   const [loadingSupportSettings, setLoadingSupportSettings] = useState(false);
   const [savingSupportSettings, setSavingSupportSettings] = useState(false);
@@ -331,7 +331,7 @@ export function SupportDesk({ mode }: { mode: "user" | "admin" }) {
               <form onSubmit={saveSupportSettings} className="mt-4 grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4">
                 <div>
                   <h3 className="font-bold text-neutral-900">Conversation messages</h3>
-                  <p className="mt-1 text-xs text-neutral-500">Use {"{{name}}"} for the customer name and {"{{subject}}"} for the ticket subject.</p>
+                  <p className="mt-1 text-xs text-neutral-500">Placeholders: {"{{name}}"} for customer, {"{{subject}}"} for the ticket subject, and {"{{brandName}}"} for the current site brand.</p>
                 </div>
                 {loadingSupportSettings ? (
                   <p className="inline-flex items-center gap-2 text-sm text-neutral-500"><LoaderCircle className="size-4 animate-spin" /> Loading settings...</p>

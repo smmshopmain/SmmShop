@@ -1,10 +1,13 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { ImagePlus, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SiteFooterLink, SiteFooterSettings as FooterSettingsValue } from "@/components/developer-credit-footer";
+import { BrandMark } from "@/components/site-brand";
 import { apiFetch } from "@/lib/client-api";
+
+const uploadedBrandLogoPattern = /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i;
 
 export function SiteFooterSettings({
   initialSettings,
@@ -13,8 +16,11 @@ export function SiteFooterSettings({
 }) {
   const router = useRouter();
   const [settings, setSettings] = useState(initialSettings);
+  const [savedLogoUrl, setSavedLogoUrl] = useState(initialSettings.brandLogoUrl);
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
 
   function update<K extends keyof FooterSettingsValue>(key: K, value: FooterSettingsValue[K]) {
     setSettings((current) => ({ ...current, [key]: value }));
@@ -47,6 +53,7 @@ export function SiteFooterSettings({
     event.preventDefault();
     setLoading(true);
     setMessage("");
+    setError("");
     try {
       const response = await apiFetch("/api/admin/settings", {
         method: "PATCH",
@@ -56,11 +63,47 @@ export function SiteFooterSettings({
       const result = await response.json();
       if (!response.ok) throw new Error(result.message ?? "Unable to save footer settings.");
       setMessage("Footer settings saved.");
+      const previousLogoUrl = savedLogoUrl;
+      setSavedLogoUrl(settings.brandLogoUrl);
+      if (previousLogoUrl && previousLogoUrl !== settings.brandLogoUrl && uploadedBrandLogoPattern.test(previousLogoUrl)) {
+        const cleanupResponse = await apiFetch("/api/admin/brand-logo", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ imageUrl: previousLogoUrl }),
+        });
+        const cleanupResult = await cleanupResponse.json();
+        if (!cleanupResponse.ok) {
+          setMessage(`Brand settings saved, but the previous logo could not be removed: ${cleanupResult.message ?? "Unknown error"}`);
+        }
+      }
       router.refresh();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Unable to save footer settings.");
+      setError(error instanceof Error ? error.message : "Unable to save footer settings.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function uploadLogo(file?: File) {
+    if (!file) return;
+    setUploadingLogo(true);
+    setMessage("");
+    setError("");
+    try {
+      const formData = new FormData();
+      formData.set("file", file);
+      const response = await apiFetch("/api/admin/brand-logo", { method: "POST", body: formData });
+      const result = await response.json();
+      const logoUrl = result.data?.url;
+      if (!response.ok || typeof logoUrl !== "string" || !uploadedBrandLogoPattern.test(logoUrl)) {
+        throw new Error(result.message ?? "Unable to upload the brand logo.");
+      }
+      setSettings((current) => ({ ...current, brandLogoUrl: logoUrl }));
+      setMessage("Logo uploaded. Save brand settings to apply it across the website.");
+    } catch (uploadError) {
+      setError(uploadError instanceof Error ? uploadError.message : "Unable to upload the brand logo.");
+    } finally {
+      setUploadingLogo(false);
     }
   }
 
@@ -140,6 +183,46 @@ export function SiteFooterSettings({
 
       <section className="grid gap-3 rounded-xl border border-neutral-200 p-4">
         <h3 className="text-sm font-semibold text-neutral-900">Brand information</h3>
+        <div className="grid gap-4 rounded-xl border border-neutral-200 bg-neutral-50 p-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-center">
+          <BrandMark
+            sizeClass="size-16"
+            brandName={settings.brandName}
+            brandLogoUrl={settings.brandLogoUrl}
+            className="border border-neutral-200 bg-white"
+          />
+          <div className="grid gap-2">
+            <p className="text-sm font-semibold text-neutral-800">Circular brand logo</p>
+            <p className="text-xs leading-5 text-neutral-500">
+              Upload a JPG, PNG, or WEBP image up to 5 MB. It is automatically center-cropped into a circle wherever the brand mark appears.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50">
+                <ImagePlus className="size-4" />
+                {uploadingLogo ? "Uploading…" : settings.brandLogoUrl ? "Replace logo" : "Upload logo"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="sr-only"
+                  disabled={uploadingLogo}
+                  onChange={(event) => {
+                    void uploadLogo(event.target.files?.[0]);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              {settings.brandLogoUrl && (
+                <button
+                  type="button"
+                  disabled={uploadingLogo}
+                  onClick={() => update("brandLogoUrl", "")}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                >
+                  <X className="size-3.5" /> Remove
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="grid gap-1.5 text-sm font-medium text-neutral-800">
             Brand name
@@ -210,9 +293,10 @@ export function SiteFooterSettings({
       </section>
 
       <div className="flex flex-wrap items-center gap-3">
-        <button disabled={loading} className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60">
-          {loading ? "Saving..." : "Save footer settings"}
+        <button disabled={loading || uploadingLogo} className="rounded-lg bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-800 disabled:opacity-60">
+          {loading ? "Saving..." : "Save brand and footer settings"}
         </button>
+        {error && <p role="alert" className="text-sm text-rose-700">{error}</p>}
         {message && <p role="status" className="text-sm text-neutral-600">{message}</p>}
       </div>
     </form>
