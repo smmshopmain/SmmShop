@@ -45,7 +45,16 @@ export async function GET(request: NextRequest) {
               },
             },
             { $unwind: { path: "$service", preserveNullAndEmptyArrays: true } },
-            { $project: { name: "$service.name", category: "$service.category", orders: 1, revenue: 1, profit: 1 } },
+            {
+              $project: {
+                name: "$service.name",
+                category: "$service.category",
+                providerServiceId: "$service.providerServiceId",
+                orders: 1,
+                revenue: 1,
+                profit: 1,
+              },
+            },
           ],
           topCustomers: [
             {

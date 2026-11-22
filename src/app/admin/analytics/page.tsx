@@ -12,7 +12,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
   const from = params?.from ?? "";
   const to = params?.to ?? "";
   let summary = { orders: 0, revenue: 0, profit: 0 };
-  let topServices: Array<{ _id: string; name?: string; orders: number; revenue: number; profit: number }> = [];
+  let topServices: Array<{ _id: string; name?: string; providerServiceId?: string; orders: number; revenue: number; profit: number }> = [];
   let topCustomers: Array<{ _id: string; name?: string; email?: string; orders: number; revenue: number; profit: number }> = [];
   let loadError = "";
 
@@ -34,7 +34,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
             { $limit: 10 },
             { $lookup: { from: "services", localField: "_id", foreignField: "_id", as: "service" } },
             { $unwind: { path: "$service", preserveNullAndEmptyArrays: true } },
-            { $project: { name: "$service.name", orders: 1, revenue: 1, profit: 1 } },
+            { $project: { name: "$service.name", providerServiceId: "$service.providerServiceId", orders: 1, revenue: 1, profit: 1 } },
           ],
           topCustomers: [
             { $group: { _id: "$user", orders: { $sum: 1 }, revenue: { $sum: "$sellingPrice" }, profit: { $sum: "$profit" } } },
@@ -89,6 +89,9 @@ export default async function AnalyticsPage({ searchParams }: { searchParams?: P
           {topServices.map((service) => (
             <div key={String(service._id)} className="border-b border-neutral-100 p-4 text-sm">
               <span className="block font-medium">{service.name ?? "Service"}</span>
+              <span className="block select-text font-mono text-xs text-neutral-500" data-copy-allowed>
+                Provider Service ID: {service.providerServiceId ?? "Unavailable"}
+              </span>
               <span className="mt-2 block h-2 rounded-full bg-neutral-100">
                 <span className="block h-2 rounded-full bg-teal-700" style={{ width: `${Math.min(100, (service.orders / maxServiceOrders) * 100)}%` }} />
               </span>

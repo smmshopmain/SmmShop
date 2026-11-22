@@ -39,6 +39,7 @@ export async function GET() {
           $project: {
             name: "$service.name",
             category: "$service.category",
+            providerServiceId: "$service.providerServiceId",
             orders: 1,
             revenue: 1,
             profit: 1,
