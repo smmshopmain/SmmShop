@@ -205,124 +205,131 @@ export function OrderLiveList({
         </p>
       )}
 
-      <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px]">
-        <span>Service</span>
-        <span>App status</span>
-        <span>Provider status</span>
-        <span>Completed</span>
-        <span>Remaining</span>
-        <span>Charge</span>
-        <span>Provider sync</span>
-        <span className="text-right">Actions</span>
-      </div>
+      <div
+        className="order-table-scroll max-w-full overflow-x-auto overscroll-x-contain"
+        role="region"
+        aria-label="Order list; scroll horizontally to view all columns"
+        tabIndex={0}
+      >
+        <div className="hidden border-b border-neutral-200 bg-neutral-50 px-4 py-3 text-xs font-bold uppercase tracking-wide text-neutral-500 xl:grid xl:min-w-[1042px] xl:grid-cols-[minmax(200px,1fr)_100px_115px_100px_100px_80px_145px_170px]">
+          <span>Service</span>
+          <span>App status</span>
+          <span>Provider status</span>
+          <span>Completed</span>
+          <span>Remaining</span>
+          <span>Charge</span>
+          <span>Provider sync</span>
+          <span className="text-right">Actions</span>
+        </div>
 
-      <div className="divide-y divide-neutral-100">
-        {visibleOrders.map((order) => (
-          <div
-            key={String(order._id)}
-            className="order-list-row grid gap-4 p-4 text-sm xl:grid-cols-[minmax(220px,1fr)_130px_130px_120px_120px_110px_180px_170px] xl:items-center"
-          >
-            <div className="min-w-0">
-              <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
-              <CopyTargetLink link={order.link} />
-              <p className="mt-1 text-xs text-neutral-500">Order ID: {String(order._id)}</p>
-              <p className="text-xs text-neutral-500">Provider Order ID: {order.providerOrderId ?? "-"}</p>
-            </div>
+        <div className="divide-y divide-neutral-100 xl:min-w-[1042px]">
+          {visibleOrders.map((order) => (
+            <div
+              key={String(order._id)}
+              className="order-list-row grid gap-4 p-4 text-sm xl:grid-cols-[minmax(200px,1fr)_100px_115px_100px_100px_80px_145px_170px] xl:items-center"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold text-neutral-950">{order.service?.name ?? "Service"}</p>
+                <CopyTargetLink link={order.link} />
+                <p className="mt-1 text-xs text-neutral-500">Order ID: {String(order._id)}</p>
+                <p className="text-xs text-neutral-500">Provider Order ID: {order.providerOrderId ?? "-"}</p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">App status</p>
-              <StatusBadge status={order.status} />
-              {order.adminCompletedAt && (
-                <p className="mt-1 text-xs font-medium text-teal-800">Manually completed by admin</p>
-              )}
-              {order.providerResponse?.cancellationAttempt?.attempted && (
-                <p className="mt-1 text-xs text-amber-800">
-                  {order.providerResponse.cancellationAttempt.accepted
-                    ? "Provider accepted cancellation"
-                    : "Provider cancellation not confirmed"}
+              <div className="grid grid-cols-2 gap-1 xl:block">
+                <p className="text-xs font-medium uppercase text-neutral-400">App status</p>
+                <StatusBadge status={order.status} />
+                {order.adminCompletedAt && (
+                  <p className="mt-1 text-xs font-medium text-teal-800">Manually completed by admin</p>
+                )}
+                {order.providerResponse?.cancellationAttempt?.attempted && (
+                  <p className="mt-1 text-xs text-amber-800">
+                    {order.providerResponse.cancellationAttempt.accepted
+                      ? "Provider accepted cancellation"
+                      : "Provider cancellation not confirmed"}
+                  </p>
+                )}
+                {order.status === "Canceled" && order.providerResponse?.cancellationAttempt?.attempted === false && (
+                  <p className="mt-1 text-xs text-neutral-500">Canceled before provider submission</p>
+                )}
+                {order.status === "Partial" && <p className="mt-1 text-xs font-semibold text-amber-700">Incomplete / Partial</p>}
+                {order.status === "Scheduled" && (
+                  <p className="mt-1 text-xs font-medium text-indigo-700">
+                    Waiting for the previous order on this link
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 xl:block">
+                <p className="text-xs font-medium uppercase text-neutral-400">Provider status</p>
+                <p className="font-semibold text-neutral-800">{providerRawStatus(order)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 xl:block">
+                <p className="text-xs font-medium uppercase text-neutral-400">Completed</p>
+                <p className="font-medium">{completionText(order)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1 xl:block">
+                <p className="text-xs font-medium uppercase text-neutral-400">Remaining</p>
+                <p className="font-semibold">
+                  {order.status === "Completed" ? 0 : typeof order.remains === "number" ? order.remains : "-"}
                 </p>
-              )}
-              {order.status === "Canceled" && order.providerResponse?.cancellationAttempt?.attempted === false && (
-                <p className="mt-1 text-xs text-neutral-500">Canceled before provider submission</p>
-              )}
-              {order.status === "Partial" && <p className="mt-1 text-xs font-semibold text-amber-700">Incomplete / Partial</p>}
-              {order.status === "Scheduled" && (
-                <p className="mt-1 text-xs font-medium text-indigo-700">
-                  Waiting for the previous order on this link
-                </p>
-              )}
-            </div>
+                <p className="text-xs text-neutral-500">Start: {typeof order.startCount === "number" ? order.startCount : "-"}</p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Provider status</p>
-              <p className="font-semibold text-neutral-800">{providerRawStatus(order)}</p>
-            </div>
+              <div className="grid grid-cols-2 gap-1 xl:block">
+                <p className="text-xs font-medium uppercase text-neutral-400">Charge</p>
+                <p className="font-semibold">Rs.{order.sellingPrice}</p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Completed</p>
-              <p className="font-medium">{completionText(order)}</p>
-            </div>
+              <div>
+                <p className="text-xs font-medium uppercase text-neutral-400">Provider sync</p>
+                <p className="text-neutral-600">{formatDate(order.lastStatusSyncAt)}</p>
+                <p className="text-xs text-neutral-500">Created: {formatDate(order.createdAt)}</p>
+              </div>
 
-            <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Remaining</p>
-              <p className="font-semibold">
-                {order.status === "Completed" ? 0 : typeof order.remains === "number" ? order.remains : "-"}
+              <div className="flex flex-wrap gap-2 xl:justify-end">
+                {order.service?._id && (
+                  <Link
+                    href={`/dashboard/services?serviceId=${encodeURIComponent(order.service._id)}`}
+                    className="inline-flex items-center gap-1.5 rounded-md border border-teal-700 px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-50"
+                  >
+                    <ShoppingBag className="size-3.5" /> Generate new order
+                  </Link>
+                )}
+                {order.service?.refill && order.status === "Completed" && (
+                  <ActionButton label="Refill" endpoint="/api/refills" method="POST" body={{ orderId: String(order._id) }} />
+                )}
+                {canCancelOrder(order) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCancelError("");
+                      setCancelNotice("");
+                      setCancelCandidate(order);
+                    }}
+                    className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-800"
+                  >
+                    Cancel
+                  </button>
+                )}
+                {!order.service?.refill && !canCancelOrder(order) && (
+                  <span className="text-xs text-neutral-400">No actions</span>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {visibleOrders.length === 0 && (
+            <div className="grid place-items-center px-4 py-12 text-center">
+              <ShoppingBag className="size-10 text-neutral-300" />
+              <p className="mt-3 text-sm font-semibold text-neutral-800">No orders found</p>
+              <p className="mt-1 max-w-md text-sm text-neutral-500">
+                Clear the search/filter or place a new order from the services page.
               </p>
-              <p className="text-xs text-neutral-500">Start: {typeof order.startCount === "number" ? order.startCount : "-"}</p>
             </div>
-
-            <div className="grid grid-cols-2 gap-1 xl:block">
-              <p className="text-xs font-medium uppercase text-neutral-400">Charge</p>
-              <p className="font-semibold">Rs.{order.sellingPrice}</p>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium uppercase text-neutral-400">Provider sync</p>
-              <p className="text-neutral-600">{formatDate(order.lastStatusSyncAt)}</p>
-              <p className="text-xs text-neutral-500">Created: {formatDate(order.createdAt)}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              {order.service?._id && (
-                <Link
-                  href={`/dashboard/services?serviceId=${encodeURIComponent(order.service._id)}`}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-teal-700 px-3 py-2 text-xs font-semibold text-teal-800 hover:bg-teal-50"
-                >
-                  <ShoppingBag className="size-3.5" /> Generate new order
-                </Link>
-              )}
-              {order.service?.refill && order.status === "Completed" && (
-                <ActionButton label="Refill" endpoint="/api/refills" method="POST" body={{ orderId: String(order._id) }} />
-              )}
-              {canCancelOrder(order) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCancelError("");
-                    setCancelNotice("");
-                    setCancelCandidate(order);
-                  }}
-                  className="rounded-md bg-rose-700 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:bg-rose-800"
-                >
-                  Cancel
-                </button>
-              )}
-              {!order.service?.refill && !canCancelOrder(order) && (
-                <span className="text-xs text-neutral-400">No actions</span>
-              )}
-            </div>
-          </div>
-        ))}
-
-        {visibleOrders.length === 0 && (
-          <div className="grid place-items-center px-4 py-12 text-center">
-            <ShoppingBag className="size-10 text-neutral-300" />
-            <p className="mt-3 text-sm font-semibold text-neutral-800">No orders found</p>
-            <p className="mt-1 max-w-md text-sm text-neutral-500">
-              Clear the search/filter or place a new order from the services page.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {cancelCandidate && (

@@ -4816,3 +4816,15 @@ html[data-design="ledger"] body h2 {
   font-family: Georgia, "Times New Roman", serif;
   letter-spacing: -0.02em;
 }
+
+.order-table-scroll {
+  scrollbar-color:
+    color-mix(in srgb, var(--foreground) 35%, transparent)
+    color-mix(in srgb, var(--surface) 75%, var(--background));
+  scrollbar-width: thin;
+}
+
+.order-table-scroll:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: -2px;
+}
