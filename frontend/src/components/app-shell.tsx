@@ -40,7 +40,7 @@ import { ContentLoading } from "@/components/content-loading";
 import { RequiredGooglePhoneModal } from "@/components/required-google-phone-modal";
 import { FloatingAIAssistant } from "@/components/floating-ai-assistant";
 import { BrandMark } from "@/components/site-brand";
-import { useSiteBrand } from "@/components/motion-settings-provider";
+import { useFeatureSettings, useSiteBrand } from "@/components/motion-settings-provider";
 
 type NavItem = {
   href: Route;
@@ -108,6 +108,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
   const router = useRouter();
   const pathname = usePathname();
   const { brandName, tagline } = useSiteBrand();
+  const { aiEnabled, apiEnabled, loaded: apiStatusLoaded } = useFeatureSettings();
   const [user, setUser] = useState<{
     email?: string;
     name?: string;
@@ -116,9 +117,6 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
     requiresPhone?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [apiEnabled, setApiEnabled] = useState(false);
-  const [apiStatusLoaded, setApiStatusLoaded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [workspaceHealth, setWorkspaceHealth] = useState<WorkspaceHealth>({
     state: "checking",
@@ -187,14 +185,18 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
     if (!user) return;
 
     let mounted = true;
-    let timer: ReturnType<typeof setTimeout>;
+    let checking = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     async function refreshWorkspaceHealth() {
+      if (checking) return;
+      checking = true;
       const requests = [
         apiJson("/api/health", { cache: "no-store" }),
         ...(isAdmin ? [apiJson("/api/admin/errors?activeOnly=true", { cache: "no-store" })] : []),
       ];
       const [healthResult, adminResult] = await Promise.allSettled(requests);
+      checking = false;
       if (!mounted) return;
 
       if (healthResult.status === "rejected" || !healthResult.value?.ok) {
@@ -245,59 +247,24 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       }
 
       timer = setTimeout(() => {
-        void refreshWorkspaceHealth();
-      }, 30_000);
+        if (document.visibilityState === "visible") void refreshWorkspaceHealth();
+      }, 120_000);
     }
 
+    const refreshOnFocus = () => {
+      if (document.visibilityState !== "visible" || checking) return;
+      if (timer) clearTimeout(timer);
+      void refreshWorkspaceHealth();
+    };
+
     void refreshWorkspaceHealth();
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
       mounted = false;
       clearTimeout(timer);
+      window.removeEventListener("focus", refreshOnFocus);
     };
   }, [isAdmin, user]);
-
-  useEffect(() => {
-    if (!user) return;
-    let active = true;
-    const refreshAIStatus = async () => {
-      try {
-        const result = await apiJson("/api/ai/assistant", { cache: "no-store" });
-        if (active) setAiEnabled(result?.ok === true && result.enabled === true);
-      } catch {
-        if (active) setAiEnabled(false);
-      }
-    };
-    void refreshAIStatus();
-    const timer = window.setInterval(refreshAIStatus, 30_000);
-    window.addEventListener("ai-settings-updated", refreshAIStatus);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("ai-settings-updated", refreshAIStatus);
-    };
-  }, [user]);
-
-  useEffect(() => {
-    let active = true;
-    const refreshApiStatus = async () => {
-      try {
-        const result = await apiJson("/api/settings", { cache: "no-store" });
-        if (active) setApiEnabled(result?.apiEnabled === true);
-      } catch {
-        if (active) setApiEnabled(false);
-      } finally {
-        if (active) setApiStatusLoaded(true);
-      }
-    };
-    void refreshApiStatus();
-    const timer = window.setInterval(refreshApiStatus, 30_000);
-    window.addEventListener("api-settings-updated", refreshApiStatus);
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-      window.removeEventListener("api-settings-updated", refreshApiStatus);
-    };
-  }, []);
 
   useEffect(() => {
     if (!apiStatusLoaded || apiEnabled) return;

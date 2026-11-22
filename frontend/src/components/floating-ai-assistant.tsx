@@ -1,8 +1,16 @@
 "use client";
 
 import { type PointerEvent, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { Bot, Sparkles, X } from "lucide-react";
-import { AIAssistantWorkspace } from "@/components/ai-assistant-workspace";
+
+const AIAssistantWorkspace = dynamic(
+  () => import("@/components/ai-assistant-workspace").then((module) => module.AIAssistantWorkspace),
+  {
+    ssr: false,
+    loading: () => <div className="grid h-full place-items-center text-sm text-neutral-500">Opening assistant...</div>,
+  },
+);
 
 type Position = { x: number; y: number };
 type DragState = { pointerId: number; startX: number; startY: number; origin: Position; moved: boolean };
@@ -103,7 +111,7 @@ export function FloatingAIAssistant({ admin }: { admin: boolean }) {
         aria-hidden={!open}
         className={`ai-assistant-window ${open ? "fixed" : "hidden"} inset-x-3 bottom-[5.5rem] z-[70] h-[min(72dvh,38rem)] sm:inset-x-auto sm:bottom-20 sm:right-5 sm:w-[min(28rem,calc(100vw-2.5rem))]`}
       >
-        <AIAssistantWorkspace admin={admin} compact active={open} />
+        {open && <AIAssistantWorkspace admin={admin} compact active />}
         <button
           type="button"
           onClick={() => setOpen(false)}

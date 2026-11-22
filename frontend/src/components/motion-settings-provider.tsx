@@ -26,6 +26,11 @@ const MotionSettingsContext = createContext<{
 });
 
 const SiteBrandContext = createContext<SiteBrandSettings>(DEFAULT_SITE_BRAND);
+const FeatureSettingsContext = createContext({
+  apiEnabled: false,
+  aiEnabled: false,
+  loaded: false,
+});
 
 export function useMotionSettings() {
   return useContext(MotionSettingsContext);
@@ -33,6 +38,10 @@ export function useMotionSettings() {
 
 export function useSiteBrand() {
   return useContext(SiteBrandContext);
+}
+
+export function useFeatureSettings() {
+  return useContext(FeatureSettingsContext);
 }
 
 function applyMotionSettings(settings: MotionSettings) {
@@ -63,15 +72,21 @@ export function MotionSettingsProvider({
 }) {
   const [settings, setSettings] = useState(initialSettings);
   const [siteBrand, setSiteBrand] = useState(DEFAULT_SITE_BRAND);
+  const [featureSettings, setFeatureSettings] = useState({
+    apiEnabled: false,
+    aiEnabled: false,
+    loaded: false,
+  });
   const previousBrandName = useRef(DEFAULT_SITE_BRAND.brandName);
 
   useEffect(() => {
     let mounted = true;
-    apiJson("/api/settings")
-      .then((result) => {
-        if (!mounted || !result?.appearance) return;
-        setSettings(normalizeMotionSettings(result.appearance));
-        if (result.siteFooter && typeof result.siteFooter === "object") {
+    async function refreshSiteSettings() {
+      try {
+        const result = await apiJson("/api/settings", { cache: "no-store" });
+        if (!mounted) return;
+        if (result?.appearance) setSettings(normalizeMotionSettings(result.appearance));
+        if (result?.siteFooter && typeof result.siteFooter === "object") {
           setSiteBrand({
             brandName: typeof result.siteFooter.brandName === "string" && result.siteFooter.brandName.trim()
               ? result.siteFooter.brandName.trim()
@@ -84,13 +99,29 @@ export function MotionSettingsProvider({
               : DEFAULT_SITE_BRAND.tagline,
           });
         }
-      })
-      .catch((error: unknown) => {
-        console.error("Unable to refresh site appearance settings; keeping the server-rendered settings.", error);
-      });
+        setFeatureSettings({
+          apiEnabled: result?.apiEnabled === true,
+          aiEnabled: result?.ai?.enabled === true,
+          loaded: true,
+        });
+      } catch (error) {
+        console.error("Unable to refresh site settings; keeping the current settings.", error);
+        if (mounted) setFeatureSettings((current) => ({ ...current, loaded: true }));
+      }
+    }
+
+    void refreshSiteSettings();
+    const interval = window.setInterval(refreshSiteSettings, 120_000);
+    window.addEventListener("focus", refreshSiteSettings);
+    window.addEventListener("api-settings-updated", refreshSiteSettings);
+    window.addEventListener("ai-settings-updated", refreshSiteSettings);
 
     return () => {
       mounted = false;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", refreshSiteSettings);
+      window.removeEventListener("api-settings-updated", refreshSiteSettings);
+      window.removeEventListener("ai-settings-updated", refreshSiteSettings);
     };
   }, []);
 
@@ -110,7 +141,9 @@ export function MotionSettingsProvider({
   return (
     <MotionSettingsContext.Provider value={{ settings, setSettings }}>
       <SiteBrandContext.Provider value={siteBrand}>
-        {children}
+        <FeatureSettingsContext.Provider value={featureSettings}>
+          {children}
+        </FeatureSettingsContext.Provider>
       </SiteBrandContext.Provider>
     </MotionSettingsContext.Provider>
   );
