@@ -504,6 +504,25 @@ const CatalogRefreshScheduleRunSchema = new Schema(
   { timestamps: true },
 );
 
+const CatalogChangeEventSchema = new Schema(
+  {
+    providerServiceId: { type: String, required: true, index: true },
+    serviceName: { type: String, required: true },
+    changeType: { type: String, enum: ["new", "updated", "deactivated"], required: true, index: true },
+    changes: {
+      type: [{
+        field: { type: String, required: true },
+        previous: Schema.Types.Mixed,
+        current: Schema.Types.Mixed,
+      }],
+      default: [],
+    },
+    readBy: { type: [String], default: [], index: true },
+  },
+  { timestamps: true },
+);
+CatalogChangeEventSchema.index({ _id: -1, readBy: 1 });
+
 const NotificationSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User" },
@@ -671,6 +690,8 @@ export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLo
 export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSchema);
 export const CatalogRefreshScheduleRun =
   models.CatalogRefreshScheduleRun || model("CatalogRefreshScheduleRun", CatalogRefreshScheduleRunSchema);
+export const CatalogChangeEvent =
+  models.CatalogChangeEvent || model("CatalogChangeEvent", CatalogChangeEventSchema);
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);

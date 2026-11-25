@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, ok, requireAdmin } from "@/lib/api";
 import { calculateSellingRate } from "@/lib/pricing";
-import { AuditLog, Category, getSettings, Service } from "@/models";
+import { AuditLog, CatalogChangeEvent, Category, getSettings, Service } from "@/models";
 
 const patchSchema = z
   .object({
@@ -80,6 +80,26 @@ export async function PATCH(request: NextRequest) {
       }
 
       await service.save();
+    }
+
+    const catalogChanges = services.flatMap((service, index) => {
+      const previous = before[index];
+      const changes: Array<{ field: string; previous: unknown; current: unknown }> = [];
+      if (!Object.is(previous.sellingRate, service.sellingRate)) {
+        changes.push({ field: "sellingRate", previous: previous.sellingRate, current: service.sellingRate });
+      }
+      if (!Object.is(previous.active, service.active)) {
+        changes.push({ field: "active", previous: previous.active, current: service.active });
+      }
+      return changes.length > 0 ? [{
+        providerServiceId: service.providerServiceId,
+        serviceName: service.name,
+        changeType: "updated" as const,
+        changes,
+      }] : [];
+    });
+    if (catalogChanges.length > 0) {
+      await CatalogChangeEvent.insertMany(catalogChanges, { ordered: true });
     }
 
     await AuditLog.create({

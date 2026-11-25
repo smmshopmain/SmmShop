@@ -5,6 +5,7 @@ import { ActionButton, ServiceAdminList, SyncStatusPanel, type AdminServiceItem 
 import { AdminHeader } from "@/components/admin-ui";
 import { AppShell } from "@/components/app-shell";
 import { CatalogRefreshScheduleSettings } from "@/components/catalog-refresh-schedule-settings";
+import { RecentCatalogChanges } from "@/components/recent-catalog-changes";
 import { apiJson } from "@/lib/client-api";
 import { Search } from "lucide-react";
 
@@ -73,6 +74,7 @@ export default function AdminServicesPage() {
         }
       />
       <CatalogRefreshScheduleSettings />
+      <RecentCatalogChanges />
       <SyncStatusPanel />
       {error && <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{error}</p>}
       {loading && <p className="mb-3 text-xs font-medium text-neutral-500">Searching service catalog…</p>}

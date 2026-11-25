@@ -1,5 +1,6 @@
 import { calculateSellingRate } from "@/lib/pricing";
 import { dbConnect } from "@/lib/db";
+import { getCatalogServiceChanges, type CatalogFieldChange } from "@/lib/catalog-changes";
 import { syncProviderBalancesAndNotify } from "@/lib/provider-balance";
 import {
   ensureDefaultProviderFromEnv,
@@ -8,7 +9,7 @@ import {
   providerRequest,
 } from "@/lib/provider";
 import { notifyTelegram } from "@/lib/telegram";
-import { Category, getSettings, Provider, Service, SyncStatus } from "@/models";
+import { CatalogChangeEvent, Category, getSettings, Provider, Service, SyncStatus } from "@/models";
 
 type TaskType = "service_import" | "service_sync" | "price_sync";
 
@@ -175,9 +176,15 @@ async function syncProvider(
   const existingServices = await Service.find({
     provider: provider._id,
     providerServiceId: { $in: providerServiceIds },
-  }).select("providerServiceId marginPercent").lean();
+  }).select("providerServiceId marginPercent name category type providerRate sellingRate min max refill cancel active").lean();
   const existingById = new Map(existingServices.map((service) => [service.providerServiceId, service]));
   const defaultMargins = settings.pricing.serviceMargins as Record<string, number>;
+  const operationChanges: Array<{
+    providerServiceId: string;
+    serviceName: string;
+    changeType: "new" | "updated";
+    changes: CatalogFieldChange[];
+  } | undefined> = [];
   const operations = [...uniqueServices.entries()].map(([providerServiceId, item]) => {
     const categoryName = cleanString(item.category, "Uncategorized");
     const providerRate = toNumber(item.rate, 0);
@@ -189,6 +196,33 @@ async function syncProvider(
       serviceMargins[providerServiceId] = existing.marginPercent;
     }
 
+    const serviceValues = {
+      name: cleanString(item.name, `Service ${providerServiceId}`),
+      category: categoryName,
+      type: cleanString(item.type, ""),
+      providerRate,
+      sellingRate: calculateSellingRate(
+        providerRate,
+        categoryName,
+        providerServiceId,
+        existing?.marginPercent !== undefined && existing?.marginPercent !== null
+          ? { ...settings.pricing, serviceMargins }
+          : settings.pricing,
+      ),
+      min,
+      max,
+      refill: parseProviderBoolean(item.refill),
+      cancel: parseProviderBoolean(item.cancel),
+      active: true,
+    };
+    const changes = getCatalogServiceChanges(existing, serviceValues);
+    operationChanges.push(changes.length > 0 ? {
+      providerServiceId,
+      serviceName: serviceValues.name,
+      changeType: existing ? "updated" : "new",
+      changes,
+    } : undefined);
+
     return {
       updateOne: {
         filter: { provider: provider._id, providerServiceId },
@@ -196,23 +230,16 @@ async function syncProvider(
           $set: {
             provider: provider._id,
             providerServiceId,
-            name: cleanString(item.name, `Service ${providerServiceId}`),
+            name: serviceValues.name,
             categoryRef: categoryByName.get(categoryName),
-            category: categoryName,
-            type: cleanString(item.type, ""),
+            category: serviceValues.category,
+            type: serviceValues.type,
             providerRate,
-            sellingRate: calculateSellingRate(
-              providerRate,
-              categoryName,
-              providerServiceId,
-              existing?.marginPercent !== undefined && existing?.marginPercent !== null
-                ? { ...settings.pricing, serviceMargins }
-                : settings.pricing,
-            ),
+            sellingRate: serviceValues.sellingRate,
             min,
             max,
-            refill: parseProviderBoolean(item.refill),
-            cancel: parseProviderBoolean(item.cancel),
+            refill: serviceValues.refill,
+            cancel: serviceValues.cancel,
             active: true,
             lastSyncedAt: syncedAt,
             providerData: item,
@@ -227,6 +254,10 @@ async function syncProvider(
   for (let index = 0; index < operations.length; index += batchSize) {
     const batch = operations.slice(index, index + batchSize);
     const result = await Service.bulkWrite(batch);
+    const batchChanges = operationChanges.slice(index, index + batch.length).filter((change) => change !== undefined);
+    if (batchChanges.length > 0) {
+      await CatalogChangeEvent.insertMany(batchChanges, { ordered: true });
+    }
     processed += batch.length;
     await onProgress?.(processed, operations.length);
     console.info("[service-sync:diagnostic] service batch upsert complete", {
@@ -238,10 +269,23 @@ async function syncProvider(
     });
   }
 
+  const deactivatedServices = await Service.find({
+    provider: provider._id,
+    providerServiceId: { $nin: providerServiceIds },
+    active: true,
+  }).select("providerServiceId name").lean();
   const deactivation = await Service.updateMany(
     { provider: provider._id, providerServiceId: { $nin: providerServiceIds }, active: true },
     { active: false, lastSyncedAt: syncedAt },
   );
+  if (deactivatedServices.length > 0) {
+    await CatalogChangeEvent.insertMany(deactivatedServices.map((service) => ({
+      providerServiceId: service.providerServiceId,
+      serviceName: service.name,
+      changeType: "deactivated" as const,
+      changes: [{ field: "active", previous: true, current: false }],
+    })), { ordered: true });
+  }
   const imported = providerServiceIds.filter((id) => !existingById.has(id)).length;
   const updated = providerServiceIds.length - imported;
 
@@ -494,15 +538,25 @@ export async function priceSyncTask() {
         update: { $set: { sellingRate: number } };
       };
     }> = [];
+    const priceChanges: Array<{
+      providerServiceId: string;
+      serviceName: string;
+      changeType: "updated";
+      changes: CatalogFieldChange[];
+    }> = [];
 
     async function flushBatch() {
       if (operations.length === 0) return;
       await Service.bulkWrite(operations);
+      if (priceChanges.length > 0) {
+        await CatalogChangeEvent.insertMany(priceChanges, { ordered: true });
+        priceChanges.length = 0;
+      }
       operations.length = 0;
     }
 
     const cursor = Service.find()
-      .select("_id providerRate category providerServiceId marginPercent")
+      .select("_id name providerRate category providerServiceId marginPercent sellingRate")
       .lean()
       .cursor({ batchSize });
     for await (const service of cursor) {
@@ -513,6 +567,7 @@ export async function priceSyncTask() {
         serviceMargins[service.providerServiceId] = service.marginPercent;
       }
 
+      const previousRate = service.sellingRate;
       service.sellingRate = calculateSellingRate(
         service.providerRate,
         service.category,
@@ -530,6 +585,14 @@ export async function priceSyncTask() {
           update: { $set: { sellingRate: service.sellingRate } },
         },
       });
+      if (!Object.is(previousRate, service.sellingRate)) {
+        priceChanges.push({
+          providerServiceId: service.providerServiceId,
+          serviceName: service.name,
+          changeType: "updated",
+          changes: [{ field: "sellingRate", previous: previousRate, current: service.sellingRate }],
+        });
+      }
       updated += 1;
 
       if (operations.length >= batchSize) {
