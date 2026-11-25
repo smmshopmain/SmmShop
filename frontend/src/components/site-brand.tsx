@@ -10,11 +10,13 @@ export function BrandMark({
   className = "",
   brandName,
   brandLogoUrl,
+  imageFit = "cover",
 }: {
   sizeClass?: string;
   className?: string;
   brandName?: string;
   brandLogoUrl?: string;
+  imageFit?: "cover" | "contain";
 }) {
   const siteBrand = useSiteBrand();
   const name = brandName ?? siteBrand.brandName ?? DEFAULT_SITE_BRAND.brandName;
@@ -34,7 +36,7 @@ export function BrandMark({
           fill
           sizes="48px"
           unoptimized
-          className="rounded-full object-cover"
+          className={imageFit === "contain" ? "object-contain" : "object-cover"}
         />
       ) : (
         name.trim().slice(0, 2).toUpperCase() || "SP"

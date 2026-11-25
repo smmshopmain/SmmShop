@@ -345,7 +345,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
       <aside className="app-sidebar fixed inset-y-0 left-0 hidden w-64 overflow-y-auto border-r px-4 py-5 lg:block">
         <div className="flex h-full flex-col">
           <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="app-brand flex items-center gap-3 px-2 py-1">
-            <BrandMark sizeClass="size-11" />
+            <BrandMark sizeClass="size-11" imageFit={isAdmin ? "cover" : "contain"} />
             <span>
               <span className="block text-sm font-bold tracking-tight">{isAdmin ? "Admin Panel" : brandName}</span>
               <span className="mt-0.5 block text-[11px] font-medium text-neutral-500">
@@ -427,7 +427,7 @@ export function AppShell({ children, footer }: { children: React.ReactNode; foot
           <div className="mx-auto max-w-[1440px]">
             <div className="flex min-w-0 items-center justify-between gap-3">
               <Link href={isAdmin ? "/admin" : "/dashboard/services"} className="flex min-w-0 items-center gap-2 font-semibold lg:hidden">
-                <BrandMark sizeClass="size-9" />
+                <BrandMark sizeClass="size-9" imageFit={isAdmin ? "cover" : "contain"} />
                 <span className="truncate">{isAdmin ? "Admin Panel" : brandName}</span>
               </Link>
               <div className="hidden min-w-0 items-center gap-2 text-xs font-medium text-neutral-500 lg:flex">
