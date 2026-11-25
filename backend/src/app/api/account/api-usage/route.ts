@@ -49,6 +49,11 @@ export async function GET() {
         : Math.max(0, Math.min(100, settings.api.discountPercent))
       : 0;
     return ok({
+      protocols: {
+        restEnabled: settings.api.restEnabled,
+        standardEnabled: settings.api.standardEnabled,
+        requireVersionHeader: settings.api.requireVersionHeader,
+      },
       usage: { requests: requestCount, failedRequests, orders: orderCount },
       pricing: {
         discountEnabled: settings.api.discountEnabled,

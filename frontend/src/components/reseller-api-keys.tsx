@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiUrl } from "@/lib/client-api";
 
 type ApiKeyItem = {
   _id: string;
@@ -16,6 +16,7 @@ type ApiKeyItem = {
 
 type ApiUsage = {
   usage: { requests: number; failedRequests: number; orders: number };
+  protocols?: { restEnabled: boolean; standardEnabled: boolean; requireVersionHeader: boolean };
   pricing?: { discountEnabled: boolean; discountPercent: number; discountSource: "account" | "platform" | "none" };
   security: { allowlistEnforced: boolean; allowedIps: string[] };
   sync: {
@@ -37,13 +38,14 @@ type ApiUsage = {
 export function ResellerApiKeys() {
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [maxKeys, setMaxKeys] = useState(3);
-  const [baseUrl, setBaseUrl] = useState(process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "") ?? "");
+  const [baseUrl, setBaseUrl] = useState("");
   const [revealedSecret, setRevealedSecret] = useState("");
   const [revealedSecretKeyId, setRevealedSecretKeyId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const [usage, setUsage] = useState<ApiUsage | null>(null);
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
+  const [baseUrlCopyState, setBaseUrlCopyState] = useState<"idle" | "copied" | "error">("idle");
   const [copyingKeyId, setCopyingKeyId] = useState<string | null>(null);
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
 
@@ -57,7 +59,8 @@ export function ResellerApiKeys() {
     if (!usageResponse.ok || !usageResult?.ok) throw new Error(usageResult?.message ?? "Unable to load API usage.");
     setKeys(keysResult.data?.keys ?? []);
     setMaxKeys(keysResult.data?.maxKeys ?? 3);
-    if (keysResult.data?.baseUrl) setBaseUrl(keysResult.data.baseUrl);
+    const apiOriginFromRequests = apiUrl("/api/v1").replace(/\/api\/v1\/?$/, "");
+    setBaseUrl(keysResult.data?.baseUrl || apiOriginFromRequests || window.location.origin);
     setUsage(usageResult.data ?? null);
   }, []);
 
@@ -91,9 +94,10 @@ export function ResellerApiKeys() {
       if (!response.ok || !result?.ok) throw new Error(result?.message ?? "Unable to create API key.");
       setRevealedSecret(result.data.secret);
       setRevealedSecretKeyId(result.data.key?._id ?? null);
+      setCopyState("idle");
       setMessage(replaceKeyId
-        ? "API key regenerated. Copy it now or use Copy key on this active key later."
-        : "API key created. Copy it now or use Copy key on this active key later.");
+        ? "API key regenerated. Your ready-to-use API setup is below."
+        : "API key created. Your ready-to-use API setup is below.");
       await refresh();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to create API key.");
@@ -113,6 +117,7 @@ export function ResellerApiKeys() {
       secret = result.data.secret;
       setRevealedSecret(secret);
       setRevealedSecretKeyId(id);
+      setCopyState("idle");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to retrieve API key.");
       setCopyingKeyId(null);
@@ -211,24 +216,39 @@ export function ResellerApiKeys() {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-  const apiReference = `Base URL: ${baseUrl || "Configure APP_BASE_URL on backend"}
-Authorization: Bearer YOUR_API_KEY
-
-GET  /api/v1/services
-GET  /api/v1/services/{serviceId}
-GET  /api/v1/categories
-GET  /api/v1/balance
-POST /api/v1/services/import
-POST /api/v1/services/sync
-POST /api/v1/orders
-POST /api/v1/orders/status
-GET  /api/v1/orders/{orderId}
-GET  /api/v1/orders?limit=50
-
-POST /api/v1/orders
-Idempotency-Key: unique-request-id
-Content-Type: application/json
-{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}`;
+  const apiBase = `${baseUrl || "YOUR_API_BASE_URL"}/api/v1`;
+  const apiKeyForExamples = revealedSecret || "YOUR_API_KEY";
+  const restVersionHeader = usage?.protocols?.requireVersionHeader
+    ? ' --header "X-API-Version: 1"'
+    : "";
+  const apiReference = [
+    `API base URL: ${baseUrl || "YOUR_API_BASE_URL"}`,
+    `API key: ${apiKeyForExamples}`,
+    "REST authentication: Authorization: Bearer <API_KEY>",
+    "Standard SMM authentication: key=<API_KEY> in the POST body",
+    "",
+    usage?.protocols?.restEnabled === false
+      ? "REST v1 is currently disabled by the administrator."
+      : [
+          "REST v1 examples (run from your private server):",
+          `curl --request GET "${apiBase}/services" --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader}`,
+          `curl --request GET "${apiBase}/balance" --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader}`,
+          `curl --request POST "${apiBase}/orders" --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader} --header "Idempotency-Key: UNIQUE_VALUE_FOR_THIS_ORDER" --header "Content-Type: application/json" --data '{"serviceId":"SERVICE_ID_FROM_SERVICES","link":"https://example.com/post","quantity":100}'`,
+          `curl --request GET "${apiBase}/orders/ORDER_ID_FROM_RESPONSE" --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader}`,
+        ].join("\n"),
+    "",
+    usage?.protocols?.standardEnabled === false
+      ? "Standard SMM API is currently disabled by the administrator."
+      : [
+          "Standard SMM examples:",
+          `curl --request POST "${apiBase}/standard" --header "Content-Type: application/x-www-form-urlencoded" --data-urlencode "key=${apiKeyForExamples}" --data-urlencode "action=services"`,
+          `curl --request POST "${apiBase}/standard" --header "Content-Type: application/x-www-form-urlencoded" --data-urlencode "key=${apiKeyForExamples}" --data-urlencode "action=balance"`,
+          `curl --request POST "${apiBase}/standard" --header "Content-Type: application/x-www-form-urlencoded" --header "Idempotency-Key: UNIQUE_VALUE_FOR_THIS_ORDER" --data-urlencode "key=${apiKeyForExamples}" --data-urlencode "action=add" --data-urlencode "service=SERVICE_ID_FROM_SERVICES" --data-urlencode "link=https://example.com/post" --data-urlencode "quantity=100"`,
+          `curl --request POST "${apiBase}/standard" --header "Content-Type: application/x-www-form-urlencoded" --data-urlencode "key=${apiKeyForExamples}" --data-urlencode "action=status" --data-urlencode "order=ORDER_ID_FROM_RESPONSE"`,
+        ].join("\n"),
+    "",
+    "Use a fresh Idempotency-Key for each new order. Reuse it only to retry the same order request.",
+  ].join("\n");
 
   async function copyApiReference() {
     try {
@@ -236,6 +256,15 @@ Content-Type: application/json
       setCopyState("copied");
     } catch {
       setCopyState("error");
+    }
+  }
+
+  async function copyApiBaseUrl() {
+    try {
+      await navigator.clipboard.writeText(baseUrl);
+      setBaseUrlCopyState("copied");
+    } catch {
+      setBaseUrlCopyState("error");
     }
   }
 
@@ -305,6 +334,60 @@ Content-Type: application/json
         </div>
       </section>
 
+      <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-bold text-neutral-950">Ready-to-use API setup</h2>
+            <p className="mt-1 text-sm text-neutral-600">Your base URL, authentication, and working examples are together here.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => void copyApiReference()}
+            disabled={!baseUrl}
+            className="api-code-copy inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {copyState === "copied" ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
+            {copyState === "copied" ? "Copied" : "Copy complete setup"}
+          </button>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-neutral-600">API base URL</span>
+          <code className="rounded-lg bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-900">{baseUrl || "Loading..."}</code>
+          <button
+            type="button"
+            onClick={() => void copyApiBaseUrl()}
+            disabled={!baseUrl}
+            className="inline-flex items-center gap-1 rounded-lg border border-neutral-300 px-2.5 py-1.5 text-xs font-semibold disabled:opacity-50"
+          >
+            {baseUrlCopyState === "copied" ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
+            {baseUrlCopyState === "copied" ? "Copied" : "Copy URL"}
+          </button>
+        </div>
+        {!revealedSecret && (
+          <p className="mt-3 text-xs leading-5 text-neutral-600">
+            {activeCount > 0
+              ? <>To include your real key in the copied examples, click <strong>Copy key</strong> beside an active key first. Otherwise, the examples use the YOUR_API_KEY placeholder.</>
+              : <>Generate an API key to use these examples. Until then, they contain the YOUR_API_KEY placeholder.</>}
+          </p>
+        )}
+        <div className="api-code-example mt-4 overflow-hidden rounded-xl border">
+          <div className="api-code-toolbar flex items-center justify-between gap-3 border-b px-4 py-2.5">
+            <span className="api-code-title text-[11px] font-bold uppercase tracking-[0.12em]">Connection details and cURL examples</span>
+            <span className="api-code-badge rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide">REST · Standard SMM</span>
+          </div>
+          <pre className="overflow-x-auto px-4 py-4 font-mono text-xs leading-6">{apiReference}</pre>
+        </div>
+        {baseUrlCopyState === "error" && (
+          <p role="status" className="mt-2 text-xs text-rose-700">Clipboard access failed. Select the API base URL and copy it manually.</p>
+        )}
+        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
+          If a real key is revealed, the copied setup includes it. Keep the copied text private and run requests only from a trusted server—never put the key in browser code or a public repository.
+        </p>
+        {copyState === "error" && (
+          <p role="status" className="mt-2 text-xs text-rose-700">Clipboard access failed. Select the setup above and copy it manually.</p>
+        )}
+      </section>
+
       <section className="api-benefits-panel rounded-2xl border p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -332,8 +415,8 @@ Content-Type: application/json
       </section>
 
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-neutral-950">API quick start</h2>
-        <p className="mt-1 text-sm text-neutral-600">Use your backend base URL and send the key in the Authorization header. Do not put keys in URLs or browser code.</p>
+        <h2 className="text-lg font-bold text-neutral-950">API endpoint reference</h2>
+        <p className="mt-1 text-sm text-neutral-600">Keep requests on your private server. Do not put keys in URLs or browser code.</p>
         <div className="api-code-example mt-3 overflow-hidden rounded-xl border">
           <div className="api-code-toolbar flex items-center justify-between gap-3 border-b px-4 py-2.5">
             <span className="api-code-title text-[11px] font-bold uppercase tracking-[0.12em]">API reference</span>
@@ -378,8 +461,8 @@ Content-Type: application/json
             <div>
               <h3 className="font-semibold text-neutral-900">Read the service list and current prices</h3>
               <p className="mt-1 text-sm leading-6 text-neutral-600">Call this endpoint first. Choose a service ID from its response; the returned rate already includes your current API discount.</p>
-              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl "${baseUrl || "https://your-backend.example"}/api/v1/services" \\
-  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
+              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl "${apiBase}/services" \\
+  -H "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader}`}</pre>
             </div>
           </li>
           <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
@@ -387,8 +470,8 @@ Content-Type: application/json
             <div>
               <h3 className="font-semibold text-neutral-900">Place an order from your server</h3>
               <p className="mt-1 text-sm leading-6 text-neutral-600">Replace the service ID, link, and quantity with valid values. Use a fresh Idempotency-Key for each new order; reuse the same value only when retrying that exact request.</p>
-              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl --request POST "${baseUrl || "https://your-backend.example"}/api/v1/orders" \\
-  --header "Authorization: Bearer YOUR_API_KEY" \\
+              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl --request POST "${apiBase}/orders" \\
+  --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader} \\
   --header "Idempotency-Key: UNIQUE_VALUE_FOR_THIS_ORDER" \\
   --header "Content-Type: application/json" \\
   --data '{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}'`}</pre>
