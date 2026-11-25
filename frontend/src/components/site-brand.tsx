@@ -11,12 +11,14 @@ export function BrandMark({
   brandName,
   brandLogoUrl,
   imageFit = "cover",
+  shape = "theme",
 }: {
   sizeClass?: string;
   className?: string;
   brandName?: string;
   brandLogoUrl?: string;
   imageFit?: "cover" | "contain";
+  shape?: "circle" | "theme";
 }) {
   const siteBrand = useSiteBrand();
   const name = brandName ?? siteBrand.brandName ?? DEFAULT_SITE_BRAND.brandName;
@@ -26,6 +28,7 @@ export function BrandMark({
     <span
       role="img"
       aria-label={`${name} logo`}
+      style={shape === "circle" ? { borderRadius: "50%" } : undefined}
       className={`brand-mark relative grid ${sizeClass} shrink-0 place-items-center overflow-hidden rounded-full text-sm font-extrabold tracking-tight text-white ${className}`}
     >
       {logoUrl ? (
