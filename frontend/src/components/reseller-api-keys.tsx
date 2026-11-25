@@ -227,6 +227,21 @@ export function ResellerApiKeys() {
     "REST authentication: Authorization: Bearer <API_KEY>",
     "Standard SMM authentication: key=<API_KEY> in the POST body",
     "",
+    "REST v1 endpoints:",
+    "GET    /api/v1/services",
+    "GET    /api/v1/services/{serviceId}",
+    "GET    /api/v1/categories",
+    "GET    /api/v1/balance",
+    "GET    /api/v1/account",
+    "GET    /api/v1/usage",
+    "GET    /api/v1/orders?limit=50",
+    "GET    /api/v1/orders/{orderId}",
+    "POST   /api/v1/services/import",
+    "POST   /api/v1/services/sync",
+    "POST   /api/v1/orders",
+    "POST   /api/v1/orders/status",
+    "Standard SMM: POST /api/v1/standard (services, balance, add, status, multi_status, refill, refill_status, cancel)",
+    "",
     usage?.protocols?.restEnabled === false
       ? "REST v1 is currently disabled by the administrator."
       : [
@@ -280,25 +295,6 @@ export function ResellerApiKeys() {
             {busy ? "Working..." : "Generate API key"}
           </button>
         </div>
-        {revealedSecret && (
-          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-bold text-amber-950">Your API key</p>
-              <button
-                type="button"
-                onClick={() => void copyRevealedKey()}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-white px-3 py-2 text-xs font-semibold text-amber-950 transition hover:bg-amber-100"
-              >
-                {copiedKeyId === (revealedSecretKeyId ?? "new")
-                  ? <Check aria-hidden="true" className="size-3.5" />
-                  : <Copy aria-hidden="true" className="size-3.5" />}
-                {copiedKeyId === (revealedSecretKeyId ?? "new") ? "Copied" : "Copy key"}
-              </button>
-            </div>
-            <code className="mt-2 block break-all rounded-lg bg-white p-3 text-xs text-neutral-900">{revealedSecret}</code>
-            <p className="mt-2 text-xs text-amber-900">This key is encrypted when stored. You can copy it again from the active key list while signed in. Never share it or put it in public code.</p>
-          </div>
-        )}
         {message && <p role="status" className="mt-3 text-sm text-neutral-600">{message}</p>}
         <div className="mt-4 divide-y divide-neutral-100">
           {keys.map((key) => (
@@ -337,8 +333,8 @@ export function ResellerApiKeys() {
       <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-bold text-neutral-950">Ready-to-use API setup</h2>
-            <p className="mt-1 text-sm text-neutral-600">Your base URL, authentication, and working examples are together here.</p>
+            <h2 className="text-lg font-bold text-neutral-950">API setup details</h2>
+            <p className="mt-1 text-sm text-neutral-600">Your API key, base URL, endpoints, and copy-ready examples are all together here.</p>
           </div>
           <button
             type="button"
@@ -350,6 +346,31 @@ export function ResellerApiKeys() {
             {copyState === "copied" ? "Copied" : "Copy complete setup"}
           </button>
         </div>
+        {revealedSecret ? (
+          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm font-bold text-amber-950">Your API key</p>
+              <button
+                type="button"
+                onClick={() => void copyRevealedKey()}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400 bg-white px-3 py-2 text-xs font-semibold text-amber-950 transition hover:bg-amber-100"
+              >
+                {copiedKeyId === (revealedSecretKeyId ?? "new")
+                  ? <Check aria-hidden="true" className="size-3.5" />
+                  : <Copy aria-hidden="true" className="size-3.5" />}
+                {copiedKeyId === (revealedSecretKeyId ?? "new") ? "Copied" : "Copy key"}
+              </button>
+            </div>
+            <code className="mt-2 block break-all rounded-lg bg-white p-3 text-xs text-neutral-900">{revealedSecret}</code>
+            <p className="mt-2 text-xs text-amber-900">The key is encrypted when stored. Keep it private and use it only from your server.</p>
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-neutral-600">
+            {activeCount > 0
+              ? <>Use <strong>Copy key</strong> beside an active key above to load it here and include it in the copied setup.</>
+              : <>Generate an API key above to show it here and include it in the copied setup.</>}
+          </p>
+        )}
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="text-xs font-semibold text-neutral-600">API base URL</span>
           <code className="rounded-lg bg-neutral-100 px-2.5 py-1.5 text-xs text-neutral-900">{baseUrl || "Loading..."}</code>
@@ -363,13 +384,6 @@ export function ResellerApiKeys() {
             {baseUrlCopyState === "copied" ? "Copied" : "Copy URL"}
           </button>
         </div>
-        {!revealedSecret && (
-          <p className="mt-3 text-xs leading-5 text-neutral-600">
-            {activeCount > 0
-              ? <>To include your real key in the copied examples, click <strong>Copy key</strong> beside an active key first. Otherwise, the examples use the YOUR_API_KEY placeholder.</>
-              : <>Generate an API key to use these examples. Until then, they contain the YOUR_API_KEY placeholder.</>}
-          </p>
-        )}
         <div className="api-code-example mt-4 overflow-hidden rounded-xl border">
           <div className="api-code-toolbar flex items-center justify-between gap-3 border-b px-4 py-2.5">
             <span className="api-code-title text-[11px] font-bold uppercase tracking-[0.12em]">Connection details and cURL examples</span>
@@ -411,82 +425,6 @@ export function ResellerApiKeys() {
         </ul>
         <p className="mt-3 text-xs leading-5 opacity-80">
           Admin pricing changes are picked up automatically (this page refreshes every 30 seconds). Each new API request uses the latest discount; fetch the service list again to see updated rates. Existing orders keep their original price.
-        </p>
-      </section>
-
-      <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-neutral-950">API endpoint reference</h2>
-        <p className="mt-1 text-sm text-neutral-600">Keep requests on your private server. Do not put keys in URLs or browser code.</p>
-        <div className="api-code-example mt-3 overflow-hidden rounded-xl border">
-          <div className="api-code-toolbar flex items-center justify-between gap-3 border-b px-4 py-2.5">
-            <span className="api-code-title text-[11px] font-bold uppercase tracking-[0.12em]">API reference</span>
-            <div className="flex items-center gap-2">
-              <span className="api-code-badge rounded-md px-2 py-1 text-[10px] font-semibold uppercase tracking-wide">REST · v1</span>
-              <button
-                type="button"
-                onClick={() => void copyApiReference()}
-                className="api-code-copy inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold transition"
-                aria-label={copyState === "copied" ? "API reference copied" : "Copy API reference"}
-              >
-                {copyState === "copied" ? <Check aria-hidden="true" className="size-3.5" /> : <Copy aria-hidden="true" className="size-3.5" />}
-                {copyState === "copied" ? "Copied" : "Copy"}
-              </button>
-            </div>
-          </div>
-          <pre className="overflow-x-auto px-4 py-4 font-mono text-xs leading-6">{apiReference}</pre>
-        </div>
-        {copyState !== "idle" && (
-          <p role="status" className="mt-2 text-xs text-neutral-600">
-            {copyState === "copied"
-              ? "API reference copied to clipboard."
-              : "Clipboard access failed. Select the code and copy it manually."}
-          </p>
-        )}
-        <p className="mt-3 text-xs leading-5 text-neutral-500">Order charges are calculated server-side from the live service price and configured API discount. Idempotency keys prevent duplicate charges for 24 hours. Order history contains only API-created orders; status endpoints are restricted to your account and order status requests are cached for 60 seconds.</p>
-        <p className="mt-3 text-xs leading-5 text-neutral-500">Standard SMM endpoint: POST /api/v1/standard with action=services, balance, add, status, multi_status, refill, refill_status, or cancel. Add requests require an Idempotency-Key header. Cancellation follows website rules and does not issue a refund.</p>
-      </section>
-
-      <section className="surface-card rounded-2xl border border-neutral-200 p-5 sm:p-6">
-        <h2 className="text-lg font-bold text-neutral-950">How to use your API key</h2>
-        <ol className="mt-4 grid gap-4">
-          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
-            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">1</span>
-            <div>
-              <h3 className="font-semibold text-neutral-900">Copy and protect your key</h3>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">Use Copy key beside an active key whenever you need it again. Send it only from your private server; never include it in a URL, browser JavaScript, screenshots, or a public repository. Regenerate a key immediately if it may have been exposed.</p>
-            </div>
-          </li>
-          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
-            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">2</span>
-            <div>
-              <h3 className="font-semibold text-neutral-900">Read the service list and current prices</h3>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">Call this endpoint first. Choose a service ID from its response; the returned rate already includes your current API discount.</p>
-              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl "${apiBase}/services" \\
-  -H "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader}`}</pre>
-            </div>
-          </li>
-          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
-            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">3</span>
-            <div>
-              <h3 className="font-semibold text-neutral-900">Place an order from your server</h3>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">Replace the service ID, link, and quantity with valid values. Use a fresh Idempotency-Key for each new order; reuse the same value only when retrying that exact request.</p>
-              <pre className="api-code-example mt-2 overflow-x-auto rounded-xl border p-3 font-mono text-xs leading-6">{`curl --request POST "${apiBase}/orders" \\
-  --header "Authorization: Bearer ${apiKeyForExamples}"${restVersionHeader} \\
-  --header "Idempotency-Key: UNIQUE_VALUE_FOR_THIS_ORDER" \\
-  --header "Content-Type: application/json" \\
-  --data '{"serviceId":"SERVICE_ID","link":"https://example.com/post","quantity":100}'`}</pre>
-            </div>
-          </li>
-          <li className="grid gap-2 sm:grid-cols-[2rem_minmax(0,1fr)]">
-            <span className="api-code-badge grid size-8 place-items-center rounded-full text-sm font-bold">4</span>
-            <div>
-              <h3 className="font-semibold text-neutral-900">Check balance and order status</h3>
-              <p className="mt-1 text-sm leading-6 text-neutral-600">Use GET /api/v1/balance and GET /api/v1/orders/{`{orderId}`} with the same Authorization header. Orders use your existing website wallet; always check the API response for errors and the final charge.</p>
-            </div>
-          </li>
-        </ol>
-        <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-950">
-          API discounts are applied to new API requests using the latest admin settings. No key regeneration is needed when the discount changes; fetch services again for the current rates. Existing orders are not repriced.
         </p>
       </section>
 
