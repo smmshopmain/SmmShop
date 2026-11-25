@@ -5,9 +5,42 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SiteFooterLink, SiteFooterSettings as FooterSettingsValue } from "@/components/developer-credit-footer";
 import { BrandMark } from "@/components/site-brand";
-import { apiFetch } from "@/lib/client-api";
+import { apiFetch, apiUrl } from "@/lib/client-api";
 
 const uploadedBrandLogoPattern = /^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i;
+const MAX_BRAND_LOGO_SIZE = 5 * 1024 * 1024;
+const allowedBrandLogoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+type BrandLogoUploadResponse = {
+  data?: { url?: unknown };
+  message?: string;
+};
+
+function uploadBrandLogo(file: File, onProgress: (progress: number) => void) {
+  return new Promise<{ ok: boolean; result: BrandLogoUploadResponse }>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", apiUrl("/api/admin/brand-logo"));
+    request.withCredentials = true;
+    request.upload.onprogress = (event) => {
+      if (event.lengthComputable) {
+        onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));
+      }
+    };
+    request.onload = () => {
+      try {
+        const result: BrandLogoUploadResponse = JSON.parse(request.responseText);
+        resolve({ ok: request.status >= 200 && request.status < 300, result });
+      } catch {
+        reject(new Error("Brand logo upload returned an invalid response."));
+      }
+    };
+    request.onerror = () => reject(new Error("Brand logo upload failed. Check your connection and try again."));
+    request.onabort = () => reject(new Error("Brand logo upload was cancelled."));
+    const formData = new FormData();
+    formData.set("file", file);
+    request.send(formData);
+  });
+}
 
 export function SiteFooterSettings({
   initialSettings,
@@ -21,6 +54,7 @@ export function SiteFooterSettings({
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   function update<K extends keyof FooterSettingsValue>(key: K, value: FooterSettingsValue[K]) {
     setSettings((current) => ({ ...current, [key]: value }));
@@ -86,16 +120,22 @@ export function SiteFooterSettings({
 
   async function uploadLogo(file?: File) {
     if (!file) return;
+    if (!allowedBrandLogoTypes.has(file.type)) {
+      setError("Choose a JPG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size === 0 || file.size > MAX_BRAND_LOGO_SIZE) {
+      setError("Brand logo must be larger than 0 bytes and 5MB or smaller.");
+      return;
+    }
     setUploadingLogo(true);
+    setUploadProgress(0);
     setMessage("");
     setError("");
     try {
-      const formData = new FormData();
-      formData.set("file", file);
-      const response = await apiFetch("/api/admin/brand-logo", { method: "POST", body: formData });
-      const result = await response.json();
+      const { ok, result } = await uploadBrandLogo(file, setUploadProgress);
       const logoUrl = result.data?.url;
-      if (!response.ok || typeof logoUrl !== "string" || !uploadedBrandLogoPattern.test(logoUrl)) {
+      if (!ok || typeof logoUrl !== "string" || !uploadedBrandLogoPattern.test(logoUrl)) {
         throw new Error(result.message ?? "Unable to upload the brand logo.");
       }
       setSettings((current) => ({ ...current, brandLogoUrl: logoUrl }));
@@ -104,6 +144,7 @@ export function SiteFooterSettings({
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload the brand logo.");
     } finally {
       setUploadingLogo(false);
+      setUploadProgress(null);
     }
   }
 
@@ -195,10 +236,10 @@ export function SiteFooterSettings({
             <p className="text-xs leading-5 text-neutral-500">
               Upload a JPG, PNG, or WEBP image up to 5 MB. It is automatically center-cropped into a circle wherever the brand mark appears.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid justify-items-start gap-2">
               <label className="inline-flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-800 hover:bg-neutral-50">
                 <ImagePlus className="size-4" />
-                {uploadingLogo ? "Uploading…" : settings.brandLogoUrl ? "Replace logo" : "Upload logo"}
+                {uploadingLogo ? `Uploading ${uploadProgress ?? 0}%` : settings.brandLogoUrl ? "Replace logo" : "Upload logo"}
                 <input
                   type="file"
                   accept="image/jpeg,image/png,image/webp"
@@ -210,16 +251,40 @@ export function SiteFooterSettings({
                   }}
                 />
               </label>
-              {settings.brandLogoUrl && (
-                <button
-                  type="button"
-                  disabled={uploadingLogo}
-                  onClick={() => update("brandLogoUrl", "")}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
-                >
-                  <X className="size-3.5" /> Remove
-                </button>
+              {uploadingLogo && (
+                <div className="grid w-full max-w-sm gap-1.5" aria-live="polite">
+                  <div className="flex items-center justify-between text-xs font-semibold" style={{ color: "var(--brand-deep)" }}>
+                    <span>Uploading brand logo</span>
+                    <span>{uploadProgress ?? 0}%</span>
+                  </div>
+                  <div
+                    className="h-2.5 overflow-hidden rounded-full"
+                    role="progressbar"
+                    aria-label="Brand logo upload progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={uploadProgress ?? 0}
+                    style={{ backgroundColor: "color-mix(in srgb, var(--brand) 16%, var(--surface))" }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-[width] duration-150"
+                      style={{ width: `${uploadProgress ?? 0}%`, backgroundColor: "var(--brand)" }}
+                    />
+                  </div>
+                </div>
               )}
+              <div className="flex flex-wrap gap-2">
+                {settings.brandLogoUrl && (
+                  <button
+                    type="button"
+                    disabled={uploadingLogo}
+                    onClick={() => update("brandLogoUrl", "")}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                  >
+                    <X className="size-3.5" /> Remove
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

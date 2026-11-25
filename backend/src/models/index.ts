@@ -438,7 +438,7 @@ const MarketingCalendarScheduleRunSchema = new Schema(
 );
 MarketingCalendarScheduleRunSchema.index({ status: 1, lockUntil: 1, createdAt: 1 });
 
-const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners", "popup-images"] as const;
+const uploadedFileFolders = ["deposit-proofs", "payment-qr", "campaign-banners", "popup-images", "brand-assets"] as const;
 const UploadedFileSchema = new Schema(
   {
     folder: { type: String, enum: uploadedFileFolders, required: true, index: true },
