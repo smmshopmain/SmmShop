@@ -165,13 +165,13 @@ Set the repository Actions variable `BACKEND_URL` to your deployed backend URL, 
 https://your-service-name.onrender.com
 ```
 
-The workflow sends an authenticated request every 5 minutes; the backend endpoint connects to MongoDB and runs a lightweight ping command. Email campaign processing runs in its own 10-minute workflow so sending a large campaign cannot delay the keep-alive request. This can reduce Render cold starts without adding a Render cron service. Scheduled workflows run from the repository's default branch, and GitHub may delay scheduled jobs during high load. Render or MongoDB Atlas may still suspend services under their free-tier policies if a ping is delayed or fails, so this does not guarantee uninterrupted availability.
+The workflow sends an authenticated request every 5 minutes; the backend endpoint connects to MongoDB, runs a lightweight ping, and checks whether the administrator-configured daily catalog refresh is due. Email campaign processing runs in its own 10-minute workflow so sending a large campaign cannot delay the keep-alive request. This can reduce Render cold starts without adding a Render cron service. Scheduled workflows run from the repository's default branch, and GitHub may delay scheduled jobs during high load. Render or MongoDB Atlas may still suspend services under their free-tier policies if a ping is delayed or fails, so this does not guarantee uninterrupted availability.
 
-### Nightly Catalog Refresh
+### Daily Catalog Refresh
 
-The **Nightly catalog refresh** GitHub Actions workflow imports provider services, syncs the catalog, and recalculates every service price sequentially. It runs daily at midnight India Standard Time (`30 18 * * *` UTC) and can also be started manually from the Actions tab. It waits for each task's persisted progress and fails the workflow if a task fails or stops reporting progress.
+Admins can enable the daily catalog refresh and choose its start time in **Admin > Service admin**. The configured time uses India Standard Time (IST); the refresh starts on the first five-minute backend check at or after that time. The backend imports services, syncs the catalog, and recalculates prices sequentially, and persists the daily run so repeated checks cannot start duplicate runs. Progress appears in the catalog refresh status panel. The **Nightly catalog refresh** GitHub Actions workflow remains available for manual runs from the Actions tab.
 
-Set the repository Actions variable `BACKEND_URL` to the Render backend origin and the Actions secret `CRON_SECRET` to the same value configured on the backend. The workflow calls:
+The daily scheduler uses the same repository Actions variable `BACKEND_URL` and `CRON_SECRET` secret required by **Keep the Render Backend Warm**. The manual workflow calls:
 
 ```text
 /api/cron/auto-sync

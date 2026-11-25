@@ -492,6 +492,18 @@ const SyncStatusSchema = new Schema(
   { timestamps: true },
 );
 
+const CatalogRefreshScheduleRunSchema = new Schema(
+  {
+    localDate: { type: String, required: true, unique: true, index: true },
+    scheduledTime: { type: String, required: true },
+    status: { type: String, enum: ["running", "completed", "failed"], required: true, index: true },
+    message: { type: String, required: true },
+    startedAt: { type: Date, required: true },
+    finishedAt: Date,
+  },
+  { timestamps: true },
+);
+
 const NotificationSchema = new Schema(
   {
     user: { type: Schema.Types.ObjectId, ref: "User" },
@@ -657,6 +669,8 @@ export const UploadedFile = existingUploadedFile || model("UploadedFile", Upload
 export const AuditLog = models.AuditLog || model("AuditLog", AuditLogSchema);
 export const ProviderLog = models.ProviderLog || model("ProviderLog", ProviderLogSchema);
 export const SyncStatus = models.SyncStatus || model("SyncStatus", SyncStatusSchema);
+export const CatalogRefreshScheduleRun =
+  models.CatalogRefreshScheduleRun || model("CatalogRefreshScheduleRun", CatalogRefreshScheduleRunSchema);
 export const Notification =
   models.Notification || model("Notification", NotificationSchema);
 export const RateLimit = models.RateLimit || model("RateLimit", RateLimitSchema);
@@ -761,6 +775,10 @@ export type PlatformSettings = {
   ai: {
     enabled: boolean;
     actionMode: "preview_confirm" | "admin_direct" | "direct_all";
+  };
+  catalogSync: {
+    dailyRefreshEnabled: boolean;
+    dailyRefreshTime: string;
   };
 };
 
@@ -902,6 +920,7 @@ export async function getSettings() {
       minimumReferredWalletAddAmount: 0,
     },
     ai: { enabled: false, actionMode: "preview_confirm" },
+    catalogSync: { dailyRefreshEnabled: true, dailyRefreshTime: "00:00" },
   };
 
   for (const record of records as Array<{ key: string; value: unknown }>) {
@@ -963,6 +982,9 @@ export async function getSettings() {
     }
     if (record.key === "referrals") settings.referrals = { ...settings.referrals, ...(record.value as Partial<PlatformSettings["referrals"]>) };
     if (record.key === "ai") settings.ai = { ...settings.ai, ...(record.value as Partial<PlatformSettings["ai"]>) };
+    if (record.key === "catalogSync") {
+      settings.catalogSync = { ...settings.catalogSync, ...(record.value as Partial<PlatformSettings["catalogSync"]>) };
+    }
   }
 
   settings.email.brandName = settings.siteFooter.brandName;

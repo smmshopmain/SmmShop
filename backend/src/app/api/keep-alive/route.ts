@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { fail, ok } from "@/lib/api";
+import { startCatalogRefreshIfDue } from "@/lib/catalog-refresh-scheduler";
 import { dbConnect } from "@/lib/db";
 
 export async function GET(request: Request) {
@@ -18,10 +19,12 @@ export async function GET(request: Request) {
       throw new Error("MongoDB connection is not ready");
     }
     await database.admin().ping();
+    const catalogRefresh = await startCatalogRefreshIfDue();
 
     return ok({
       awake: true,
       mongo: "ok",
+      catalogRefresh,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {

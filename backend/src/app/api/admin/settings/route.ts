@@ -15,7 +15,7 @@ import {
 } from "@/models";
 
 const schema = z.object({
-  key: z.enum(["api", "appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter", "ai"]),
+  key: z.enum(["api", "appearance", "pricing", "deposits", "provider", "auth", "email", "support", "referrals", "developerCredit", "siteFooter", "ai", "catalogSync"]),
   value: z.record(z.string(), z.unknown()),
 });
 
@@ -183,6 +183,11 @@ const aiSettingsSchema = z.object({
   actionMode: z.enum(["preview_confirm", "admin_direct", "direct_all"]),
 });
 
+const catalogSyncSettingsSchema = z.object({
+  dailyRefreshEnabled: z.boolean(),
+  dailyRefreshTime: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, "Enter a valid daily time."),
+});
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value && typeof value === "object" && !Array.isArray(value));
 }
@@ -275,6 +280,8 @@ function normalizeSettingsValue(key: string, value: Record<string, unknown>) {
     }
     return aiSettings;
   }
+
+  if (key === "catalogSync") return catalogSyncSettingsSchema.parse(value);
 
   if (key === "appearance") {
     const appearance = appearanceSchema.parse(value);
