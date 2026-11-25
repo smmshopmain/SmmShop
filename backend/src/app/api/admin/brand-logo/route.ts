@@ -13,6 +13,12 @@ const allowedTypes = new Map([
 const MAX_BRAND_LOGO_SIZE = 5 * 1024 * 1024;
 const logoUrlSchema = z.string().regex(/^\/api\/uploads\/file\/brand-assets\/[a-f\d-]+\.(?:jpg|png|webp)$/i);
 
+function getStoredLogoUrl(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  const logoUrl = (value as Record<string, unknown>).brandLogoUrl;
+  return typeof logoUrl === "string" && logoUrlSchema.safeParse(logoUrl).success ? logoUrl : "";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { auth } = await requireAdmin();
@@ -26,6 +32,9 @@ export async function POST(request: NextRequest) {
     }
 
     const fileName = `${randomUUID()}.${allowedTypes.get(file.type)}`;
+    const logoUrl = `/api/uploads/file/brand-assets/${fileName}`;
+    const existingSetting = await Setting.findOne({ key: "siteFooter" }).select("value").lean();
+    const previousLogoUrl = getStoredLogoUrl(existingSetting?.value);
     await UploadedFile.create({
       folder: "brand-assets",
       fileName,
@@ -34,7 +43,36 @@ export async function POST(request: NextRequest) {
       size: file.size,
       createdBy: auth.id,
     });
-    return ok({ url: `/api/uploads/file/brand-assets/${fileName}` });
+
+    try {
+      await Setting.updateOne(
+        { key: "siteFooter" },
+        { $set: { "value.brandLogoUrl": logoUrl } },
+        { upsert: true },
+      );
+    } catch (error) {
+      try {
+        await UploadedFile.deleteOne({ folder: "brand-assets", fileName });
+      } catch (cleanupError) {
+        console.error("Unable to clean up a logo upload after its settings update failed.", cleanupError);
+      }
+      throw error;
+    }
+
+    let cleanupWarning = false;
+    if (previousLogoUrl && previousLogoUrl !== logoUrl) {
+      const previousFileName = previousLogoUrl.split("/").at(-1);
+      if (previousFileName) {
+        try {
+          await UploadedFile.deleteOne({ folder: "brand-assets", fileName: previousFileName });
+        } catch (error) {
+          cleanupWarning = true;
+          console.error("Brand logo was updated, but the previous uploaded logo could not be removed.", error);
+        }
+      }
+    }
+
+    return ok({ url: logoUrl, cleanupWarning });
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Unable to upload the brand logo.");
   }

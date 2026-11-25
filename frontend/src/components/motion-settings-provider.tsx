@@ -115,6 +115,7 @@ export function MotionSettingsProvider({
     window.addEventListener("focus", refreshSiteSettings);
     window.addEventListener("api-settings-updated", refreshSiteSettings);
     window.addEventListener("ai-settings-updated", refreshSiteSettings);
+    window.addEventListener("brand-settings-updated", refreshSiteSettings);
 
     return () => {
       mounted = false;
@@ -122,6 +123,7 @@ export function MotionSettingsProvider({
       window.removeEventListener("focus", refreshSiteSettings);
       window.removeEventListener("api-settings-updated", refreshSiteSettings);
       window.removeEventListener("ai-settings-updated", refreshSiteSettings);
+      window.removeEventListener("brand-settings-updated", refreshSiteSettings);
     };
   }, []);
 

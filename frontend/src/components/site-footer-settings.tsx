@@ -12,7 +12,7 @@ const MAX_BRAND_LOGO_SIZE = 5 * 1024 * 1024;
 const allowedBrandLogoTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 type BrandLogoUploadResponse = {
-  data?: { url?: unknown };
+  data?: { url?: unknown; cleanupWarning?: boolean };
   message?: string;
 };
 
@@ -139,7 +139,12 @@ export function SiteFooterSettings({
         throw new Error(result.message ?? "Unable to upload the brand logo.");
       }
       setSettings((current) => ({ ...current, brandLogoUrl: logoUrl }));
-      setMessage("Logo uploaded. Save brand settings to apply it across the website.");
+      setSavedLogoUrl(logoUrl);
+      setMessage(result.data?.cleanupWarning
+        ? "Logo uploaded and saved, but the previous image could not be removed."
+        : "Logo uploaded and saved. It will remain after refresh.");
+      window.dispatchEvent(new Event("brand-settings-updated"));
+      router.refresh();
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload the brand logo.");
     } finally {
